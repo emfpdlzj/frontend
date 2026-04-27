@@ -1,0 +1,23 @@
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
+import { LoadingView } from '../components/common/LoadingView';
+import { PageShell } from '../components/common/PageShell';
+
+export function ProtectedRoute() {
+  const { isAuthenticated, isInitializing } = useAuth();
+  const location = useLocation();
+
+  if (isInitializing) {
+    return (
+      <PageShell title="세션 확인" description="로그인 상태를 확인하고 있습니다.">
+        <LoadingView label="세션 검증 중..." />
+      </PageShell>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  return <Outlet />;
+}
