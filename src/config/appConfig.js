@@ -44,3 +44,7 @@ export const OAUTH_CONFIG = {
 };
 
 export const NAVER_STATE_KEY = 'bridgework.oauth.naver.state';
+
+export const NAVER_MAP_CONFIG = {
+  clientId: process.env.REACT_APP_NAVER_MAP_CLIENT_ID || ''
+};

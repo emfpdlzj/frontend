@@ -17,6 +17,8 @@ export function PageShell({ title, description, actions, children }) {
         <Link to="/login">로그인</Link>
         <span>·</span>
         <Link to="/onboarding">온보딩</Link>
+        <span>·</span>
+        <Link to="/accessibility-map">지역 접근성 지도</Link>
       </footer>
     </main>
   );
