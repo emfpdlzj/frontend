@@ -1,4 +1,7 @@
 import { API_BASE_URL } from '../config/appConfig';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('http');
 
 export class ApiError extends Error {
   constructor(message, status, errorCode, payload) {
@@ -45,6 +48,12 @@ export async function httpRequest(path, options = {}) {
       : body;
   }
 
+  logger.debug('API request started.', {
+    method,
+    path,
+    hasBody: body !== undefined && body !== null
+  });
+
   const response = await fetch(`${API_BASE_URL}${path}`, requestOptions);
 
   const contentType = response.headers.get('content-type') || '';
@@ -54,8 +63,27 @@ export async function httpRequest(path, options = {}) {
   if (!response.ok) {
     const message = payload?.message || `요청에 실패했습니다. (${response.status})`;
     const errorCode = payload?.errorCode || 'HTTP_ERROR';
+    const errorMeta = {
+      method,
+      path,
+      status: response.status,
+      errorCode
+    };
+
+    if (response.status >= 500) {
+      logger.error('API request failed.', errorMeta);
+    } else {
+      logger.warn('API request failed.', errorMeta);
+    }
+
     throw new ApiError(message, response.status, errorCode, payload);
   }
+
+  logger.info('API request succeeded.', {
+    method,
+    path,
+    status: response.status
+  });
 
   return payload;
 }

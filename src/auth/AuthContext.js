@@ -10,8 +10,10 @@ import {
 import { authApi } from '../api/authApi';
 import { ApiError } from '../api/httpClient';
 import { authStorage } from './authStorage';
+import { createLogger } from '../utils/logger';
 
 const AuthContext = createContext(null);
+const logger = createLogger('auth');
 
 const normalizeTokenPair = (tokenPair) => ({
   accessToken: tokenPair.accessToken,
@@ -75,8 +77,15 @@ export function AuthProvider({ children }) {
 
     refreshingRef.current = authApi
       .refreshToken(tokensRef.current.refreshToken)
-      .then((tokenPair) => saveTokens(tokenPair))
+      .then((tokenPair) => {
+        logger.info('Access token refreshed.');
+        return saveTokens(tokenPair);
+      })
       .catch((error) => {
+        logger.warn('Token refresh failed. Clearing session.', {
+          status: error?.status,
+          errorCode: error?.errorCode
+        });
         clearSession();
         throw error;
       })
@@ -100,6 +109,10 @@ export function AuthProvider({ children }) {
           throw error;
         }
 
+        logger.warn('Authorized request returned 401. Retrying with refreshed token.', {
+          status: error.status,
+          errorCode: error.errorCode
+        });
         const refreshed = await refreshTokens();
         return operation(refreshed.accessToken, signal);
       }
@@ -150,6 +163,10 @@ export function AuthProvider({ children }) {
       }
     } catch (error) {
       // 로그아웃 요청이 실패해도 로컬 세션은 즉시 폐기한다.
+      logger.warn('Logout request failed. Proceeding with local session cleanup.', {
+        status: error?.status,
+        errorCode: error?.errorCode
+      });
     } finally {
       clearSession();
     }
@@ -168,6 +185,10 @@ export function AuthProvider({ children }) {
         await callWithAuth((accessToken, signal) => authApi.getMe(accessToken, signal), controller.signal)
           .then((me) => setCurrentUser(me));
       } catch (error) {
+        logger.warn('Session bootstrap failed. Clearing session.', {
+          status: error?.status,
+          errorCode: error?.errorCode
+        });
         clearSession();
       } finally {
         setIsInitializing(false);
