@@ -12,7 +12,7 @@
 
 ## 기본 작업 원칙
 
-React/Next.js 코드를 작성하거나 수정할 때는 단순히 화면이 동작하는 수준이 아니라, 실제 서비스 운영과 접근성을 고려해 구현한다.
+React 코드를 작성하거나 수정할 때는 단순히 화면이 동작하는 수준이 아니라, 실제 서비스 운영과 접근성을 고려해 구현한다.
 
 특히 다음 항목을 우선한다.
 
@@ -23,7 +23,7 @@ React/Next.js 코드를 작성하거나 수정할 때는 단순히 화면이 동
 - 유지보수 가능한 컴포넌트 분리
 - 타입 안정성
 - 접근성
-- Next.js 이전 가능성
+- React 이전 가능성
 
 ## API 호출 원칙
 
@@ -33,7 +33,7 @@ FastAPI AI/GIS Service는 프론트엔드에서 직접 호출하지 않는다.
 
 기본 호출 흐름은 다음과 같다.
 
-React/Next.js Frontend → Spring Backend → FastAPI AI/GIS Service
+React Frontend → Spring Backend → FastAPI AI/GIS Service
 
 ## API 상태 처리 원칙
 
