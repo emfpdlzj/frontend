@@ -18,7 +18,9 @@ const logger = createLogger('auth');
 const normalizeTokenPair = (tokenPair) => ({
   accessToken: tokenPair.accessToken,
   refreshToken: tokenPair.refreshToken,
-  tokenType: tokenPair.tokenType || 'Bearer'
+  tokenType: tokenPair.tokenType || 'Bearer',
+  accessTokenExpiresAt: tokenPair.accessTokenExpiresAt || null,
+  refreshTokenExpiresAt: tokenPair.refreshTokenExpiresAt || null
 });
 
 export function AuthProvider({ children }) {

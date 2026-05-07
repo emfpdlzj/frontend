@@ -26,10 +26,7 @@ body {
   margin: 0;
   font-family: 'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
   color: var(--text-main);
-  background:
-    radial-gradient(circle at 90% -10%, #d4ebff 10%, transparent 45%),
-    radial-gradient(circle at 8% 110%, #cbe0ff 12%, transparent 42%),
-    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 50%, var(--bg-bottom) 100%);
+  background: #fff;
   min-height: 100vh;
 }
 
@@ -126,7 +123,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 68px;
-  padding: 0 40px 0 104px;
+  padding: 0 120px 0 calc(var(--app-tab-nav-width) + 60px);
   background: #fff;
   border-bottom: 1px solid #eef0f3;
 }
@@ -201,11 +198,13 @@ a:hover {
 }
 
 .app-header__auth-button {
+  appearance: none;
   min-width: 92px;
   min-height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid transparent;
   border-radius: 8px;
   font: inherit;
   font-size: 15px;
@@ -231,15 +230,24 @@ a:hover {
   border: 1px solid #bfd7ff;
   background: #eaf2ff;
   color: #0d63f3;
+  box-shadow: none;
 }
 
 .app-header__auth-button--login:hover {
   border-color: #8bbcff;
   background: #dceaff;
+  color: #0a4ec4;
 }
 
 .app-header__auth-button--login[aria-disabled='true'] {
   pointer-events: none;
+  color: #6b7280;
+  border-color: #e5e7eb;
+  background: #f3f6fa;
+}
+
+.app-header__auth-button--login:disabled {
+  cursor: wait;
   color: #6b7280;
   border-color: #e5e7eb;
   background: #f3f6fa;
@@ -260,6 +268,97 @@ a:hover {
 .app-header__auth-button--logout:disabled {
   cursor: wait;
   opacity: 0.72;
+}
+
+.login-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.38);
+  backdrop-filter: blur(2px);
+}
+
+.login-modal {
+  width: min(720px, 100%);
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+  position: relative;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+}
+
+.login-modal__close {
+  appearance: none;
+  position: absolute;
+  top: 26px;
+  right: 34px;
+  min-width: 64px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #56637c;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.login-modal__close:hover {
+  background: #f3f6fa;
+  color: #10213d;
+}
+
+.login-modal__close:focus-visible {
+  outline: 3px solid rgba(13, 99, 243, 0.24);
+  outline-offset: 2px;
+}
+
+.login-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 82px 40px 42px;
+  text-align: center;
+}
+
+.login-modal__body h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.login-modal__body p {
+  margin: 0;
+}
+
+.login-modal__body > p:first-of-type {
+  color: #6b7280;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.login-modal__logo {
+  width: min(260px, 70%);
+  max-height: 104px;
+  align-self: center;
+  object-fit: contain;
+}
+
+.login-modal__notice {
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.7;
 }
 
 .page-shell {
@@ -523,8 +622,14 @@ a:hover {
 
 .social-button {
   width: 100%;
+  min-height: 58px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
   padding: 13px 16px;
   text-align: center;
+  font-size: 18px;
 }
 
 .social-button.kakao {
@@ -535,6 +640,13 @@ a:hover {
 .social-button.naver {
   background: #03c75a;
   color: #fff;
+}
+
+.social-button__logo {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  object-fit: contain;
 }
 
 .status-message {
@@ -2151,11 +2263,60 @@ a:hover {
     padding: 0 20px;
   }
 
+  .app-header__logo {
+    width: 48px;
+    height: 48px;
+  }
+
+  .app-header__logo-text {
+    width: 118px;
+    height: 21px;
+  }
+
   .app-header__map-search {
     min-width: 0;
     width: auto;
     flex: 1 1 auto;
     padding: 0 14px;
+  }
+
+  .app-header__auth-button {
+    min-width: 78px;
+    min-height: 40px;
+    font-size: 14px;
+  }
+
+  .login-modal-backdrop {
+    align-items: flex-end;
+    padding: 16px;
+  }
+
+  .login-modal {
+    border-radius: 22px;
+  }
+
+  .login-modal__close {
+    top: 18px;
+    right: 20px;
+    font-size: 18px;
+  }
+
+  .login-modal__body {
+    gap: 16px;
+    padding: 72px 22px 30px;
+  }
+
+  .login-modal__body h2 {
+    font-size: 36px;
+  }
+
+  .login-modal__body > p:first-of-type {
+    font-size: 17px;
+  }
+
+  .login-modal__logo {
+    width: min(220px, 76%);
+    max-height: 88px;
   }
 
   .onboarding-main {

@@ -61,7 +61,7 @@ export async function httpRequest(path, options = {}) {
   const payload = canParseJson ? await response.json() : null;
 
   if (!response.ok) {
-    const message = payload?.message || `요청에 실패했습니다. (${response.status})`;
+    const message = payload?.message || payload?.error || `요청에 실패했습니다. (${response.status})`;
     const errorCode = payload?.errorCode || 'HTTP_ERROR';
     const errorMeta = {
       method,

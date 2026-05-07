@@ -65,7 +65,7 @@ export function OAuthCallbackPage() {
           return;
         }
 
-        navigate('/signup', { replace: true });
+        navigate('/accessibility-map', { replace: true });
       } catch (authError) {
         setError(authError.message || '소셜 로그인 처리에 실패했습니다.');
       }
@@ -79,7 +79,7 @@ export function OAuthCallbackPage() {
   }, [loginWithSocialCode, navigate, providerParam, searchParams]);
 
   if (!isInitializing && isAuthenticated) {
-    return <Navigate to="/signup" replace />;
+    return <Navigate to="/accessibility-map" replace />;
   }
 
   return (

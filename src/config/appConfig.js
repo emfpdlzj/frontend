@@ -1,13 +1,15 @@
 const trimTrailingSlash = (value) => value.replace(/\/+$/, '');
 
 export const API_BASE_URL = trimTrailingSlash(
-  process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api/v1'
+  process.env.REACT_APP_API_BASE_URL || 'https://api.bridgework.cloud/api/v1'
 );
 
 export const STORAGE_KEYS = {
   accessToken: 'bridgework.accessToken',
   refreshToken: 'bridgework.refreshToken',
   tokenType: 'bridgework.tokenType',
+  accessTokenExpiresAt: 'bridgework.accessTokenExpiresAt',
+  refreshTokenExpiresAt: 'bridgework.refreshTokenExpiresAt',
   signupSession: 'bridgework.signupSession'
 };
 

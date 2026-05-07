@@ -1,14 +1,18 @@
 import { oauthUtils } from '../../utils/oauth';
+import kakaoLogo from '../../assets/login/kakao-logo.png';
+import naverLogo from '../../assets/login/naver-logo.png';
 
 const providers = [
   {
     key: 'KAKAO',
-    label: '카카오로 로그인',
+    label: '카카오로 시작하기',
+    logo: kakaoLogo,
     className: 'social-button kakao'
   },
   {
     key: 'NAVER',
-    label: '네이버로 로그인',
+    label: '네이버로 시작하기',
+    logo: naverLogo,
     className: 'social-button naver'
   }
 ];
@@ -32,7 +36,8 @@ export function SocialLoginButtons({ onError }) {
           className={provider.className}
           onClick={() => handleLoginClick(provider.key)}
         >
-          {provider.label}
+          <img className="social-button__logo" src={provider.logo} alt="" aria-hidden="true" />
+          <span>{provider.label}</span>
         </button>
       ))}
     </div>

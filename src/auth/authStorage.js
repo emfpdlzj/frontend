@@ -37,7 +37,9 @@ export const authStorage = {
     return {
       accessToken,
       refreshToken,
-      tokenType
+      tokenType,
+      accessTokenExpiresAt: safeStorage.get(STORAGE_KEYS.accessTokenExpiresAt),
+      refreshTokenExpiresAt: safeStorage.get(STORAGE_KEYS.refreshTokenExpiresAt)
     };
   },
 
@@ -45,12 +47,24 @@ export const authStorage = {
     safeStorage.set(STORAGE_KEYS.accessToken, tokenPair.accessToken);
     safeStorage.set(STORAGE_KEYS.refreshToken, tokenPair.refreshToken);
     safeStorage.set(STORAGE_KEYS.tokenType, tokenPair.tokenType || 'Bearer');
+    if (tokenPair.accessTokenExpiresAt) {
+      safeStorage.set(STORAGE_KEYS.accessTokenExpiresAt, tokenPair.accessTokenExpiresAt);
+    } else {
+      safeStorage.remove(STORAGE_KEYS.accessTokenExpiresAt);
+    }
+    if (tokenPair.refreshTokenExpiresAt) {
+      safeStorage.set(STORAGE_KEYS.refreshTokenExpiresAt, tokenPair.refreshTokenExpiresAt);
+    } else {
+      safeStorage.remove(STORAGE_KEYS.refreshTokenExpiresAt);
+    }
   },
 
   clearTokens() {
     safeStorage.remove(STORAGE_KEYS.accessToken);
     safeStorage.remove(STORAGE_KEYS.refreshToken);
     safeStorage.remove(STORAGE_KEYS.tokenType);
+    safeStorage.remove(STORAGE_KEYS.accessTokenExpiresAt);
+    safeStorage.remove(STORAGE_KEYS.refreshTokenExpiresAt);
   },
 
   readSignupSession() {

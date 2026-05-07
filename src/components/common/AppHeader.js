@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import logo from '../../assets/header/logo.png';
 import logoText from '../../assets/header/logo-text.png';
 import { useAuth } from '../../auth/AuthContext';
@@ -10,11 +10,9 @@ const BRIDGEWORK_HOME_URL = 'https://www.bridgework.cloud/';
 
 export function AppHeader() {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
   const { isAuthenticated, isInitializing, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const showMapSearch = pathname === '/accessibility-map';
 
   const handleLogout = async () => {
     if (isLoggingOut) {
@@ -37,18 +35,16 @@ export function AppHeader() {
         <img className="app-header__logo-text" src={logoText} alt="Bridgework" />
       </a>
 
-      {showMapSearch ? (
-        <form className="app-header__map-search" role="search" aria-label="접근성 지도 출발지 검색">
-          <label className="sr-only" htmlFor="app-header-map-search">
-            접근성 지도 출발지 입력
-          </label>
-          <input
-            id="app-header-map-search"
-            type="search"
-            placeholder={accessibilityMapMockData.searchPlaceholder}
-          />
-        </form>
-      ) : null}
+      <form className="app-header__map-search" role="search" aria-label="접근성 지도 출발지 검색">
+        <label className="sr-only" htmlFor="app-header-map-search">
+          접근성 지도 출발지 입력
+        </label>
+        <input
+          id="app-header-map-search"
+          type="search"
+          placeholder={accessibilityMapMockData.searchPlaceholder}
+        />
+      </form>
 
       <div className="app-header__actions" aria-label="사용자 메뉴">
         {isAuthenticated ? (

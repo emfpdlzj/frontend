@@ -4,6 +4,8 @@ import checkCircleIcon from '../assets/signup/check_circle.png';
 import stepBeforeIcon from '../assets/signup/item-before.png';
 import stepCompleteIcon from '../assets/signup/item-completion.png';
 import stepCurrentIcon from '../assets/signup/item-ing.png';
+import { useAuth } from '../auth/AuthContext';
+import { StatusMessage } from '../components/common/StatusMessage';
 
 const STEPS = [
   { id: 1, title: '기본 정보' },
@@ -18,11 +20,11 @@ const jobOptions = ['사무보조', '행정', '고객상담', '데이터 입력'
 const employmentOptions = ['정규직', '계약직', '무기계약직', '시간제', '일용직', '인턴', '파견/용역', '재택/원격'];
 const disabilityTypes = ['지체', '시각', '청각', '발달', '뇌병변', '내부장애'];
 
-const initialForm = {
+const toInitialForm = (seed) => ({
   name: '',
   gender: '',
   phone: '',
-  email: '',
+  email: seed?.email || '',
   birthDate: '',
   address: '',
   education: '',
@@ -34,15 +36,113 @@ const initialForm = {
   disabilitySeverity: '',
   registeredYn: '',
   introduction: ''
+});
+
+const normalizeBirthDate = (value) => {
+  const normalized = value.trim().replaceAll('.', '-');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return normalized;
+  }
+  return '';
+};
+
+const toResidenceRegion = (address) => {
+  const parts = address.trim().split(/\s+/).filter(Boolean);
+  return parts.slice(0, 2).join(' ') || address.trim();
+};
+
+const toBooleanFromChoice = (value, trueValue) => value === trueValue;
+
+const toSignupProfile = (form) => {
+  const trimmedName = form.name.trim();
+  const trimmedAddress = form.address.trim();
+  const selectedJobs = form.jobs.length ? form.jobs : ['확인 필요'];
+  const disabilityYn = toBooleanFromChoice(form.disabilityYn, '있음');
+
+  return {
+    desiredJob: selectedJobs.join(', '),
+    commuteRange: '확인 필요',
+    preferredWorkEnvironments: ['확인 필요'],
+    avoidedWorkEnvironments: ['확인 필요'],
+    requiredSupports: ['확인 필요'],
+    disabilityType: disabilityYn ? form.disabilityTypes.join(', ') || '확인 필요' : '해당 없음',
+    careerSummary: form.career.trim() || '확인 필요',
+    educationSummary: form.education || '확인 필요',
+    employmentTypeSummary: form.employmentTypes.join(', '),
+    fullName: trimmedName,
+    contactPhone: form.phone.trim(),
+    contactEmail: form.email.trim(),
+    birthDate: normalizeBirthDate(form.birthDate),
+    ageGroup: null,
+    residenceRegion: toResidenceRegion(trimmedAddress),
+    detailAddress: trimmedAddress,
+    emergencyContact: null,
+    profileImageUrl: null,
+    highestEducation: form.education,
+    graduationStatus: '확인 필요',
+    majorCareer: form.career.trim() || '확인 필요',
+    careerDetail: null,
+    projectExperience: null,
+    careerGapReason: null,
+    targetJob: selectedJobs.join(', '),
+    skills: selectedJobs,
+    certifications: [],
+    portfolioUrl: null,
+    awards: null,
+    trainings: null,
+    disabilityYn,
+    disabilitySeverity: disabilityYn ? form.disabilitySeverity || '확인 필요' : '해당 없음',
+    disabilityRegisteredYn: toBooleanFromChoice(form.registeredYn, '등록'),
+    disabilityDescription: null,
+    assistiveDevices: null,
+    workSupportRequirements: null,
+    workAvailability: '확인 필요',
+    workTypes: form.employmentTypes.length ? form.employmentTypes : ['확인 필요'],
+    expectedSalary: null,
+    workTimePreference: null,
+    remoteAvailableYn: null,
+    mobilityRange: null,
+    selfIntroduction: form.introduction.trim() || '확인 필요',
+    motivation: null,
+    jobFitDescription: null,
+    careerGoal: null,
+    strengthsWeaknesses: null,
+    militaryService: null,
+    patrioticVeteranYn: null,
+    referrer: null,
+    snsUrl: null
+  };
 };
 
 export function OnboardingPage() {
   const navigate = useNavigate();
+  const { pendingSignup, completeSignup } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [isComplete, setIsComplete] = useState(false);
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState(() => toInitialForm(pendingSignup));
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const progressWidth = useMemo(() => `${(currentStep / STEPS.length) * 100}%`, [currentStep]);
+  const validationMessage = useMemo(() => {
+    if (!form.name.trim() || !form.phone.trim() || !form.email.trim() || !form.address.trim()) {
+      return '이름, 연락처, 이메일, 거주지 상세 주소를 입력해 주세요.';
+    }
+
+    if (!normalizeBirthDate(form.birthDate)) {
+      return '생년월일은 YYYY-MM-DD 또는 YYYY.MM.DD 형식으로 입력해 주세요.';
+    }
+
+    if (!form.gender || !form.education || !form.jobs.length || !form.employmentTypes.length) {
+      return '성별, 최종 학력, 지원 직무, 가능한 고용형태를 선택해 주세요.';
+    }
+
+    if (form.disabilityYn === '있음' && (!form.disabilityTypes.length || !form.disabilitySeverity || !form.registeredYn)) {
+      return '장애 정보를 입력한 경우 장애 유형, 정도, 등록 여부를 함께 선택해 주세요.';
+    }
+
+    return '';
+  }, [form]);
 
   const updateField = (field, value) => {
     setForm((prev) => ({
@@ -67,9 +167,33 @@ export function OnboardingPage() {
     setCurrentStep((step) => Math.max(1, step - 1));
   };
 
-  const goNext = () => {
+  const goNext = async () => {
+    setSubmitError('');
+
     if (currentStep === STEPS.length) {
-      setIsComplete(true);
+      if (validationMessage) {
+        setSubmitError(validationMessage);
+        return;
+      }
+
+      if (!pendingSignup?.signupToken) {
+        setSubmitError('회원가입 세션을 확인할 수 없습니다. 다시 로그인해 주세요.');
+        return;
+      }
+
+      try {
+        setSubmitting(true);
+        await completeSignup({
+          signupToken: pendingSignup.signupToken,
+          email: form.email.trim(),
+          profile: toSignupProfile(form)
+        });
+        setIsComplete(true);
+      } catch (error) {
+        setSubmitError(error.message || '회원가입 처리에 실패했습니다.');
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
 
@@ -104,17 +228,24 @@ export function OnboardingPage() {
                 toggleArrayValue={toggleArrayValue}
               />
 
+              <StatusMessage kind="error">{submitError}</StatusMessage>
+
               <div className="onboarding-actions">
                 <button
                   type="button"
                   className="onboarding-button onboarding-button--secondary"
                   onClick={goPrevious}
-                  disabled={currentStep === 1}
+                  disabled={currentStep === 1 || submitting}
                 >
                   이전
                 </button>
-                <button type="button" className="onboarding-button onboarding-button--primary" onClick={goNext}>
-                  다음 단계
+                <button
+                  type="button"
+                  className="onboarding-button onboarding-button--primary"
+                  onClick={goNext}
+                  disabled={submitting}
+                >
+                  {currentStep === STEPS.length ? (submitting ? '가입 처리 중...' : '가입 완료') : '다음 단계'}
                 </button>
               </div>
             </section>

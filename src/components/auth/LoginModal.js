@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import logoBig from '../../assets/logo_big.png';
 import { SocialLoginButtons } from './SocialLoginButtons';
 import { StatusMessage } from '../common/StatusMessage';
 
@@ -48,14 +49,14 @@ export function LoginModal({ onClose }) {
 
         <div className="login-modal__body">
           <h2 id="login-modal-title">로그인</h2>
+          <img className="login-modal__logo" src={logoBig} alt="BridgeWork" />
           <p id="login-modal-description">최초 로그인 시 자동으로 회원가입이 진행됩니다.</p>
 
           <SocialLoginButtons onError={setError} />
           <StatusMessage kind="error">{error}</StatusMessage>
 
           <p className="login-modal__notice">
-            회원가입을 진행하면 <a href="/terms">이용약관</a> 및{' '}
-            <a href="/privacy">개인정보 처리방침</a>에 동의하게 됩니다.
+            회원가입을 진행하면 이용약관 및 개인정보 처리방침에 동의하게 됩니다.
           </p>
         </div>
       </section>

@@ -6,11 +6,11 @@ import { StatusMessage } from '../components/common/StatusMessage';
 import { useAuth } from '../auth/AuthContext';
 
 export function LoginPage() {
-  const { isAuthenticated, isInitializing } = useAuth();
+  const { currentUser, isAuthenticated, isInitializing } = useAuth();
   const [error, setError] = useState('');
 
   if (!isInitializing && isAuthenticated) {
-    return <Navigate to="/signup" replace />;
+    return <Navigate to={currentUser?.signupCompleted === false ? '/signup' : '/accessibility-map'} replace />;
   }
 
   return (
