@@ -15,13 +15,34 @@ import { createLogger } from '../utils/logger';
 const AuthContext = createContext(null);
 const logger = createLogger('auth');
 
-const normalizeTokenPair = (tokenPair) => ({
-  accessToken: tokenPair.accessToken,
-  refreshToken: tokenPair.refreshToken,
-  tokenType: tokenPair.tokenType || 'Bearer',
-  accessTokenExpiresAt: tokenPair.accessTokenExpiresAt || null,
-  refreshTokenExpiresAt: tokenPair.refreshTokenExpiresAt || null
-});
+const unwrapApiPayload = (payload) => payload?.data || payload?.result || payload;
+
+const extractTokenPair = (payload) => {
+  const unwrapped = unwrapApiPayload(payload);
+  return unwrapped?.tokenPair || unwrapped?.tokens || unwrapped;
+};
+
+const readAuthField = (payload, camelKey, snakeKey) => {
+  const unwrapped = unwrapApiPayload(payload);
+  return unwrapped?.[camelKey] ?? unwrapped?.[snakeKey];
+};
+
+const normalizeTokenPair = (tokenPair) => {
+  const normalized = {
+    accessToken: tokenPair?.accessToken || tokenPair?.access_token || tokenPair?.jwt || tokenPair?.token,
+    refreshToken: tokenPair?.refreshToken || tokenPair?.refresh_token || null,
+    tokenType: tokenPair?.tokenType || tokenPair?.token_type || 'Bearer',
+    accessTokenExpiresAt:
+      tokenPair?.accessTokenExpiresAt || tokenPair?.access_token_expires_at || tokenPair?.expiresAt || null,
+    refreshTokenExpiresAt: tokenPair?.refreshTokenExpiresAt || tokenPair?.refresh_token_expires_at || null
+  };
+
+  if (!normalized.accessToken) {
+    throw new ApiError('로그인 응답에 액세스 토큰이 없습니다.', 500, 'MISSING_ACCESS_TOKEN', tokenPair);
+  }
+
+  return normalized;
+};
 
 export function AuthProvider({ children }) {
   const [tokens, setTokens] = useState(() => authStorage.readTokens());
@@ -37,7 +58,7 @@ export function AuthProvider({ children }) {
   }, [tokens]);
 
   const saveTokens = useCallback((tokenPair) => {
-    const normalized = normalizeTokenPair(tokenPair);
+    const normalized = normalizeTokenPair(extractTokenPair(tokenPair));
     authStorage.writeTokens(normalized);
     setTokens(normalized);
     return normalized;
@@ -124,21 +145,22 @@ export function AuthProvider({ children }) {
 
   const loginWithSocialCode = useCallback(
     async (payload, signal) => {
-      const result = await authApi.socialLogin(payload, signal);
+      const response = await authApi.socialLogin(payload, signal);
+      const result = unwrapApiPayload(response);
 
-      if (result.signupRequired) {
+      if (readAuthField(result, 'signupRequired', 'signup_required')) {
         setPendingSignup({
-          signupToken: result.signupToken,
+          signupToken: readAuthField(result, 'signupToken', 'signup_token'),
           provider: result.provider,
           email: result.email,
           name: result.name
         });
-        return result;
+        return { ...result, signupRequired: true };
       }
 
       setPendingSignup(null);
-      saveTokens(result.tokenPair);
-      await fetchMe(result.tokenPair.accessToken, signal);
+      const tokenPair = saveTokens(result);
+      await fetchMe(tokenPair.accessToken, signal);
       return result;
     },
     [fetchMe, saveTokens, setPendingSignup]
@@ -146,9 +168,9 @@ export function AuthProvider({ children }) {
 
   const completeSignup = useCallback(
     async (payload, signal) => {
-      const tokenPair = await authApi.completeSignup(payload, signal);
+      const response = await authApi.completeSignup(payload, signal);
+      const tokenPair = saveTokens(response);
       setPendingSignup(null);
-      saveTokens(tokenPair);
       await fetchMe(tokenPair.accessToken, signal);
       return tokenPair;
     },

@@ -4,6 +4,7 @@ export const authApi = {
   socialLogin(payload, signal) {
     return httpRequest('/auth/social/login', {
       method: 'POST',
+      token: null,
       body: payload,
       signal
     });
@@ -12,6 +13,7 @@ export const authApi = {
   completeSignup(payload, signal) {
     return httpRequest('/auth/social/signup/complete', {
       method: 'POST',
+      token: null,
       body: payload,
       signal
     });
@@ -20,6 +22,7 @@ export const authApi = {
   refreshToken(refreshToken, signal) {
     return httpRequest('/auth/token/refresh', {
       method: 'POST',
+      token: null,
       body: { refreshToken },
       signal
     });

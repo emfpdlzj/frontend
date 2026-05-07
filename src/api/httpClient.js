@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../config/appConfig';
+import { authStorage } from '../auth/authStorage';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('http');
@@ -18,8 +19,10 @@ const buildHeaders = (token, extraHeaders = {}) => {
     ...extraHeaders
   };
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  const accessToken = token === undefined ? authStorage.readTokens()?.accessToken : token;
+
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
   }
 
   return headers;
