@@ -1,4 +1,8 @@
 import { useMemo, useState } from 'react';
+import checkCircleIcon from '../assets/signup/check_circle.png';
+import stepBeforeIcon from '../assets/signup/item-before.png';
+import stepCompleteIcon from '../assets/signup/item-completion.png';
+import stepCurrentIcon from '../assets/signup/item-ing.png';
 
 const STEPS = [
   { id: 1, title: '기본 정보' },
@@ -139,10 +143,17 @@ function StepRail({ currentStep }) {
       <ol>
         {STEPS.map((step) => {
           const status = step.id < currentStep ? 'complete' : step.id === currentStep ? 'current' : 'upcoming';
+          const markerIcon = {
+            complete: stepCompleteIcon,
+            current: stepCurrentIcon,
+            upcoming: stepBeforeIcon
+          }[status];
 
           return (
             <li key={step.id} className={`onboarding-rail__item is-${status}`} aria-current={status === 'current' ? 'step' : undefined}>
-              <span className="onboarding-rail__marker">{status === 'complete' ? '✓' : ''}</span>
+              <span className="onboarding-rail__marker">
+                <img src={markerIcon} alt="" aria-hidden="true" />
+              </span>
               <span className="onboarding-rail__text">
                 <span>{step.id}단계</span>
                 <strong>{step.title}</strong>
@@ -358,7 +369,7 @@ function CompletionPanel({ onBack }) {
   return (
     <section className="onboarding-complete" aria-labelledby="onboarding-complete-title">
       <div className="onboarding-complete__icon" aria-hidden="true">
-        ✓
+        <img src={checkCircleIcon} alt="" />
       </div>
       <h1 id="onboarding-complete-title">기본 정보 입력 완료!</h1>
       <p>

@@ -1609,28 +1609,15 @@ a:hover {
   z-index: 1;
   width: 20px;
   height: 20px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   margin-top: 1px;
-  border: 1px solid #d0d5db;
-  border-radius: 999px;
-  background: #e8ebee;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1;
 }
 
-.onboarding-rail__item.is-complete .onboarding-rail__marker {
-  border-color: #6f7a84;
-  background: #6f7a84;
-}
-
-.onboarding-rail__item.is-current .onboarding-rail__marker {
-  border: 3px solid #2f6ff2;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 4px #2f6ff2;
+.onboarding-rail__marker img {
+  width: 20px;
+  height: 20px;
+  display: block;
+  object-fit: contain;
 }
 
 .onboarding-rail__text {
@@ -1873,16 +1860,15 @@ a:hover {
 .onboarding-complete__icon {
   width: 83px;
   height: 83px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   margin: 0 auto 21px;
-  border-radius: 999px;
-  background: #e8f0ff;
-  color: #2f6ff2;
-  font-size: 50px;
-  font-weight: 900;
-  line-height: 1;
+}
+
+.onboarding-complete__icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
 }
 
 .onboarding-complete h1 {

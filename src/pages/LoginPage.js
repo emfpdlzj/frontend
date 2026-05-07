@@ -10,7 +10,7 @@ export function LoginPage() {
   const [error, setError] = useState('');
 
   if (!isInitializing && isAuthenticated) {
-    return <Navigate to="/onboarding" replace />;
+    return <Navigate to="/signup" replace />;
   }
 
   return (
