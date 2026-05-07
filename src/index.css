@@ -121,7 +121,7 @@ a:hover {
   height: var(--app-header-height);
   display: flex;
   align-items: center;
-  padding: 0 36px;
+  padding: 0 60px;
   background: #fff;
   border-bottom: 1px solid #eef0f3;
 }
@@ -145,15 +145,15 @@ a:hover {
 }
 
 .app-header__logo {
-  width: 40px;
-  height: 40px;
+  width: 60px;
+  height: 60px;
   object-fit: contain;
   flex: 0 0 auto;
 }
 
 .app-header__logo-text {
-  width: 98px;
-  height: 17px;
+  width: 147px;
+  height: 26px;
   object-fit: contain;
   flex: 0 0 auto;
 }
