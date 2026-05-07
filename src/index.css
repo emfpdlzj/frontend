@@ -14,6 +14,7 @@
   --warning: #9d6b00;
   --radius-md: 12px;
   --radius-lg: 18px;
+  --app-header-height: 74px;
 }
 
 * {
@@ -38,6 +39,47 @@ a {
 
 a:hover {
   text-decoration: underline;
+}
+
+.app-header {
+  height: var(--app-header-height);
+  display: flex;
+  align-items: center;
+  padding: 0 36px;
+  background: #fff;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.app-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  color: #111;
+}
+
+.app-header__brand:hover {
+  text-decoration: none;
+}
+
+.app-header__brand:focus-visible {
+  outline: 3px solid rgba(13, 99, 243, 0.28);
+  outline-offset: 6px;
+  border-radius: 8px;
+}
+
+.app-header__logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.app-header__logo-text {
+  width: 98px;
+  height: 17px;
+  object-fit: contain;
+  flex: 0 0 auto;
 }
 
 .page-shell {
@@ -332,14 +374,14 @@ a:hover {
 }
 
 .accessibility-map {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--app-header-height));
   background: #f8fafc;
   color: #111827;
 }
 
 .accessibility-map__topbar {
   display: grid;
-  grid-template-columns: 200px minmax(320px, 1fr) auto;
+  grid-template-columns: minmax(320px, 1fr) auto;
   align-items: center;
   gap: 20px;
   padding: 16px 18px;
@@ -352,27 +394,6 @@ a:hover {
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-}
-
-.accessibility-map__brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 2rem;
-  cursor: pointer;
-}
-
-.accessibility-map__brand-logo {
-  width: 42px;
-  height: 42px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-.accessibility-map__brand-text {
-  height: 24px;
-  width: auto;
-  object-fit: contain;
 }
 
 .accessibility-map__search input {
@@ -432,7 +453,7 @@ a:hover {
 .accessibility-map__layout {
   display: grid;
   grid-template-columns: 62px 360px minmax(520px, 1fr) 420px;
-  min-height: calc(100vh - 77px);
+  min-height: calc(100vh - var(--app-header-height) - 77px);
   align-items: stretch;
 }
 
@@ -610,7 +631,7 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: calc(100vh - 345px);
+  max-height: calc(100vh - var(--app-header-height) - 345px);
   overflow: auto;
   padding: 0 10px 16px;
 }
@@ -1427,44 +1448,9 @@ a:hover {
 }
 
 .onboarding-page {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--app-header-height));
   background: #ffffff;
   color: #16181d;
-}
-
-.onboarding-header {
-  height: 74px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 0 70px 0 14px;
-  border-bottom: 1px solid #cfd4db;
-  background: #ffffff;
-}
-
-.onboarding-header p {
-  margin: 0;
-  color: #3f4650;
-  font-size: 16px;
-  line-height: 1.5;
-}
-
-.onboarding-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  font-size: 20px;
-  font-weight: 800;
-  color: #0b0d12;
-}
-
-.onboarding-brand img {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-  flex: 0 0 auto;
 }
 
 .onboarding-main {
@@ -1910,10 +1896,6 @@ a:hover {
 }
 
 @media (max-width: 1180px) {
-  .onboarding-header {
-    padding-right: 24px;
-  }
-
   .onboarding-main {
     width: min(960px, calc(100% - 32px));
   }
@@ -1945,16 +1927,8 @@ a:hover {
 }
 
 @media (max-width: 760px) {
-  .onboarding-header {
-    height: auto;
-    min-height: 68px;
-    align-items: flex-start;
-    flex-direction: column;
-    padding: 14px 16px;
-  }
-
-  .onboarding-header p {
-    font-size: 14px;
+  .app-header {
+    padding: 0 20px;
   }
 
   .onboarding-main {
@@ -2034,36 +2008,10 @@ a:hover {
 }
 
 .profile-page {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--app-header-height));
   background: #fff;
   color: #111827;
   font-family: 'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-}
-
-.profile-topbar {
-  height: 73px;
-  border-bottom: 1px solid #d1d5db;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  padding: 0 15px;
-}
-
-.profile-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.profile-brand__logo {
-  width: 41px;
-  height: 41px;
-  object-fit: contain;
-}
-
-.profile-brand strong {
-  font-size: 19px;
-  line-height: 1;
 }
 
 .profile-layout {

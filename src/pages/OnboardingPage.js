@@ -78,8 +78,6 @@ export function OnboardingPage() {
 
   return (
     <main className="onboarding-page">
-      <OnboardingHeader />
-
       {isComplete ? (
         <CompletionPanel onBack={() => navigate('/home')} onProfile={() => navigate('/profile')} />
       ) : (
@@ -124,18 +122,6 @@ export function OnboardingPage() {
         </section>
       )}
     </main>
-  );
-}
-
-function OnboardingHeader() {
-  return (
-    <header className="onboarding-header">
-      <div className="onboarding-brand" aria-label="Bridgework">
-        <img src="/logo.png" alt="" />
-        <strong>Bridgework</strong>
-      </div>
-      <p>기본 프로필 생성은 가입 시 1회 필수입니다</p>
-    </header>
   );
 }
 

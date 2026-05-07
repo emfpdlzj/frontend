@@ -74,11 +74,6 @@ export function AccessibilityMapPage() {
   return (
     <main className="accessibility-map">
       <header className="accessibility-map__topbar">
-        <div className="accessibility-map__brand" aria-label="BridgeWork">
-          <img className="accessibility-map__brand-logo" src="/logo.png" alt="" aria-hidden="true" />
-          <img className="accessibility-map__brand-text" src="/logo-text.png" alt="Bridge Work" />
-        </div>
-
         <div className="accessibility-map__search-stack">
           <label className="accessibility-map__search">
             <span className="sr-only">출발지 입력</span>

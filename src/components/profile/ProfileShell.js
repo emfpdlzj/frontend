@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import logo from '../../assets/header/logo.png';
 import editIcon from '../../assets/profile/edit_icon.png';
 import moreIcon from '../../assets/profile/more_icon.png';
 import plusIcon from '../../assets/profile/plus_icon.png';
@@ -47,13 +46,6 @@ export function ProfileShell() {
 
   return (
     <main className="profile-page">
-      <header className="profile-topbar">
-        <div className="profile-brand" aria-label="Bridgework">
-          <img src={logo} alt="" className="profile-brand__logo" />
-          <strong>Bridgework</strong>
-        </div>
-      </header>
-
       <div className="profile-layout">
         <aside className="profile-icon-rail" aria-label="주요 메뉴">
           {navItems.map((item) => (
