@@ -126,7 +126,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 68px;
-  padding: 0 48px 0 104px;
+  padding: 0 40px 0 104px;
   background: #fff;
   border-bottom: 1px solid #eef0f3;
 }
@@ -190,6 +190,76 @@ a:hover {
 .app-header__map-search input::placeholder {
   color: #6b7280;
   opacity: 1;
+}
+
+.app-header__actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.app-header__auth-button {
+  min-width: 92px;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.app-header__auth-button:hover {
+  text-decoration: none;
+}
+
+.app-header__auth-button:focus-visible {
+  outline: 3px solid rgba(13, 99, 243, 0.24);
+  outline-offset: 3px;
+}
+
+.app-header__auth-button--login {
+  border: 1px solid #bfd7ff;
+  background: #eaf2ff;
+  color: #0d63f3;
+}
+
+.app-header__auth-button--login:hover {
+  border-color: #8bbcff;
+  background: #dceaff;
+}
+
+.app-header__auth-button--login[aria-disabled='true'] {
+  pointer-events: none;
+  color: #6b7280;
+  border-color: #e5e7eb;
+  background: #f3f6fa;
+}
+
+.app-header__auth-button--logout {
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  color: #9ca3af;
+}
+
+.app-header__auth-button--logout:hover:not(:disabled) {
+  border-color: #d1d5db;
+  background: #f3f6fa;
+  color: #6b7280;
+}
+
+.app-header__auth-button--logout:disabled {
+  cursor: wait;
+  opacity: 0.72;
 }
 
 .page-shell {
