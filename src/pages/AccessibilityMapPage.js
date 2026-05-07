@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AccessibilityMapCanvas } from '../components/accessibility-map/AccessibilityMapCanvas';
 import { AccessibilityMapDetailPanel } from '../components/accessibility-map/AccessibilityMapDetailPanel';
-import { AccessibilityMapSidebar } from '../components/accessibility-map/AccessibilityMapSidebar';
 import { TrafficFilterPanel } from '../components/accessibility-map/TrafficFilterPanel';
 import { StatusMessage } from '../components/common/StatusMessage';
 import { useAccessibilityMapMock } from '../hooks/useAccessibilityMapMock';
@@ -13,7 +12,6 @@ function isWithinSouthKoreaBounds(latitude, longitude) {
 export function AccessibilityMapPage() {
   const {
     jobs,
-    navItems,
     personas,
     filterGroups,
     mapLegend,
@@ -105,7 +103,6 @@ export function AccessibilityMapPage() {
       </header>
 
       <div className="accessibility-map__layout">
-        <AccessibilityMapSidebar items={navItems} />
         <TrafficFilterPanel
           filterGroups={filterGroups}
           jobs={jobs}

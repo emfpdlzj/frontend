@@ -131,14 +131,6 @@ export const accessibilityMapMockData = {
       filterChips: ['시각안내 설비 +', '수어 응대 +']
     }
   },
-  navItems: [
-    ['home', '홈'],
-    ['map', '지도'],
-    ['document', '공고'],
-    ['briefcase', '지원'],
-    ['user', '마이페이지'],
-    ['settings', '설정']
-  ],
   filterGroups: [
     ['통근시간', ['30분 이내', '60분 이내', '제한 없음'], 1],
     ['교통수단', ['지하철', '버스', '도보'], 2],

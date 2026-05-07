@@ -30,7 +30,6 @@ export function useAccessibilityMapMock() {
 
   return {
     jobs: accessibilityMapMockData.jobs,
-    navItems: accessibilityMapMockData.navItems,
     personas: accessibilityMapMockData.personas,
     filterGroups: accessibilityMapMockData.filterGroups,
     mapLegend: accessibilityMapMockData.mapLegend,
