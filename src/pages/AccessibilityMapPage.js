@@ -19,7 +19,6 @@ export function AccessibilityMapPage() {
     mapRoutes,
     mapMarkers,
     mapViewport,
-    searchPlaceholder,
     selectedJob,
     selectedJobId,
     selectedPersona,
@@ -72,18 +71,13 @@ export function AccessibilityMapPage() {
   return (
     <main className="accessibility-map">
       <header className="accessibility-map__topbar">
-        <div className="accessibility-map__search-stack">
-          <label className="accessibility-map__search">
-            <span className="sr-only">출발지 입력</span>
-            <input type="text" placeholder={searchPlaceholder} />
-          </label>
-
-          {locationNotice ? (
-            <p className="accessibility-map__location-notice" role="status" aria-live="polite">
-              {locationNotice}
-            </p>
-          ) : null}
-        </div>
+        {locationNotice ? (
+          <p className="accessibility-map__location-notice" role="status" aria-live="polite">
+            {locationNotice}
+          </p>
+        ) : (
+          <span aria-hidden="true" />
+        )}
 
         <div className="accessibility-map__persona-tabs" role="tablist" aria-label="장애 유형 선택">
           {Object.entries(personas).map(([key, persona]) => (
