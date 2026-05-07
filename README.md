@@ -4,16 +4,7 @@
 
 ## 실행
 
-1. 환경변수 설정
-```bash
-cat <<'EOF' > .env.local
-REACT_APP_API_BASE_URL=http://localhost:8080/api/v1
-REACT_APP_KAKAO_CLIENT_ID=0d5fffe82670b3aba1f9c1c2e551dbee
-REACT_APP_KAKAO_REDIRECT_URI=http://localhost:3000/auth/kakao/callback
-REACT_APP_NAVER_CLIENT_ID=sk1Y_ivVnHWKz59glY0x
-REACT_APP_NAVER_REDIRECT_URI=http://localhost:3000/auth/naver/callback
-EOF
-```
+
 
 2. 패키지 설치
 ```bash

@@ -1,5 +1,4 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { ProtectedRoute } from './ProtectedRoute';
 import { LoginPage } from '../pages/LoginPage';
 import { OAuthCallbackPage } from '../pages/OAuthCallbackPage';
 import { SignupPage } from '../pages/SignupPage';
@@ -17,10 +16,7 @@ export function AppRouter() {
       <Route path="/naver-map-test" element={<NaverMapSmokeTestPage />} />
       <Route path="/auth/:provider/callback" element={<OAuthCallbackPage />} />
       <Route path="/signup" element={<SignupPage />} />
-
-      <Route element={<ProtectedRoute />}>
-        <Route path="/onboarding" element={<OnboardingPage />} />
-      </Route>
+      <Route path="/onboarding" element={<OnboardingPage />} />
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
