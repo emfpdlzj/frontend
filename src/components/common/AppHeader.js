@@ -18,9 +18,6 @@ export function AppHeader() {
 
       {showMapSearch ? (
         <form className="app-header__map-search" role="search" aria-label="접근성 지도 출발지 검색">
-          <span className="app-header__map-search-label" aria-hidden="true">
-            출발지
-          </span>
           <label className="sr-only" htmlFor="app-header-map-search">
             접근성 지도 출발지 입력
           </label>
