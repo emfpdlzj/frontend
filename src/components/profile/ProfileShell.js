@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import logo from '../../assets/logo.png';
+import { Link } from 'react-router-dom';
+import logo from '../../assets/header/logo.png';
 import editIcon from '../../assets/profile/edit_icon.png';
 import moreIcon from '../../assets/profile/more_icon.png';
 import plusIcon from '../../assets/profile/plus_icon.png';
@@ -12,12 +13,12 @@ import settingIcon from '../../assets/tab/setting_icon.png';
 import { ProfileSectionPanel } from './ProfileSectionPanel';
 
 const navItems = [
-  { id: 'home', label: '홈', icon: homeIcon },
-  { id: 'map', label: '접근성 지도', icon: mapIcon, active: true },
-  { id: 'docs', label: '문서', icon: docsIcon },
-  { id: 'business', label: '기업 정보', icon: businesscardIcon },
-  { id: 'profile', label: '내 정보', icon: profileIcon, bottom: true },
-  { id: 'settings', label: '설정', icon: settingIcon, bottom: true }
+  { id: 'home', label: '홈', icon: homeIcon, to: '/home' },
+  { id: 'map', label: '접근성 지도', icon: mapIcon, to: '/accessibility-map', active: true },
+  { id: 'docs', label: '문서', icon: docsIcon, to: '/profile' },
+  { id: 'business', label: '공고', icon: businesscardIcon, to: '/jobs' },
+  { id: 'profile', label: '내 정보', icon: profileIcon, to: '/me-profile', bottom: true },
+  { id: 'settings', label: '설정', icon: settingIcon, to: '/settings', bottom: true }
 ];
 
 const sectionRows = [
@@ -36,6 +37,9 @@ const sectionRows = [
 
 export function ProfileShell() {
   const [activeSection, setActiveSection] = useState('');
+  const activeRowIndex = sectionRows.findIndex((row) => row.some((section) => section.id === activeSection));
+  const visibleTopRows = activeSection && activeRowIndex === 0 ? [sectionRows[0]] : sectionRows;
+  const showBottomRow = activeSection && activeRowIndex === 0;
 
   const handleTabClick = (sectionId) => {
     setActiveSection((current) => (current === sectionId ? '' : sectionId));
@@ -53,14 +57,14 @@ export function ProfileShell() {
       <div className="profile-layout">
         <aside className="profile-icon-rail" aria-label="주요 메뉴">
           {navItems.map((item) => (
-            <button
+            <Link
               key={item.id}
-              type="button"
+              to={item.to}
               className={`profile-icon-rail__button${item.active ? ' is-active' : ''}${item.bottom ? ' is-bottom' : ''}`}
               aria-label={item.label}
             >
               <img src={item.icon} alt="" aria-hidden="true" />
-            </button>
+            </Link>
           ))}
         </aside>
 
@@ -104,9 +108,9 @@ export function ProfileShell() {
           </header>
 
           <div className="profile-form-area">
-            <ProfileTabs rows={sectionRows} activeSection={activeSection} onTabClick={handleTabClick} />
+            <ProfileTabs rows={visibleTopRows} activeSection={activeSection} onTabClick={handleTabClick} />
             <ProfileSectionPanel activeSection={activeSection} />
-            {activeSection && activeSection !== 'extra' ? (
+            {showBottomRow ? (
               <ProfileTabs rows={[sectionRows[1]]} activeSection={activeSection} onTabClick={handleTabClick} compact />
             ) : null}
           </div>

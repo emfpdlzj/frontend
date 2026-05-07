@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import checkCircleIcon from '../assets/signup/check_circle.png';
 import stepBeforeIcon from '../assets/signup/item-before.png';
 import stepCompleteIcon from '../assets/signup/item-completion.png';
@@ -36,6 +37,7 @@ const initialForm = {
 };
 
 export function OnboardingPage() {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [isComplete, setIsComplete] = useState(false);
   const [form, setForm] = useState(initialForm);
@@ -79,7 +81,7 @@ export function OnboardingPage() {
       <OnboardingHeader />
 
       {isComplete ? (
-        <CompletionPanel onBack={() => setIsComplete(false)} />
+        <CompletionPanel onBack={() => navigate('/home')} onProfile={() => navigate('/profile')} />
       ) : (
         <section className="onboarding-main" aria-labelledby="onboarding-title">
           <div className="onboarding-intro">
@@ -365,7 +367,7 @@ function MultiChoiceField({ label, required, helper, options, values, onToggle, 
   );
 }
 
-function CompletionPanel({ onBack }) {
+function CompletionPanel({ onBack, onProfile }) {
   return (
     <section className="onboarding-complete" aria-labelledby="onboarding-complete-title">
       <div className="onboarding-complete__icon" aria-hidden="true">
@@ -399,7 +401,7 @@ function CompletionPanel({ onBack }) {
         <button type="button" className="onboarding-button onboarding-button--secondary" onClick={onBack}>
           건너뛰고 시작하기
         </button>
-        <button type="button" className="onboarding-button onboarding-button--primary" onClick={onBack}>
+        <button type="button" className="onboarding-button onboarding-button--primary" onClick={onProfile}>
           상세 정보 입력하기
         </button>
       </div>
