@@ -9,8 +9,8 @@ import settingIcon from '../../assets/tab/setting_icon.png';
 const primaryTabs = [
   { id: 'home', label: '홈', icon: homeIcon, to: '/' },
   { id: 'map', label: '접근성 지도', icon: mapIcon, to: '/accessibility-map' },
-  { id: 'docs', label: '문서', icon: docsIcon, to: '/profile' },
-  { id: 'business', label: '공고', icon: businesscardIcon, to: '/jobs' }
+  { id: 'docs', label: '문서', icon: docsIcon, to: '/jobs' },
+  { id: 'business', label: '공고', icon: businesscardIcon, to: '/profile' }
 ];
 
 const secondaryTabs = [
