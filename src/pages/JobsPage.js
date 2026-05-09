@@ -35,14 +35,12 @@ function ProfileBanner({ profileStatus }) {
 
 export function JobsPage() {
   const {
-    updatedAtText,
     apiContract,
     profiles,
     selectedFilters,
     jobs,
     selectedJob,
     selectedJobId,
-    selectedProfile,
     selectedProfileId,
     selectedTab,
     sortKey,
@@ -70,7 +68,6 @@ export function JobsPage() {
           <h1>퀵 맞춤 일자리 추천</h1>
           <p>최신 공고를 기준으로 선택한 프로필과의 직무 적합도를 빠르게 확인할 수 있습니다.</p>
         </div>
-        <span className="jobs-page__updated">최근 업데이트 시간: {updatedAtText}</span>
       </header>
 
       <section className="jobs-control-card" aria-label="프로필 및 AI 직무 적합도 설정">
@@ -90,22 +87,6 @@ export function JobsPage() {
               ))}
             </select>
           </div>
-          {selectedProfile ? (
-            <dl className="jobs-profile-card__summary" aria-label="선택 프로필 요약">
-              <div>
-                <dt>완성도</dt>
-                <dd>{selectedProfile.completionRate}%</dd>
-              </div>
-              <div>
-                <dt>장애 유형</dt>
-                <dd>{selectedProfile.disabilitySummary}</dd>
-              </div>
-              <div>
-                <dt>추천 상태</dt>
-                <dd>{isAiEnabled ? 'AI 추천 활성' : '최신순 보기'}</dd>
-              </div>
-            </dl>
-          ) : null}
         </div>
         <div className="jobs-ai-toggle">
           <button
