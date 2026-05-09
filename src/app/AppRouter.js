@@ -7,18 +7,29 @@ import { AccessibilityMapPage } from '../pages/AccessibilityMapPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { TermsPage } from '../pages/TermsPage';
 import { PrivacyPage } from '../pages/PrivacyPage';
+import { AUTH_PROVIDER_ROUTES, LEGACY_ROUTE_PATHS, ROUTE_PATHS } from '../config/routes';
 
 export function AppRouter() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/accessibility-map" element={<AccessibilityMapPage />} />
-      <Route path="/auth/:provider/callback" element={<OAuthCallbackPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/profile" element={<ProfilePage />} />
-      <Route path="/terms" element={<TermsPage />} />
-      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path={ROUTE_PATHS.root} element={<Navigate to={ROUTE_PATHS.login} replace />} />
+      <Route path={ROUTE_PATHS.login} element={<LoginPage />} />
+      <Route path={ROUTE_PATHS.accessibilityMap} element={<AccessibilityMapPage />} />
+      <Route
+        path={AUTH_PROVIDER_ROUTES.KAKAO.callbackPath}
+        element={<OAuthCallbackPage provider={AUTH_PROVIDER_ROUTES.KAKAO.provider} />}
+      />
+      <Route
+        path={AUTH_PROVIDER_ROUTES.NAVER.callbackPath}
+        element={<OAuthCallbackPage provider={AUTH_PROVIDER_ROUTES.NAVER.provider} />}
+      />
+      <Route path={ROUTE_PATHS.signup} element={<SignupPage />} />
+      <Route path={ROUTE_PATHS.myProfile} element={<ProfilePage />} />
+      <Route path={LEGACY_ROUTE_PATHS.home} element={<Navigate to={ROUTE_PATHS.accessibilityMap} replace />} />
+      <Route path={LEGACY_ROUTE_PATHS.profile} element={<Navigate to={ROUTE_PATHS.myProfile} replace />} />
+      <Route path={LEGACY_ROUTE_PATHS.meProfile} element={<Navigate to={ROUTE_PATHS.myProfile} replace />} />
+      <Route path={ROUTE_PATHS.terms} element={<TermsPage />} />
+      <Route path={ROUTE_PATHS.privacy} element={<PrivacyPage />} />
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

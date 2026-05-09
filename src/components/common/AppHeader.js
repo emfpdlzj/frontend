@@ -6,6 +6,7 @@ import searchIcon from '../../assets/header/search.png';
 import { useAuth } from '../../auth/AuthContext';
 import { LoginModal } from '../auth/LoginModal';
 import { accessibilityMapMockData } from '../../config/accessibilityMapMockData';
+import { ROUTE_PATHS } from '../../config/routes';
 
 const BRIDGEWORK_HOME_URL = 'https://www.bridgework.cloud/';
 
@@ -27,7 +28,7 @@ export function AppHeader() {
     try {
       setIsLoggingOut(true);
       await logout();
-      navigate('/login', { replace: true });
+      navigate(ROUTE_PATHS.login, { replace: true });
     } finally {
       setIsLoggingOut(false);
     }

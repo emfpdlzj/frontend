@@ -2983,9 +2983,12 @@ a:hover {
   line-height: 1.45;
 }
 
-.onboarding-disability-fields-placeholder {
-  min-height: 280px;
-  background: #ffffff;
+.onboarding-info-box--neutral {
+  width: min(720px, 100%);
+  margin-top: -6px;
+  border-color: #d8e5f6;
+  background: #f5f9ff;
+  color: #243b5a;
 }
 
 .onboarding-actions {

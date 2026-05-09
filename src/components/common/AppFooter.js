@@ -6,10 +6,11 @@ import facebookIcon from '../../assets/footer/facebook-social.png';
 import instagramIcon from '../../assets/footer/insta-social.png';
 import twitterIcon from '../../assets/footer/twitter-social.png';
 import youtubeIcon from '../../assets/footer/youtube-social.png';
+import { ROUTE_PATHS } from '../../config/routes';
 
 const footerPolicies = [
-  { id: 'terms', label: '이용약관', to: '/terms' },
-  { id: 'privacy', label: '개인정보처리방침', to: '/privacy' },
+  { id: 'terms', label: '이용약관', to: ROUTE_PATHS.terms },
+  { id: 'privacy', label: '개인정보처리방침', to: ROUTE_PATHS.privacy },
   { id: 'accessibility', label: '접근성 정책' },
   { id: 'data', label: '데이터 관리정책' }
 ];

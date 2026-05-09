@@ -1,3 +1,5 @@
+import { AUTH_PROVIDER_ROUTES } from './routes';
+
 const trimTrailingSlash = (value) => value.replace(/\/+$/, '');
 
 export const API_BASE_URL = trimTrailingSlash(
@@ -32,16 +34,19 @@ export const BOOLEAN_OPTIONS = [
 ];
 
 const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+const withOrigin = (path) => `${origin}${path}`;
 
 export const OAUTH_CONFIG = {
   KAKAO: {
     clientId: process.env.REACT_APP_KAKAO_CLIENT_ID || '',
-    redirectUri: process.env.REACT_APP_KAKAO_REDIRECT_URI || `${origin}/auth/kakao/callback`,
+    redirectUri:
+      process.env.REACT_APP_KAKAO_REDIRECT_URI || withOrigin(AUTH_PROVIDER_ROUTES.KAKAO.callbackPath),
     authorizeUrl: 'https://kauth.kakao.com/oauth/authorize'
   },
   NAVER: {
     clientId: process.env.REACT_APP_NAVER_CLIENT_ID || '',
-    redirectUri: process.env.REACT_APP_NAVER_REDIRECT_URI || `${origin}/auth/naver/callback`,
+    redirectUri:
+      process.env.REACT_APP_NAVER_REDIRECT_URI || withOrigin(AUTH_PROVIDER_ROUTES.NAVER.callbackPath),
     authorizeUrl: 'https://nid.naver.com/oauth2.0/authorize'
   }
 };

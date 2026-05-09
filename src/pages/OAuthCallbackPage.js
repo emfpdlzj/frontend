@@ -1,26 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { LoadingView } from '../components/common/LoadingView';
 import { PageShell } from '../components/common/PageShell';
 import { StatusMessage } from '../components/common/StatusMessage';
 import { useAuth } from '../auth/AuthContext';
 import { oauthUtils } from '../utils/oauth';
+import { ROUTE_PATHS } from '../config/routes';
 
-const providerMap = {
-  kakao: 'KAKAO',
-  naver: 'NAVER'
-};
-
-export function OAuthCallbackPage() {
+export function OAuthCallbackPage({ provider }) {
   const [searchParams] = useSearchParams();
-  const { provider: providerParam } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated, isInitializing, loginWithSocialCode } = useAuth();
   const [status, setStatus] = useState('소셜 로그인 검증 중...');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const provider = providerMap[providerParam || ''];
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const oauthError = searchParams.get('error') || searchParams.get('error_description');
@@ -61,11 +55,11 @@ export function OAuthCallbackPage() {
         );
 
         if (result.signupRequired) {
-          navigate('/signup', { replace: true });
+          navigate(ROUTE_PATHS.signup, { replace: true });
           return;
         }
 
-        navigate('/accessibility-map', { replace: true });
+        navigate(ROUTE_PATHS.accessibilityMap, { replace: true });
       } catch (authError) {
         setError(authError.message || '소셜 로그인 처리에 실패했습니다.');
       }
@@ -76,10 +70,10 @@ export function OAuthCallbackPage() {
     return () => {
       controller.abort();
     };
-  }, [loginWithSocialCode, navigate, providerParam, searchParams]);
+  }, [loginWithSocialCode, navigate, provider, searchParams]);
 
   if (!isInitializing && isAuthenticated) {
-    return <Navigate to="/accessibility-map" replace />;
+    return <Navigate to={ROUTE_PATHS.accessibilityMap} replace />;
   }
 
   return (

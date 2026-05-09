@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import logoBig from '../../assets/logo_big.png';
 import { SocialLoginButtons } from './SocialLoginButtons';
 import { StatusMessage } from '../common/StatusMessage';
+import { ROUTE_PATHS } from '../../config/routes';
 
 export function LoginModal({ onClose }) {
   const closeButtonRef = useRef(null);
@@ -65,11 +66,11 @@ export function LoginModal({ onClose }) {
           <p className="login-modal__signup-note">처음 이용해도 별도 가입 절차 없이 바로 시작할 수 있어요.</p>
           <p className="login-modal__notice">
             회원가입을 진행하면{' '}
-            <Link to="/terms" onClick={onClose}>
+            <Link to={ROUTE_PATHS.terms} onClick={onClose}>
               이용약관
             </Link>{' '}
             및{' '}
-            <Link to="/privacy" onClick={onClose}>
+            <Link to={ROUTE_PATHS.privacy} onClick={onClose}>
               개인정보 처리방침
             </Link>
             에 동의하게 됩니다.

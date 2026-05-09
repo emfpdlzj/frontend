@@ -4,13 +4,19 @@ import { SocialLoginButtons } from '../components/auth/SocialLoginButtons';
 import { PageShell } from '../components/common/PageShell';
 import { StatusMessage } from '../components/common/StatusMessage';
 import { useAuth } from '../auth/AuthContext';
+import { ROUTE_PATHS } from '../config/routes';
 
 export function LoginPage() {
   const { currentUser, isAuthenticated, isInitializing } = useAuth();
   const [error, setError] = useState('');
 
   if (!isInitializing && isAuthenticated) {
-    return <Navigate to={currentUser?.signupCompleted === false ? '/signup' : '/accessibility-map'} replace />;
+    return (
+      <Navigate
+        to={currentUser?.signupCompleted === false ? ROUTE_PATHS.signup : ROUTE_PATHS.accessibilityMap}
+        replace
+      />
+    );
   }
 
   return (

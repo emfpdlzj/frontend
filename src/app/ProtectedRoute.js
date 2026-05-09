@@ -2,6 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { LoadingView } from '../components/common/LoadingView';
 import { PageShell } from '../components/common/PageShell';
+import { ROUTE_PATHS } from '../config/routes';
 
 export function ProtectedRoute() {
   const { isAuthenticated, isInitializing } = useAuth();
@@ -16,7 +17,7 @@ export function ProtectedRoute() {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    return <Navigate to={ROUTE_PATHS.login} replace state={{ from: location }} />;
   }
 
   return <Outlet />;

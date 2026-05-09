@@ -22,7 +22,8 @@ npm start
 - `/auth/kakao/callback`: 카카오 콜백
 - `/auth/naver/callback`: 네이버 콜백
 - `/signup`: 최초 로그인 추가정보 입력
-- `/onboarding`: 온보딩 프로필 작성/수정
+- `/my/profile`: 내 프로필 작성/수정
+- `/accessibility-map`: 지역 접근성 지도
 
 ## 보안 처리
 
