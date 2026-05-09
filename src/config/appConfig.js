@@ -13,7 +13,10 @@ export const STORAGE_KEYS = {
   accessTokenExpiresAt: 'bridgework.accessTokenExpiresAt',
   refreshTokenExpiresAt: 'bridgework.refreshTokenExpiresAt',
   signupSession: 'bridgework.signupSession',
-  signupOptionsCache: 'bridgework.signupOptionsCache'
+  signupOptionsCache: 'bridgework.signupOptionsCache',
+  jobFilterOptionsCache: 'bridgework.jobFilterOptionsCache',
+  profileDraftAutosave: 'bridgework.profileDraftAutosave',
+  authProvider: 'bridgework.authProvider'
 };
 
 export const SOCIAL_PROVIDER = {

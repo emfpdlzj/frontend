@@ -28,7 +28,7 @@ export function AppHeader({ showMapSearch = false }) {
     try {
       setIsLoggingOut(true);
       await logout();
-      navigate(ROUTE_PATHS.login, { replace: true });
+      navigate(ROUTE_PATHS.root, { replace: true });
     } finally {
       setIsLoggingOut(false);
     }

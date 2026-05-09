@@ -59,7 +59,7 @@ export function OAuthCallbackPage({ provider }) {
           return;
         }
 
-        navigate(ROUTE_PATHS.accessibilityMap, { replace: true });
+        navigate(oauthUtils.consumeReturnTo(), { replace: true });
       } catch (authError) {
         setError(authError.message || '소셜 로그인 처리에 실패했습니다.');
       }
@@ -73,7 +73,7 @@ export function OAuthCallbackPage({ provider }) {
   }, [loginWithSocialCode, navigate, provider, searchParams]);
 
   if (!isInitializing && isAuthenticated) {
-    return <Navigate to={ROUTE_PATHS.accessibilityMap} replace />;
+    return <Navigate to={oauthUtils.consumeReturnTo()} replace />;
   }
 
   return (

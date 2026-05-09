@@ -159,6 +159,7 @@ export function AuthProvider({ children }) {
       }
 
       setPendingSignup(null);
+      authStorage.writeAuthProvider(payload.provider || result.provider);
       const tokenPair = saveTokens(result);
       await fetchMe(tokenPair.accessToken, signal);
       return result;
@@ -169,12 +170,13 @@ export function AuthProvider({ children }) {
   const completeSignup = useCallback(
     async (payload, signal) => {
       const response = await authApi.completeSignup(payload, signal);
+      authStorage.writeAuthProvider(payload.provider || pendingSignup?.provider);
       const tokenPair = saveTokens(response);
       setPendingSignup(null);
       await fetchMe(tokenPair.accessToken, signal);
       return tokenPair;
     },
-    [fetchMe, saveTokens, setPendingSignup]
+    [fetchMe, pendingSignup?.provider, saveTokens, setPendingSignup]
   );
 
   const logout = useCallback(async () => {

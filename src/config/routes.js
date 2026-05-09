@@ -3,16 +3,17 @@ export const ROUTE_PATHS = Object.freeze({
   login: '/login',
   accessibilityMap: '/accessibility-map',
   jobs: '/jobs',
+  profile: '/profile',
   signup: '/signup',
   myProfile: '/my/profile',
   settings: '/settings',
+  policyDetail: '/settings/policies/:policyId',
   terms: '/terms',
   privacy: '/privacy'
 });
 
 export const LEGACY_ROUTE_PATHS = Object.freeze({
   home: '/home',
-  profile: '/profile',
   meProfile: '/me-profile'
 });
 

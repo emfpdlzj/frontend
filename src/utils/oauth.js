@@ -1,5 +1,7 @@
 import { NAVER_STATE_KEY, OAUTH_CONFIG } from '../config/appConfig';
 
+const OAUTH_RETURN_TO_KEY = 'bridgework.oauth.returnTo';
+
 const readProviderConfig = (provider) => OAUTH_CONFIG[provider];
 
 const toQueryString = (params) => {
@@ -21,6 +23,23 @@ const generateState = () => {
 };
 
 export const oauthUtils = {
+  saveReturnTo(path) {
+    const fallbackPath = '/';
+    const safePath = typeof path === 'string' && path.startsWith('/') ? path : fallbackPath;
+    sessionStorage.setItem(OAUTH_RETURN_TO_KEY, safePath);
+  },
+
+  consumeReturnTo() {
+    const path = sessionStorage.getItem(OAUTH_RETURN_TO_KEY);
+    sessionStorage.removeItem(OAUTH_RETURN_TO_KEY);
+
+    if (!path || !path.startsWith('/') || path.startsWith('/auth/')) {
+      return '/';
+    }
+
+    return path === '/login' ? '/' : path;
+  },
+
   getRedirectUri(provider) {
     return readProviderConfig(provider)?.redirectUri || '';
   },

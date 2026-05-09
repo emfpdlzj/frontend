@@ -1,320 +1,399 @@
 import basicProfile from '../../assets/profile/basic_profile.png';
-import calendarIcon from '../../assets/profile/calendar.png';
-import searchIcon from '../../assets/profile/search.png';
 
-export function ProfileSectionPanel({ activeSection }) {
+const fallbackText = '확인 필요';
+
+const genderOptions = [
+  { value: 'MALE', label: '남성' },
+  { value: 'FEMALE', label: '여성' },
+  { value: 'OTHER', label: '기타' },
+  { value: 'NOT_DISCLOSED', label: '선택 안 함' }
+];
+
+const educationOptions = [
+  { value: 'HIGH_SCHOOL_OR_BELOW', label: '고졸 이하' },
+  { value: 'HIGH_SCHOOL', label: '고졸' },
+  { value: 'COLLEGE', label: '전문대졸' },
+  { value: 'BACHELOR', label: '대졸' },
+  { value: 'MASTER', label: '석사' },
+  { value: 'DOCTOR', label: '박사' },
+  { value: 'OTHER', label: '기타' }
+];
+
+const graduationStatusOptions = [
+  { value: 'GRADUATED', label: '졸업' },
+  { value: 'EXPECTED', label: '졸업예정' },
+  { value: 'ENROLLED', label: '재학' },
+  { value: 'COMPLETED', label: '수료' },
+  { value: 'DROPPED_OUT', label: '중퇴' },
+  { value: 'OTHER', label: '기타' }
+];
+
+const disabilityTypeOptions = [
+  { value: 'PHYSICAL', label: '지체장애' },
+  { value: 'BRAIN_LESION', label: '뇌병변장애' },
+  { value: 'VISUAL', label: '시각장애' },
+  { value: 'HEARING', label: '청각장애' },
+  { value: 'SPEECH', label: '언어장애' },
+  { value: 'INTELLECTUAL', label: '지적장애' },
+  { value: 'AUTISM', label: '자폐성장애' },
+  { value: 'MENTAL', label: '정신장애' },
+  { value: 'KIDNEY', label: '신장장애' },
+  { value: 'HEART', label: '심장장애' },
+  { value: 'RESPIRATORY', label: '호흡기장애' },
+  { value: 'LIVER', label: '간장애' },
+  { value: 'FACE', label: '안면장애' },
+  { value: 'STOMA_URINARY', label: '장루·요루장애' },
+  { value: 'EPILEPSY', label: '뇌전증장애' },
+  { value: 'OTHER', label: '기타' }
+];
+
+const disabilitySeverityOptions = [
+  { value: 'SEVERE', label: '중증' },
+  { value: 'MODERATE', label: '중등도' },
+  { value: 'MILD', label: '경증' }
+];
+
+const workAvailabilityOptions = [
+  { value: 'IMMEDIATE', label: '즉시 가능' },
+  { value: 'WITHIN_TWO_WEEKS', label: '2주 이내' },
+  { value: 'WITHIN_ONE_MONTH', label: '1개월 이내' },
+  { value: 'NEGOTIABLE', label: '협의 가능' }
+];
+
+const workTypeOptions = [
+  { value: 'FULL_TIME', label: '정규직' },
+  { value: 'CONTRACT', label: '계약직' },
+  { value: 'INDEFINITE_CONTRACT', label: '무기계약직' },
+  { value: 'PART_TIME', label: '시간제' },
+  { value: 'DAILY', label: '일용직' },
+  { value: 'INTERN', label: '인턴' },
+  { value: 'DISPATCH_OUTSOURCING', label: '파견·용역' },
+  { value: 'REMOTE', label: '재택·원격' }
+];
+
+const workTimePreferenceOptions = [
+  { value: 'DAYTIME', label: '주간' },
+  { value: 'MORNING', label: '오전' },
+  { value: 'AFTERNOON', label: '오후' },
+  { value: 'EVENING', label: '야간' },
+  { value: 'FLEXIBLE', label: '탄력근무' },
+  { value: 'NEGOTIABLE', label: '협의 가능' }
+];
+
+const militaryServiceOptions = [
+  { value: 'COMPLETED', label: '군필' },
+  { value: 'EXEMPTED', label: '면제' },
+  { value: 'NOT_APPLICABLE', label: '해당 없음' },
+  { value: 'SERVING', label: '복무 중' }
+];
+
+const booleanOptions = [
+  { value: true, label: '예' },
+  { value: false, label: '아니오' }
+];
+
+const text = (value) => String(value ?? '').trim();
+
+export function ProfileSectionPanel({ activeSection, profile, onChange }) {
   if (!activeSection) {
     return null;
   }
 
+  const props = { profile, onChange };
   const panels = {
-    basic: <BasicInfoPanel />,
-    education: <EducationPanel />,
-    job: <JobPanel />,
-    disability: <DisabilityPanel />,
-    work: <WorkConditionPanel />,
-    intro: <IntroPanel />,
-    extra: <ExtraPanel />
+    basic: <BasicInfoPanel {...props} />,
+    education: <EducationPanel {...props} />,
+    job: <JobPanel {...props} />,
+    disability: <DisabilityPanel {...props} />,
+    work: <WorkConditionPanel {...props} />,
+    intro: <IntroPanel {...props} />,
+    extra: <ExtraPanel {...props} />
   };
 
   return <section className={`profile-section-panel profile-section-panel--${activeSection}`}>{panels[activeSection]}</section>;
 }
 
-function BasicInfoPanel() {
+function BasicInfoPanel({ profile, onChange }) {
   return (
-    <>
-      <div className="profile-basic-grid">
-        <div className="profile-photo-field">
-          <h2>프로필 사진</h2>
-          <button type="button" className="profile-photo-button" aria-label="프로필 사진 변경">
-            <img src={basicProfile} alt="" aria-hidden="true" />
-          </button>
-          <p>JPG, PNG / 5MB 이하</p>
-        </div>
-        <div className="profile-two-column">
-          <Field label="이름" required>
-            <Input value="홍길동" readOnly />
-          </Field>
-          <Field label="연락처" required>
-            <Input value="010-1234-5678" readOnly />
-          </Field>
-          <Field label="성별" required>
-            <PillGroup options={['남성', '여성', '선택 안 함']} selected="여성" />
-          </Field>
-          <Field label="이메일" required>
-            <Input value="me@bridgework.kr" readOnly />
-          </Field>
-          <Field label="생년월일" required>
-            <Input placeholder="YYYY.MM.DD" icon={calendarIcon} readOnly />
-          </Field>
-          <Field label="거주지 상세 주소" required hint="동·읍·면 단위까지 입력하면 통근 시간 계산이 정확해져요">
-            <div className="profile-inline-input">
-              <Input value="서울시 영등포구 OO로 12" readOnly />
-              <button type="button">검색</button>
-            </div>
-          </Field>
-          <Field label="비상 연락처">
-            <Input placeholder="010-1234-5678" readOnly />
-          </Field>
+    <div className="profile-basic-grid">
+      <div className="profile-photo-field">
+        <h2>프로필 사진</h2>
+        <div className="profile-photo-preview">
+          <img src={profile.profileImageUrl || basicProfile} alt="" aria-hidden="true" />
         </div>
       </div>
-    </>
+      <div className="profile-two-column">
+        <Field label="이름" required>
+          <Input value={profile.fullName} onChange={(value) => onChange('fullName', value)} />
+        </Field>
+        <Field label="연락처" required>
+          <Input value={profile.contactPhone} onChange={(value) => onChange('contactPhone', value)} placeholder="010-1234-5678" />
+        </Field>
+        <Field label="성별" required>
+          <PillGroup options={genderOptions} selected={profile.genderType} onChange={(value) => onChange('genderType', value)} />
+        </Field>
+        <Field label="이메일" required>
+          <Input type="email" value={profile.contactEmail} onChange={(value) => onChange('contactEmail', value)} />
+        </Field>
+        <Field label="생년월일" required>
+          <Input type="date" value={profile.birthDate} onChange={(value) => onChange('birthDate', value)} />
+        </Field>
+        <Field label="거주 지역" required>
+          <Input value={profile.residenceRegion} onChange={(value) => onChange('residenceRegion', value)} placeholder="예) SEOUL" />
+        </Field>
+        <Field label="거주지 상세 주소" required hint="동·읍·면 단위까지 입력하면 통근 시간 계산이 정확해져요">
+          <Input value={profile.detailAddress} onChange={(value) => onChange('detailAddress', value)} />
+        </Field>
+        <Field label="비상 연락처">
+          <Input value={profile.emergencyContact} onChange={(value) => onChange('emergencyContact', value)} />
+        </Field>
+      </div>
+    </div>
   );
 }
 
-function EducationPanel() {
+function EducationPanel({ profile, onChange }) {
   return (
     <>
-      <PanelHeader title="학력" action="+ 학력 추가" />
+      <h2>학력</h2>
       <div className="profile-form-grid profile-form-grid--education">
         <Field label="최종 학력" required>
-          <Input value="한국대학교" icon={searchIcon} readOnly />
+          <SelectBox value={profile.highestEducation} onChange={(value) => onChange('highestEducation', value)} options={educationOptions} />
         </Field>
         <Field label="졸업 여부" required>
-          <SelectBox value="졸업" />
+          <SelectBox
+            value={profile.graduationStatus}
+            onChange={(value) => onChange('graduationStatus', value)}
+            options={graduationStatusOptions}
+          />
         </Field>
       </div>
       <Divider />
-      <PanelHeader title="경력" action="+ 경력 추가" />
+      <h2>경력</h2>
       <div className="profile-form-grid profile-form-grid--career">
         <Field label="주요 경력" required>
-          <Input value="(주)브릿지워크" readOnly />
+          <Input value={profile.majorCareer} onChange={(value) => onChange('majorCareer', value)} placeholder="없으면 신입" />
         </Field>
-        <Field label="직무" required>
-          <Input value="백엔드 개발자" readOnly />
+        <Field label="경력 요약">
+          <Input value={profile.careerSummary} onChange={(value) => onChange('careerSummary', value)} />
         </Field>
-        <Field label="기간" required>
-          <Input value="2021.03           ~   2024.06" icon={calendarIcon} readOnly />
-        </Field>
-        <button type="button" className="profile-row-delete">삭제</button>
       </div>
       <Divider />
-      <OptionalStrip items={['세부 담당 업무', '프로젝트 경험', '공백 기간 사유']} />
+      <div className="profile-form-grid profile-form-grid--intro-optional">
+        <Field label="학력 요약">
+          <TextArea value={profile.educationSummary} onChange={(value) => onChange('educationSummary', value)} rows={4} />
+        </Field>
+        <Field label="세부 담당 업무">
+          <TextArea value={profile.careerDetail} onChange={(value) => onChange('careerDetail', value)} rows={4} />
+        </Field>
+        <Field label="프로젝트 경험">
+          <TextArea value={profile.projectExperience} onChange={(value) => onChange('projectExperience', value)} rows={4} />
+        </Field>
+        <Field label="공백 기간 사유">
+          <TextArea value={profile.careerGapReason} onChange={(value) => onChange('careerGapReason', value)} rows={4} />
+        </Field>
+      </div>
     </>
   );
 }
 
-function JobPanel() {
+function JobPanel({ profile, onChange }) {
   return (
     <>
       <h2>지원 직무</h2>
-      <Field label="지원 직무" required width="narrow">
-        <SelectBox placeholder="직무를 선택해주세요." />
+      <div className="profile-form-grid profile-form-grid--work">
+        <Field label="지원 직무" required>
+          <Input value={profile.targetJob} onChange={(value) => onChange('targetJob', value)} />
+        </Field>
+        <Field label="희망 직무">
+          <Input value={profile.desiredJob} onChange={(value) => onChange('desiredJob', value)} />
+        </Field>
+      </div>
+      <Divider />
+      <Field label="보유 기술 / 역량" required hint="Enter 또는 추가 버튼으로 항목을 추가합니다.">
+        <ChipEditor value={profile.skills} onChange={(value) => onChange('skills', value)} placeholder="예) 엑셀" />
       </Field>
       <Divider />
-      <h2>보유 기술 / 역량 <RequiredMark /></h2>
-      <div className="profile-skill-input">
-        <span>기술 또는 역량을 검색 후 선택해주세요.</span>
-        <button type="button">+ 직접 입력</button>
+      <div className="profile-form-grid profile-form-grid--intro-optional">
+        <Field label="자격증">
+          <ChipEditor value={profile.certifications} onChange={(value) => onChange('certifications', value)} placeholder="예) 컴퓨터활용능력 2급" />
+        </Field>
+        <Field label="포트폴리오 URL">
+          <Input value={profile.portfolioUrl} onChange={(value) => onChange('portfolioUrl', value)} />
+        </Field>
+        <Field label="수상 이력">
+          <TextArea value={profile.awards} onChange={(value) => onChange('awards', value)} rows={4} />
+        </Field>
+        <Field label="교육 이수 내역">
+          <TextArea value={profile.trainings} onChange={(value) => onChange('trainings', value)} rows={4} />
+        </Field>
       </div>
-      <Divider />
-      <h2>지원 직무 (직무 관련 필수인 경우)</h2>
-      <div className="profile-form-grid profile-form-grid--license">
-        <Field label="자격증명" required>
-          <Input placeholder="예) 정보처리기사" readOnly />
-        </Field>
-        <Field label="발급기관">
-          <Input placeholder="예) 한국산업인력공단" readOnly />
-        </Field>
-        <Field label="취득일" required>
-          <Input placeholder="YYYY.MM.DD" icon={calendarIcon} readOnly />
-        </Field>
-        <Field label="비고">
-          <Input placeholder="선택 입력" readOnly />
-        </Field>
-        <button type="button" className="profile-row-delete">삭제</button>
-      </div>
-      <Divider />
-      <OptionalStrip items={['포트폴리오', '수상 이력', '교육 이수 내역']} />
     </>
   );
 }
 
-function DisabilityPanel() {
+function DisabilityPanel({ profile, onChange }) {
   return (
     <>
-      <h2>장애 여부</h2>
-      <Field label="장애 여부" required>
-        <PillGroup options={['있음', '없음']} selected="" />
-      </Field>
+      <h2>장애 정보</h2>
       <div className="profile-form-grid profile-form-grid--disability">
         <Field label="장애 유형" required>
-          <SelectBox placeholder="장애 유형을 선택해주세요." />
+          <SelectBox value={profile.disabilityType} onChange={(value) => onChange('disabilityType', value)} options={disabilityTypeOptions} />
         </Field>
-        <Field label="장애 등급 또는 정도" required>
-          <SelectBox placeholder="선택해주세요." />
+        <Field label="장애 정도" required>
+          <SelectBox
+            value={profile.disabilitySeverity}
+            onChange={(value) => onChange('disabilitySeverity', value)}
+            options={disabilitySeverityOptions}
+          />
         </Field>
         <Field label="장애 등록 여부" required>
-          <RadioGroup options={['등록됨', '등록 안됨']} selected="등록됨" />
+          <RadioGroup
+            options={booleanOptions}
+            selected={profile.disabilityRegisteredYn}
+            onChange={(value) => onChange('disabilityRegisteredYn', value)}
+          />
         </Field>
       </div>
       <Divider />
-      <h2>
-        선택 정보 <span className="profile-section-caption">선택 정보는 선택 사항이며, 제공하지 않으셔도 불이익이 없습니다.</span>
-      </h2>
       <div className="profile-disability-detail">
         <Field label="상세 장애 설명">
-          <TextArea placeholder="상세 내용을 입력해주세요. (선택 사항)" rows={5} />
-          <Counter max={500} />
+          <TextArea value={profile.disabilityDescription} onChange={(value) => onChange('disabilityDescription', value)} rows={5} />
+          <Counter value={profile.disabilityDescription} max={500} />
         </Field>
         <div>
-          <Field label="장애 등록 여부" required>
-            <RadioGroup options={['사용함', '사용 안 함']} selected="사용함" />
+          <Field label="보조기기">
+            <Input value={profile.assistiveDevices} onChange={(value) => onChange('assistiveDevices', value)} />
           </Field>
-          <Input placeholder="사용 중인 보조기기를 입력해주세요. (선택 사항)" readOnly />
-          <p className="profile-help">예) 휠체어, 보청기, 점자 디스플레이 등</p>
+          <Field label="근무 시 필요한 지원 사항">
+            <TextArea value={profile.workSupportRequirements} onChange={(value) => onChange('workSupportRequirements', value)} rows={4} />
+          </Field>
         </div>
       </div>
-      <Field label="근무 시 필요한 지원 사항" hint="복수 선택 가능">
-        <CheckboxRow options={['휠체어 접근', '높이 조절 책상', '화면 확대/축소', '수어 통역', '문자 통역', '보정 지원', '점자 자료', '음성 지원', '기타 (직접 입력)']} />
-        <Input placeholder="필요한 지원 사항을 직접 입력해주세요. (선택 사항)" readOnly />
+      <Field label="필요 지원 항목" hint="복수 입력 가능">
+        <ChipEditor value={profile.requiredSupports} onChange={(value) => onChange('requiredSupports', value)} placeholder="예) 높이조절 책상" />
       </Field>
     </>
   );
 }
 
-function WorkConditionPanel() {
+function WorkConditionPanel({ profile, onChange }) {
   return (
     <>
       <h2>근무 조건</h2>
       <div className="profile-form-grid profile-form-grid--work-top">
-        <Field label="근무 가능 여부" required>
-          <RadioGroup options={['즉시 가능', '협의 가능']} selected="즉시 가능" />
+        <Field label="근무 가능 시점" required>
+          <RadioGroup
+            options={workAvailabilityOptions}
+            selected={profile.workAvailability}
+            onChange={(value) => onChange('workAvailability', value)}
+          />
         </Field>
         <Field label="근무 형태 가능 범위" required>
-          <CheckboxRow options={['정규직', '계약직', '파트 타임', '인턴', '프리랜서']} selectedOptions={['인턴']} />
+          <CheckboxRow
+            options={workTypeOptions}
+            selectedOptions={profile.workTypes}
+            onChange={(value) => onChange('workTypes', value)}
+          />
         </Field>
       </div>
       <Divider />
-      <h2>
-        선택 정보 <span className="profile-section-caption">선택 정보는 선택 사항이며, 제공하지 않으셔도 불이익이 없습니다.</span>
-      </h2>
       <div className="profile-form-grid profile-form-grid--work">
-        <Field label="희망 연봉" hint="연봉 범위를 입력하시면 더 정확한 매칭이 가능합니다.">
-          <Input placeholder="예) 35,000,000" suffix="원" readOnly />
+        <Field label="희망 연봉">
+          <Input value={profile.expectedSalary} onChange={(value) => onChange('expectedSalary', value)} placeholder="예) 연봉 3200만원" />
         </Field>
         <Field label="근무 시간 선호">
-          <SelectBox placeholder="근무 시간 형태를 선택해주세요." />
+          <SelectBox
+            value={profile.workTimePreference}
+            onChange={(value) => onChange('workTimePreference', value)}
+            options={workTimePreferenceOptions}
+          />
         </Field>
         <Field label="재택근무 가능 여부">
-          <RadioGroup options={['가능', '불가능', '협의 가능']} selected="가능" />
+          <RadioGroup
+            options={[...booleanOptions, { value: null, label: '협의 가능' }]}
+            selected={profile.remoteAvailableYn}
+            onChange={(value) => onChange('remoteAvailableYn', value)}
+          />
         </Field>
-        <Field label="이동 가능 여부 (출퇴근 거리 등)">
-          <SelectBox placeholder="이동 가능 범위를 선택해주세요." />
+        <Field label="이동 가능 범위">
+          <Input value={profile.mobilityRange} onChange={(value) => onChange('mobilityRange', value)} placeholder="예) 대중교통 50분 이내" />
         </Field>
       </div>
-      <Field label="추가 설명">
-        <TextArea placeholder="근무 조건에 대해 추가로 설명하고 싶은 내용을 입력해주세요." rows={5} />
-        <Counter max={500} />
+      <Field label="통근 범위">
+        <TextArea value={profile.commuteRange} onChange={(value) => onChange('commuteRange', value)} rows={4} />
+        <Counter value={profile.commuteRange} max={500} />
       </Field>
     </>
   );
 }
 
-function IntroPanel() {
+function IntroPanel({ profile, onChange }) {
   return (
     <>
       <h2>자기소개 및 지원동기</h2>
       <div className="profile-form-grid profile-form-grid--intro">
-        <Field label="자기소개" required hint="본인에 대해 자유롭게 소개해주세요.">
-          <TextArea placeholder="자기소개 내용을 입력해주세요." rows={6} />
-          <Counter max={1000} />
+        <Field label="자기소개" required>
+          <TextArea value={profile.selfIntroduction} onChange={(value) => onChange('selfIntroduction', value)} rows={6} />
+          <Counter value={profile.selfIntroduction} max={1000} />
         </Field>
-        <Field label="지원동기" required hint="해당 직무와 회사에 지원한 동기를 작성해주세요.">
-          <TextArea placeholder="지원 동기 내용을 입력해주세요." rows={6} />
-          <Counter max={1000} />
+        <Field label="지원동기">
+          <TextArea value={profile.motivation} onChange={(value) => onChange('motivation', value)} rows={6} />
+          <Counter value={profile.motivation} max={1000} />
         </Field>
       </div>
       <Divider />
-      <h2>
-        선택 정보 <span className="profile-section-caption">선택 정보는 선택 사항이며, 제공하지 않으셔도 불이익이 없습니다.</span>
-      </h2>
       <div className="profile-form-grid profile-form-grid--intro-optional">
-        <Field label="직무 적합성" hint="본인의 경험, 역량이 해당 직무에 어떻게 적합한지 설명해주세요.">
-          <TextArea placeholder="직무 적합성 내용을 입력해주세요." rows={5} />
-          <Counter max={1000} />
+        <Field label="직무 적합성">
+          <TextArea value={profile.jobFitDescription} onChange={(value) => onChange('jobFitDescription', value)} rows={5} />
+          <Counter value={profile.jobFitDescription} max={1000} />
         </Field>
-        <Field label="커리어 목표" hint="입사 후 또는 장기적인 커리어 목표를 작성해주세요.">
-          <TextArea placeholder="커리어 목표 내용을 입력해주세요." rows={5} />
-          <Counter max={1000} />
+        <Field label="커리어 목표">
+          <TextArea value={profile.careerGoal} onChange={(value) => onChange('careerGoal', value)} rows={5} />
+          <Counter value={profile.careerGoal} max={1000} />
         </Field>
-        <Field label="개인 강점/약점" hint="본인의 강점과 약점을 구체적으로 작성해주세요.">
-          <TextArea placeholder="강점과 약점 내용을 입력해주세요." rows={5} />
-          <Counter max={1000} />
+        <Field label="개인 강점/약점">
+          <TextArea value={profile.strengthsWeaknesses} onChange={(value) => onChange('strengthsWeaknesses', value)} rows={5} />
+          <Counter value={profile.strengthsWeaknesses} max={1000} />
         </Field>
       </div>
     </>
   );
 }
 
-function ExtraPanel() {
+function ExtraPanel({ profile, onChange }) {
   return (
     <>
       <h2>기타 정보</h2>
       <div className="profile-form-grid profile-form-grid--extra-top">
         <Field label="병역 여부">
-          <SelectBox placeholder="선택해주세요." />
+          <SelectBox value={profile.militaryService} onChange={(value) => onChange('militaryService', value)} options={militaryServiceOptions} />
         </Field>
         <Field label="국가유공자 여부">
-          <RadioGroup options={['해당없음', '해당', '비대상']} selected="해당없음" />
+          <RadioGroup
+            options={[...booleanOptions, { value: null, label: '확인 필요' }]}
+            selected={profile.patrioticVeteranYn}
+            onChange={(value) => onChange('patrioticVeteranYn', value)}
+          />
         </Field>
-        <Field label="관련 사항" hint="국가유공자 해당 시 선택해주세요.">
-          <SelectBox placeholder="선택해주세요." />
+        <Field label="추천인">
+          <Input value={profile.referrer} onChange={(value) => onChange('referrer', value)} />
         </Field>
       </div>
-      <Field label="추천인">
-        <Input placeholder="추천인 이름 또는 연락처를 입력해주세요." readOnly />
-      </Field>
       <Field label="SNS / 개인 웹사이트">
-        <div className="profile-sns-list">
-          {[0, 1].map((item) => (
-            <div className="profile-sns-row" key={item}>
-              <SelectBox placeholder="유형 선택" />
-              <Input placeholder="URL을 입력해주세요." readOnly />
-              <button type="button">삭제</button>
-            </div>
-          ))}
-          <button type="button" className="profile-sns-add">+ 추가</button>
-        </div>
+        <Input value={profile.snsUrl} onChange={(value) => onChange('snsUrl', value)} placeholder="https://..." />
       </Field>
     </>
-  );
-}
-
-function PanelHeader({ title, action }) {
-  return (
-    <div className="profile-panel-header">
-      <h2>{title}</h2>
-      <button type="button">{action}</button>
-    </div>
-  );
-}
-
-function OptionalStrip({ items }) {
-  return (
-    <div>
-      <h2>
-        선택 정보 <span className="profile-section-caption">선택 정보는 선택 사항이며, 제공하지 않으셔도 불이익이 없습니다.</span>
-      </h2>
-      <div className="profile-optional-strip">
-        {items.map((item) => (
-          <button type="button" key={item}>
-            <span>{item}</span>
-            <strong aria-hidden="true">+</strong>
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 
 function Field({ label, required = false, hint, children, width }) {
   return (
     <div className={`profile-field${width ? ` profile-field--${width}` : ''}`}>
-      <span className="profile-label">
+      <label className="profile-label">
         {label}
         {required ? <RequiredMark /> : null}
-      </span>
+      </label>
       {children}
       {hint ? <span className="profile-help">{hint}</span> : null}
     </div>
@@ -325,65 +404,150 @@ function RequiredMark() {
   return <em aria-label="필수">*</em>;
 }
 
-function Input({ icon, suffix, ...props }) {
+function Input({ icon, suffix, onChange, ...props }) {
   return (
     <span className="profile-input-wrap">
-      <input className="profile-input" {...props} />
+      <input className="profile-input" {...props} onChange={(event) => onChange(event.target.value)} />
       {suffix ? <span className="profile-input-suffix">{suffix}</span> : null}
       {icon ? <img src={icon} alt="" aria-hidden="true" /> : null}
     </span>
   );
 }
 
-function SelectBox({ value, placeholder }) {
+function SelectBox({ value, onChange, options, placeholder = '선택해주세요.' }) {
   return (
-    <button type="button" className="profile-select">
-      <span>{value || placeholder}</span>
-      <span aria-hidden="true" />
-    </button>
+    <select className="profile-select" value={value || ''} onChange={(event) => onChange(event.target.value)}>
+      <option value="">{placeholder}</option>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
   );
 }
 
-function TextArea({ rows, ...props }) {
-  return <textarea className="profile-textarea" rows={rows} {...props} readOnly />;
+function TextArea({ rows, value, onChange, ...props }) {
+  return (
+    <textarea
+      className="profile-textarea"
+      rows={rows}
+      value={value || ''}
+      onChange={(event) => onChange(event.target.value)}
+      {...props}
+    />
+  );
 }
 
-function RadioGroup({ options, selected }) {
+function RadioGroup({ options, selected, onChange }) {
   return (
     <div className="profile-radio-row">
       {options.map((option) => (
-        <label key={option} className="profile-radio">
-          <input type="radio" checked={selected === option} readOnly />
+        <label key={String(option.value)} className="profile-radio">
+          <input
+            type="radio"
+            checked={selected === option.value}
+            onChange={() => onChange(option.value)}
+          />
           <span aria-hidden="true" />
-          {option}
+          {option.label}
         </label>
       ))}
     </div>
   );
 }
 
-function CheckboxRow({ options, selectedOptions = [] }) {
+function CheckboxRow({ options, selectedOptions = [], onChange }) {
+  const toggle = (value) => {
+    const nextValues = selectedOptions.includes(value)
+      ? selectedOptions.filter((item) => item !== value)
+      : [...selectedOptions, value];
+
+    onChange(nextValues);
+  };
+
   return (
     <div className="profile-checkbox-row">
       {options.map((option) => (
-        <label key={option} className="profile-checkbox">
-          <input type="checkbox" checked={selectedOptions.includes(option)} readOnly />
+        <label key={option.value} className="profile-checkbox">
+          <input type="checkbox" checked={selectedOptions.includes(option.value)} onChange={() => toggle(option.value)} />
           <span aria-hidden="true" />
-          {option}
+          {option.label}
         </label>
       ))}
     </div>
   );
 }
 
-function PillGroup({ options, selected }) {
+function PillGroup({ options, selected, onChange }) {
   return (
     <div className="profile-pill-row">
       {options.map((option) => (
-        <button key={option} type="button" className={`profile-pill${selected === option ? ' is-selected' : ''}`}>
-          {option}
+        <button
+          key={option.value}
+          type="button"
+          className={`profile-pill${selected === option.value ? ' is-selected' : ''}`}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+function ChipEditor({ value = [], onChange, placeholder }) {
+  const addValue = (rawValue) => {
+    const nextValue = text(rawValue);
+
+    if (!nextValue || value.includes(nextValue)) {
+      return;
+    }
+
+    onChange([...value, nextValue]);
+  };
+
+  const removeValue = (item) => {
+    onChange(value.filter((valueItem) => valueItem !== item));
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key !== 'Enter') {
+      return;
+    }
+
+    event.preventDefault();
+    addValue(event.currentTarget.value);
+    event.currentTarget.value = '';
+  };
+
+  const handleAddClick = (event) => {
+    const input = event.currentTarget.parentElement.querySelector('input');
+    addValue(input.value);
+    input.value = '';
+    input.focus();
+  };
+
+  return (
+    <div className="profile-chip-editor">
+      <div className="profile-chip-list" aria-live="polite">
+        {value.length ? (
+          value.map((item) => (
+            <button key={item} type="button" onClick={() => removeValue(item)} aria-label={`${item} 삭제`}>
+              {item}
+              <span aria-hidden="true">×</span>
+            </button>
+          ))
+        ) : (
+          <span>{fallbackText}</span>
+        )}
+      </div>
+      <div className="profile-chip-input-row">
+        <input className="profile-input" placeholder={placeholder} onKeyDown={handleKeyDown} />
+        <button type="button" onClick={handleAddClick}>
+          추가
+        </button>
+      </div>
     </div>
   );
 }
@@ -392,10 +556,10 @@ function Divider() {
   return <hr className="profile-divider" />;
 }
 
-function Counter({ max }) {
+function Counter({ value = '', max }) {
   return (
     <span className="profile-counter">
-      <strong>0</strong>/{max.toLocaleString('ko-KR')}
+      <strong>{String(value || '').length}</strong>/{max.toLocaleString('ko-KR')}
     </span>
   );
 }

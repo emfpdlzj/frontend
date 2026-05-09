@@ -92,7 +92,20 @@ export const authStorage = {
       storage.remove(STORAGE_KEYS.tokenType);
       storage.remove(STORAGE_KEYS.accessTokenExpiresAt);
       storage.remove(STORAGE_KEYS.refreshTokenExpiresAt);
+      storage.remove(STORAGE_KEYS.authProvider);
     });
+  },
+
+  readAuthProvider() {
+    return persistentStorage.get(STORAGE_KEYS.authProvider);
+  },
+
+  writeAuthProvider(provider) {
+    if (!provider) {
+      return;
+    }
+
+    persistentStorage.set(STORAGE_KEYS.authProvider, provider);
   },
 
   readSignupSession() {

@@ -12,8 +12,8 @@ import { ROUTE_PATHS } from '../../config/routes';
 const primaryTabs = [
   { id: 'home', label: '홈', icon: homeIcon, to: ROUTE_PATHS.root },
   { id: 'map', label: '접근성 지도', icon: mapIcon, to: ROUTE_PATHS.accessibilityMap },
-  { id: 'docs', label: '문서', icon: docsIcon, to: ROUTE_PATHS.jobs },
-  { id: 'business', label: '공고', icon: businesscardIcon, to: ROUTE_PATHS.jobs }
+  { id: 'jobs', label: '퀵 맞춤 일자리 추천', icon: docsIcon, to: ROUTE_PATHS.jobs },
+  { id: 'business', label: '내 정보', icon: businesscardIcon, to: ROUTE_PATHS.profile }
 ];
 
 const secondaryTabs = [
@@ -122,7 +122,7 @@ function UserMenuTab({ item }) {
     try {
       setIsLoggingOut(true);
       await logout();
-      navigate(ROUTE_PATHS.login, { replace: true });
+      navigate(ROUTE_PATHS.root, { replace: true });
     } finally {
       setIsLoggingOut(false);
       setIsMenuOpen(false);
