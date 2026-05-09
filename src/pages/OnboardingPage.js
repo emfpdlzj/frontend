@@ -70,12 +70,6 @@ const disabilityRegisteredOptions = [
   { value: '등록', label: '등록됨' },
   { value: '미등록', label: '등록 안 됨' }
 ];
-const workAvailabilityOptions = [
-  { value: 'IMMEDIATE', label: '즉시' },
-  { value: 'WITHIN_TWO_WEEKS', label: '2주 이내' },
-  { value: 'WITHIN_ONE_MONTH', label: '1개월 이내' },
-  { value: 'NEGOTIABLE', label: '협의 가능' }
-];
 const MIN_WORKING_AGE = 15;
 const MIN_WORKING_AGE_MESSAGE = '근로기준법상 취업 가능한 노동 가능 연령은 원칙적으로 만 15세 이상입니다.';
 
@@ -85,20 +79,16 @@ const toInitialForm = (seed) => ({
   phone: '',
   email: seed?.email || '',
   birthDate: '',
-  region: '',
-  regionLabel: '',
   address: '',
   education: '',
   graduationStatus: '',
   career: '',
   jobs: [],
   employmentTypes: ['FULL_TIME'],
-  workAvailability: '',
   disabilityType: '',
   disabilitySeverity: '',
   registeredYn: '',
-  introduction: '',
-  motivation: ''
+  introduction: ''
 });
 
 const normalizeBirthDate = (value) => {
@@ -190,8 +180,6 @@ const getCalendarDays = (monthDate) => {
   });
 };
 
-const toResidenceRegion = (region, address) => region || address.trim().split(/\s+/).filter(Boolean).slice(0, 2).join(' ') || address.trim();
-
 const toBooleanFromChoice = (value, trueValue) => value === trueValue;
 
 const hasText = (value) => Boolean(value.trim());
@@ -206,8 +194,6 @@ const withoutEmptyOptionalFields = (payload) =>
       return !(Array.isArray(value) && value.length === 0);
     })
   );
-
-const findOptionLabel = (options, value) => options.find((option) => option.value === value)?.label || value;
 
 const formatPhoneNumber = (value) => {
   const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -268,10 +254,9 @@ const getStepValidationMessage = (step, form) => {
       !hasText(form.phone) ||
       !hasText(form.email) ||
       !hasText(form.birthDate) ||
-      !form.region ||
       !hasText(form.address)
     ) {
-      return '이름, 성별, 연락처, 이메일, 생년월일, 근무지역, 거주지 상세 주소를 입력해 주세요.';
+      return '이름, 성별, 연락처, 이메일, 생년월일, 거주지 상세 주소를 입력해 주세요.';
     }
 
     const formatValidationMessage =
@@ -288,16 +273,16 @@ const getStepValidationMessage = (step, form) => {
   }
 
   if (step === 2) {
-    if (!form.education || !form.graduationStatus || !form.jobs.length) {
-      return '최종 학력, 졸업 상태, 지원 직무를 선택해 주세요.';
+    if (!form.education || !form.graduationStatus || !hasText(form.career) || !form.jobs.length) {
+      return '최종 학력, 졸업 상태, 주요 경력, 지원 직무를 입력해 주세요.';
     }
 
     return '';
   }
 
   if (step === 3) {
-    if (!form.employmentTypes.length || !form.workAvailability) {
-      return '가능한 고용형태와 근무 가능 시점을 선택해 주세요.';
+    if (!form.employmentTypes.length) {
+      return '가능한 고용형태를 선택해 주세요.';
     }
 
     return '';
@@ -315,10 +300,6 @@ const getStepValidationMessage = (step, form) => {
     if (!hasText(form.introduction)) {
       return '자기소개를 입력해 주세요.';
     }
-
-    if (!hasText(form.motivation)) {
-      return '지원동기를 입력해 주세요.';
-    }
   }
 
   return '';
@@ -335,19 +316,16 @@ const onboardingInputFields = [
   { key: 'phone', value: (form) => form.phone },
   { key: 'email', value: (form) => form.email },
   { key: 'birthDate', value: (form) => form.birthDate },
-  { key: 'region', value: (form) => form.region },
   { key: 'address', value: (form) => form.address },
   { key: 'education', value: (form) => form.education },
   { key: 'graduationStatus', value: (form) => form.graduationStatus },
   { key: 'career', value: (form) => form.career },
   { key: 'jobs', value: (form) => form.jobs },
   { key: 'employmentTypes', value: (form) => form.employmentTypes },
-  { key: 'workAvailability', value: (form) => form.workAvailability },
   { key: 'disabilityType', value: (form) => form.disabilityType },
   { key: 'disabilitySeverity', value: (form) => form.disabilitySeverity },
   { key: 'registeredYn', value: (form) => form.registeredYn },
-  { key: 'introduction', value: (form) => form.introduction },
-  { key: 'motivation', value: (form) => form.motivation }
+  { key: 'introduction', value: (form) => form.introduction }
 ];
 
 const detailProfileGroups = [
@@ -408,42 +386,30 @@ const getCompletionSummary = (form) => {
   };
 };
 
-const toSignupProfile = (form, employmentTypeOptions = []) => {
+const toSignupProfile = (form) => {
   const trimmedName = form.name.trim();
   const trimmedAddress = form.address.trim();
-  const trimmedIntroduction = form.introduction.trim() || '확인 필요';
-  const trimmedMotivation = form.motivation.trim() || '확인 필요';
-  const selectedJobs = form.jobs.length ? form.jobs : ['확인 필요'];
-  const employmentTypeLabels = form.employmentTypes.map((type) => findOptionLabel(employmentTypeOptions, type));
+  const trimmedCareer = form.career.trim();
+  const trimmedIntroduction = form.introduction.trim();
+  const selectedJobs = form.jobs;
 
   return withoutEmptyOptionalFields({
-    desiredJob: selectedJobs.join(', '),
-    commuteRange: '확인 필요',
-    preferredWorkEnvironments: ['확인 필요'],
-    avoidedWorkEnvironments: ['확인 필요'],
-    requiredSupports: ['확인 필요'],
-    disabilityType: form.disabilityType,
-    careerSummary: form.career.trim() || '확인 필요',
-    educationSummary: findOptionLabel(educationOptions, form.education) || '확인 필요',
-    employmentTypeSummary: employmentTypeLabels.join(', ') || '확인 필요',
     fullName: trimmedName,
     contactPhone: form.phone.trim(),
     contactEmail: form.email.trim(),
     birthDate: normalizeBirthDate(form.birthDate),
     genderType: form.gender,
-    residenceRegion: toResidenceRegion(form.region, trimmedAddress),
     detailAddress: trimmedAddress,
     highestEducation: form.education,
     graduationStatus: form.graduationStatus,
-    majorCareer: form.career.trim() || '확인 필요',
+    majorCareer: trimmedCareer,
     targetJob: selectedJobs.join(', '),
     skills: selectedJobs,
+    disabilityType: form.disabilityType,
     disabilitySeverity: form.disabilitySeverity,
     disabilityRegisteredYn: toBooleanFromChoice(form.registeredYn, '등록'),
-    workAvailability: form.workAvailability,
     workTypes: form.employmentTypes,
-    selfIntroduction: trimmedIntroduction,
-    motivation: trimmedMotivation
+    selfIntroduction: trimmedIntroduction
   });
 };
 
@@ -479,17 +445,6 @@ export function OnboardingPage() {
   const updateField = (field, value) => {
     setSubmitError('');
     setForm((prev) => {
-      if (field === 'region') {
-        const nextRegion = typeof value === 'object' ? value.value : value;
-        const nextRegionLabel = typeof value === 'object' ? value.label : value;
-
-        return {
-          ...prev,
-          region: nextRegion,
-          regionLabel: nextRegionLabel
-        };
-      }
-
       return {
         ...prev,
         [field]: field === 'phone' ? formatPhoneNumber(value) : value
@@ -561,8 +516,7 @@ export function OnboardingPage() {
         setSubmitting(true);
         await completeSignup({
           signupToken: pendingSignup.signupToken,
-          email: form.email.trim(),
-          profile: toSignupProfile(form, signupOptions.employmentTypes)
+          profile: toSignupProfile(form)
         });
         setIsComplete(true);
       } catch (error) {
@@ -613,7 +567,7 @@ export function OnboardingPage() {
               ) : signupOptions.status === 'empty' ? (
                 <OptionStatePanel
                   title="회원가입 옵션을 확인할 수 없습니다."
-                  message="고용형태, 희망 직무, 근무지역 옵션을 다시 불러와 주세요."
+                  message="고용형태, 희망 직무 옵션을 다시 불러와 주세요."
                   actionLabel="다시 시도"
                   onAction={retryLoadOptions}
                 />
@@ -716,8 +670,6 @@ function StepContent({
       email: formatValidationVisible.email ? getFieldFormatMessage('email', formatValidationForm.email) : '',
       birthDate: formatValidationVisible.birthDate ? getFieldFormatMessage('birthDate', formatValidationForm.birthDate) : ''
     };
-    const addressRegionGuide = form.regionLabel || '서울';
-
     return (
       <div className="onboarding-panel__content">
         <h2>기본 정보</h2>
@@ -767,20 +719,11 @@ function StepContent({
             onBlur={() => showFormatValidation('birthDate')}
             error={errors.birthDate}
           />
-          <SelectField
-            label="근무지역"
-            required
-            className="onboarding-field--region"
-            options={options.regions}
-            value={form.region}
-            onChange={(value, label) => updateField('region', { value, label })}
-            placeholder="근무지역 선택"
-          />
           <TextField
             label="거주지 상세 주소"
             required
             className="onboarding-field--address"
-            placeholder={`${addressRegionGuide} OO구 OO동`}
+            placeholder="서울 OO구 OO동"
             value={form.address}
             onChange={(value) => updateField('address', value)}
             hint={`예: 서울시 강남구 또는 서울시 강남구 역삼동`}
@@ -811,6 +754,7 @@ function StepContent({
         />
         <TextField
           label="주요 경력 한 줄"
+          required
           placeholder="예) 수원시 청년센터 행정보조 2년"
           value={form.career}
           onChange={(value) => updateField('career', value)}
@@ -837,13 +781,6 @@ function StepContent({
           options={options.employmentTypes}
           values={form.employmentTypes}
           onToggle={(value) => toggleArrayValue('employmentTypes', value)}
-        />
-        <ChoiceField
-          label="근무 가능 시점"
-          required
-          options={workAvailabilityOptions}
-          value={form.workAvailability}
-          onChange={(value) => updateField('workAvailability', value)}
         />
       </div>
     );
@@ -893,15 +830,6 @@ function StepContent({
           rows={9}
         />
       </label>
-      <label className="onboarding-field onboarding-field--full onboarding-field--motivation">
-        <span>지원동기 <em>*</em></span>
-        <textarea
-          value={form.motivation}
-          onChange={(event) => updateField('motivation', event.target.value)}
-          placeholder="지원하려는 이유와 기대하는 근무 방향을 적어 주세요."
-          rows={6}
-        />
-      </label>
     </div>
   );
 }
@@ -928,10 +856,6 @@ function BirthDateField({ label, required, placeholder, value, onChange, onBlur,
       setVisibleMonth(toMonthStart(nextSelectedDate));
     }
   }, [selectedValue]);
-
-  useEffect(() => {
-    setAgeRestrictionError('');
-  }, [value]);
 
   useEffect(() => {
     if (!isOpen) {

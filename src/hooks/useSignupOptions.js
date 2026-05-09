@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { optionsApi } from '../api/optionsApi';
 import { STORAGE_KEYS } from '../config/appConfig';
 
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 const MAX_TIMEOUT_DELAY = 2_147_483_647;
 
 const collectLeafNames = (node) => {
@@ -31,8 +31,7 @@ const initialState = {
   status: 'idle',
   error: '',
   employmentTypes: [],
-  jobCategories: [],
-  regions: []
+  jobCategories: []
 };
 
 const getNextCacheExpiryAt = (now = new Date()) => {
@@ -47,9 +46,8 @@ const getNextCacheExpiryAt = (now = new Date()) => {
 };
 
 const isValidOptionsData = (data) =>
-    Array.isArray(data?.employmentTypes) &&
-    Array.isArray(data?.jobCategories) &&
-    Array.isArray(data?.regions);
+  Array.isArray(data?.employmentTypes) &&
+  Array.isArray(data?.jobCategories);
 
 const clearCachedSignupOptions = () => {
   try {
@@ -153,20 +151,17 @@ export function useSignupOptions() {
       }));
 
       try {
-        const [employmentTypes, jobCategoryTree, regions] = await Promise.all([
+        const [employmentTypes, jobCategoryTree] = await Promise.all([
           optionsApi.getEmploymentTypes(controller.signal),
-          optionsApi.getJobCategoryTree(controller.signal),
-          optionsApi.getRegions(controller.signal)
+          optionsApi.getJobCategoryTree(controller.signal)
         ]);
         const jobCategories = toJobCategories(jobCategoryTree);
         const hasRequiredOptions =
           employmentTypes.length > 0 &&
-          jobCategories.length > 0 &&
-          regions.length > 0;
+          jobCategories.length > 0;
         const successData = {
           employmentTypes,
-          jobCategories,
-          regions
+          jobCategories
         };
 
         if (hasRequiredOptions) {
