@@ -7,7 +7,7 @@
 ## 참조 문서
 
 - 프론트엔드 코드 품질 기준: `.agents/docs/frontend-quality-agent.md`
-- 기능 명세서: `.agents/docs/specification.md`
+- 기능 명세서 및 활용 데이터: `.agents/docs/specification.md`
 - 스타일 가이드: `.agents/docs/style-guide.md`
 
 ## 기본 작업 원칙
