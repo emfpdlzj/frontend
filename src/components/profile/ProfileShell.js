@@ -24,7 +24,7 @@ const sectionRows = [
   ]
 ];
 
-const PROFILE_DRAFT_AUTOSAVE_DEBOUNCE_MS = 3000;
+const PROFILE_DRAFT_AUTOSAVE_DEBOUNCE_MS = 30000;
 const PROFILE_DRAFT_AUTOSAVE_INTERVAL_MS = 60000;
 
 export function ProfileShell() {
