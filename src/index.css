@@ -7465,10 +7465,17 @@ a:hover {
 }
 
 .profile-autosave-note {
-  margin: -4px 0 12px;
+  margin: 0 0 16px;
   color: #526173;
   font-size: 15px;
   font-weight: 700;
+  line-height: 1.5;
+}
+
+.profile-form-area > .status-message + .status-message,
+.profile-form-area > .status-message + .profile-autosave-note,
+.profile-form-area > .status-message + .profile-form-actions {
+  margin-top: 12px;
 }
 
 .profile-primary-action,
