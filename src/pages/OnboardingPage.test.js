@@ -26,7 +26,10 @@ const renderPage = () => {
   useSignupOptions.mockReturnValue({
     status: 'success',
     error: '',
-    employmentTypes: ['정규직', '계약직'],
+    employmentTypes: [
+      { value: 'FULL_TIME', label: '정규직' },
+      { value: 'CONTRACT', label: '계약직' }
+    ],
     jobCategories: [
       {
         label: '기획·전략',
@@ -39,12 +42,8 @@ const renderPage = () => {
       }
     ],
     regions: [
-      { value: '서울', label: '서울' },
-      { value: '부산', label: '부산' }
-    ],
-    salaryTypes: [
-      { value: '월급', label: '월급' },
-      { value: '연봉', label: '연봉' }
+      { value: 'SEOUL', label: '서울' },
+      { value: 'BUSAN', label: '부산' }
     ]
   });
 
@@ -86,7 +85,7 @@ test('blocks each signup step until required fields are completed', async () => 
   userEvent.type(screen.getByLabelText('연락처 *'), '010-1234-5678');
   userEvent.type(screen.getByLabelText('이메일 *'), 'hong@example.com');
   userEvent.type(screen.getByLabelText('생년월일'), '1990.01.01');
-  userEvent.selectOptions(screen.getByLabelText('근무지역 *'), '서울');
+  userEvent.selectOptions(screen.getByLabelText('근무지역 *'), 'SEOUL');
   expect(screen.getByLabelText(/거주지 상세 주소/)).toHaveValue('');
   expect(screen.getByPlaceholderText('서울 OO구 OO동')).toBeInTheDocument();
   fillAddress('서울시 영등포구 OO로 12');
@@ -94,19 +93,20 @@ test('blocks each signup step until required fields are completed', async () => 
 
   expect(screen.getByRole('heading', { name: '직무·경력' })).toBeInTheDocument();
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
-  expect(screen.getByRole('alert')).toHaveTextContent('최종 학력과 지원 직무를 선택해 주세요.');
+  expect(screen.getByRole('alert')).toHaveTextContent('최종 학력, 졸업 상태, 지원 직무를 선택해 주세요.');
 
   userEvent.click(screen.getByRole('button', { name: '대졸' }));
+  userEvent.click(screen.getByRole('button', { name: '졸업' }));
   userEvent.click(screen.getByRole('button', { name: '서비스 기획' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
   expect(screen.getByRole('heading', { name: '근무 조건' })).toBeInTheDocument();
   userEvent.click(screen.getByRole('button', { name: '정규직' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
-  expect(screen.getByRole('alert')).toHaveTextContent('가능한 고용형태를 하나 이상 선택해 주세요.');
+  expect(screen.getByRole('alert')).toHaveTextContent('가능한 고용형태와 근무 가능 시점을 선택해 주세요.');
 
   userEvent.click(screen.getByRole('button', { name: '정규직' }));
-  userEvent.click(screen.getByRole('button', { name: '월급' }));
+  userEvent.click(screen.getByRole('button', { name: '즉시' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
   expect(screen.getByRole('heading', { name: '장애 정보' })).toBeInTheDocument();
@@ -114,7 +114,7 @@ test('blocks each signup step until required fields are completed', async () => 
   expect(screen.getByRole('alert')).toHaveTextContent('장애 유형, 장애 정도, 장애인 등록 여부를 모두 선택해 주세요.');
 
   userEvent.click(screen.getByRole('button', { name: '지체' }));
-  userEvent.click(screen.getByRole('button', { name: '심한 장애 (1~3급)' }));
+  userEvent.click(screen.getByRole('button', { name: '중증' }));
   userEvent.click(screen.getByRole('button', { name: '등록됨' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
@@ -132,13 +132,33 @@ test('blocks each signup step until required fields are completed', async () => 
   userEvent.click(screen.getByRole('button', { name: '가입 완료' }));
 
   await waitFor(() => expect(completeSignup).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(screen.getByRole('heading', { name: '기본 정보 입력 완료!' })).toBeInTheDocument());
+  expect(screen.getByText('17개')).toBeInTheDocument();
+  expect(screen.getByText('7개 묶음')).toBeInTheDocument();
+  expect(screen.getByText('25개 선택 정보')).toBeInTheDocument();
+  expect(screen.getByText('약 5분')).toBeInTheDocument();
+  expect(screen.getByText('42개')).toBeInTheDocument();
+  expect(screen.queryByText('2.4배')).not.toBeInTheDocument();
   expect(completeSignup).toHaveBeenCalledWith(
     expect.objectContaining({
       profile: expect.objectContaining({
         birthDate: '1990-01-01',
         genderType: 'MALE',
-        residenceRegion: '서울',
-        expectedSalary: '월급',
+        residenceRegion: 'SEOUL',
+        desiredJob: '서비스 기획',
+        commuteRange: '확인 필요',
+        preferredWorkEnvironments: ['확인 필요'],
+        avoidedWorkEnvironments: ['확인 필요'],
+        requiredSupports: ['확인 필요'],
+        careerSummary: '확인 필요',
+        educationSummary: '대졸',
+        employmentTypeSummary: '정규직',
+        highestEducation: 'BACHELOR',
+        graduationStatus: 'GRADUATED',
+        disabilityType: 'PHYSICAL',
+        disabilitySeverity: 'SEVERE',
+        workAvailability: 'IMMEDIATE',
+        workTypes: ['FULL_TIME'],
         selfIntroduction: '사무 지원 경험이 있습니다.',
         motivation: '안정적으로 일하며 역량을 키우고 싶습니다.'
       })
@@ -153,7 +173,7 @@ test('blocks signup when birth date is missing', async () => {
   userEvent.click(screen.getByRole('button', { name: '남성' }));
   userEvent.type(screen.getByLabelText('연락처 *'), '010-1234-5678');
   userEvent.type(screen.getByLabelText('이메일 *'), 'hong@example.com');
-  userEvent.selectOptions(screen.getByLabelText('근무지역 *'), '서울');
+  userEvent.selectOptions(screen.getByLabelText('근무지역 *'), 'SEOUL');
   fillAddress('서울시 영등포구 OO로 12');
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
@@ -170,20 +190,22 @@ test('normalizes keyboard birth date input before signup submit', async () => {
   userEvent.type(screen.getByLabelText('연락처 *'), '010-1234-5678');
   userEvent.type(screen.getByLabelText('이메일 *'), 'hong@example.com');
   userEvent.type(screen.getByLabelText('생년월일'), '2003.09.15');
-  userEvent.selectOptions(screen.getByLabelText('근무지역 *'), '서울');
+  userEvent.selectOptions(screen.getByLabelText('근무지역 *'), 'SEOUL');
   fillAddress('서울시 영등포구 OO로 12');
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
   userEvent.click(screen.getByRole('button', { name: '대졸' }));
+  userEvent.click(screen.getByRole('button', { name: '졸업' }));
   userEvent.click(screen.getByRole('button', { name: '서비스 기획' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
+  userEvent.click(screen.getByRole('button', { name: '즉시' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
   expect(screen.getByRole('alert')).toHaveTextContent('장애 유형, 장애 정도, 장애인 등록 여부를 모두 선택해 주세요.');
 
   userEvent.click(screen.getByRole('button', { name: '지체' }));
-  userEvent.click(screen.getByRole('button', { name: '심한 장애 (1~3급)' }));
+  userEvent.click(screen.getByRole('button', { name: '중증' }));
   userEvent.click(screen.getByRole('button', { name: '등록됨' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
@@ -221,18 +243,19 @@ test('allows non-disability choices without hiding required accessibility fields
   userEvent.type(screen.getByLabelText('연락처 *'), '010-1234-5678');
   userEvent.type(screen.getByLabelText('이메일 *'), 'hong@example.com');
   userEvent.type(screen.getByLabelText('생년월일'), '1990.01.01');
-  userEvent.selectOptions(screen.getByLabelText('근무지역 *'), '서울');
+  userEvent.selectOptions(screen.getByLabelText('근무지역 *'), 'SEOUL');
   fillAddress('서울시 영등포구 OO로 12');
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
   userEvent.click(screen.getByRole('button', { name: '대졸' }));
+  userEvent.click(screen.getByRole('button', { name: '졸업' }));
   userEvent.click(screen.getByRole('button', { name: '서비스 기획' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
+  userEvent.click(screen.getByRole('button', { name: '즉시' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
-  const needsReviewButtons = screen.getAllByRole('button', { name: '확인 필요' });
-  userEvent.click(needsReviewButtons[0]);
-  userEvent.click(needsReviewButtons[1]);
+  userEvent.click(screen.getByRole('button', { name: '기타' }));
+  userEvent.click(screen.getByRole('button', { name: '경증' }));
   userEvent.click(screen.getByRole('button', { name: '등록 안 됨' }));
 
   expect(screen.getByRole('group', { name: /장애 유형/ })).toBeInTheDocument();
@@ -278,23 +301,24 @@ test('keeps required single-choice signup fields selected when clicked again', a
   userEvent.type(screen.getByLabelText('연락처 *'), '010-1234-5678');
   userEvent.type(screen.getByLabelText('이메일 *'), 'hong@example.com');
   userEvent.type(screen.getByLabelText('생년월일'), '1990.01.01');
-  userEvent.selectOptions(screen.getByLabelText('근무지역 *'), '서울');
+  userEvent.selectOptions(screen.getByLabelText('근무지역 *'), 'SEOUL');
   fillAddress('서울시 영등포구 OO로 12');
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
   userEvent.click(screen.getByRole('button', { name: '대졸' }));
+  userEvent.click(screen.getByRole('button', { name: '졸업' }));
   userEvent.click(screen.getByRole('button', { name: '서비스 기획' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
-  const salaryButton = screen.getByRole('button', { name: '월급' });
-  userEvent.click(salaryButton);
-  expect(salaryButton).toHaveAttribute('aria-pressed', 'true');
-  userEvent.click(salaryButton);
-  expect(salaryButton).toHaveAttribute('aria-pressed', 'false');
+  const availabilityButton = screen.getByRole('button', { name: '즉시' });
+  userEvent.click(availabilityButton);
+  expect(availabilityButton).toHaveAttribute('aria-pressed', 'true');
+  userEvent.click(availabilityButton);
+  expect(availabilityButton).toHaveAttribute('aria-pressed', 'true');
 
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
-  const severityButton = screen.getByRole('button', { name: '심한 장애 (1~3급)' });
+  const severityButton = screen.getByRole('button', { name: '중증' });
   userEvent.click(severityButton);
   expect(severityButton).toHaveAttribute('aria-pressed', 'true');
   userEvent.click(severityButton);

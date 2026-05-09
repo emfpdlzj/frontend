@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { optionsApi } from '../api/optionsApi';
 import { STORAGE_KEYS } from '../config/appConfig';
 
-const toOptionLabel = (option) => option.label || option.name || option.value || '';
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const MAX_TIMEOUT_DELAY = 2_147_483_647;
 
 const collectLeafNames = (node) => {
@@ -33,8 +32,7 @@ const initialState = {
   error: '',
   employmentTypes: [],
   jobCategories: [],
-  regions: [],
-  salaryTypes: []
+  regions: []
 };
 
 const getNextCacheExpiryAt = (now = new Date()) => {
@@ -49,10 +47,9 @@ const getNextCacheExpiryAt = (now = new Date()) => {
 };
 
 const isValidOptionsData = (data) =>
-  Array.isArray(data?.employmentTypes) &&
-  Array.isArray(data?.jobCategories) &&
-  Array.isArray(data?.regions) &&
-  Array.isArray(data?.salaryTypes);
+    Array.isArray(data?.employmentTypes) &&
+    Array.isArray(data?.jobCategories) &&
+    Array.isArray(data?.regions);
 
 const clearCachedSignupOptions = () => {
   try {
@@ -156,23 +153,20 @@ export function useSignupOptions() {
       }));
 
       try {
-        const [employmentTypes, jobCategoryTree, regions, salaryTypes] = await Promise.all([
+        const [employmentTypes, jobCategoryTree, regions] = await Promise.all([
           optionsApi.getEmploymentTypes(controller.signal),
           optionsApi.getJobCategoryTree(controller.signal),
-          optionsApi.getRegions(controller.signal),
-          optionsApi.getSalaryTypes(controller.signal)
+          optionsApi.getRegions(controller.signal)
         ]);
         const jobCategories = toJobCategories(jobCategoryTree);
         const hasRequiredOptions =
           employmentTypes.length > 0 &&
           jobCategories.length > 0 &&
-          regions.length > 0 &&
-          salaryTypes.length > 0;
+          regions.length > 0;
         const successData = {
-          employmentTypes: employmentTypes.map(toOptionLabel).filter(Boolean),
+          employmentTypes,
           jobCategories,
-          regions,
-          salaryTypes
+          regions
         };
 
         if (hasRequiredOptions) {

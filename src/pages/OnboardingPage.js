@@ -25,15 +25,57 @@ const STEPS = [
   { id: 5, title: '자기소개' }
 ];
 
-const educationOptions = ['고졸 이하', '초대졸', '대졸', '석사', '박사'];
+const educationOptions = [
+  { value: 'HIGH_SCHOOL_OR_BELOW', label: '고졸 이하' },
+  { value: 'HIGH_SCHOOL', label: '고졸' },
+  { value: 'COLLEGE', label: '전문대졸' },
+  { value: 'BACHELOR', label: '대졸' },
+  { value: 'MASTER', label: '석사' },
+  { value: 'DOCTOR', label: '박사' },
+  { value: 'OTHER', label: '기타' }
+];
+const graduationStatusOptions = [
+  { value: 'GRADUATED', label: '졸업' },
+  { value: 'EXPECTED', label: '졸업예정' },
+  { value: 'ENROLLED', label: '재학' },
+  { value: 'COMPLETED', label: '수료' },
+  { value: 'DROPPED_OUT', label: '중퇴' },
+  { value: 'OTHER', label: '기타' }
+];
 const MAX_JOB_SELECTIONS = 5;
-const disabilityTypes = ['지체', '시각', '청각', '발달', '뇌병변', '내부장애', '확인 필요'];
-const disabilitySeverityOptions = ['심한 장애 (1~3급)', '심하지 않은 장애 (4~6급)', '확인 필요'];
+const disabilityTypes = [
+  { value: 'PHYSICAL', label: '지체' },
+  { value: 'BRAIN_LESION', label: '뇌병변' },
+  { value: 'VISUAL', label: '시각' },
+  { value: 'HEARING', label: '청각' },
+  { value: 'SPEECH', label: '언어' },
+  { value: 'INTELLECTUAL', label: '지적' },
+  { value: 'AUTISM', label: '자폐성' },
+  { value: 'MENTAL', label: '정신' },
+  { value: 'KIDNEY', label: '신장' },
+  { value: 'HEART', label: '심장' },
+  { value: 'RESPIRATORY', label: '호흡기' },
+  { value: 'LIVER', label: '간' },
+  { value: 'FACE', label: '안면' },
+  { value: 'STOMA_URINARY', label: '장루·요루' },
+  { value: 'EPILEPSY', label: '뇌전증' },
+  { value: 'OTHER', label: '기타' }
+];
+const disabilitySeverityOptions = [
+  { value: 'SEVERE', label: '중증' },
+  { value: 'MODERATE', label: '중등도' },
+  { value: 'MILD', label: '경증' }
+];
 const disabilityRegisteredOptions = [
   { value: '등록', label: '등록됨' },
   { value: '미등록', label: '등록 안 됨' }
 ];
-const EXCLUSIVE_DISABILITY_TYPES = ['확인 필요'];
+const workAvailabilityOptions = [
+  { value: 'IMMEDIATE', label: '즉시' },
+  { value: 'WITHIN_TWO_WEEKS', label: '2주 이내' },
+  { value: 'WITHIN_ONE_MONTH', label: '1개월 이내' },
+  { value: 'NEGOTIABLE', label: '협의 가능' }
+];
 const MIN_WORKING_AGE = 15;
 const MIN_WORKING_AGE_MESSAGE = '근로기준법상 취업 가능한 노동 가능 연령은 원칙적으로 만 15세 이상입니다.';
 
@@ -44,13 +86,15 @@ const toInitialForm = (seed) => ({
   email: seed?.email || '',
   birthDate: '',
   region: '',
+  regionLabel: '',
   address: '',
   education: '',
+  graduationStatus: '',
   career: '',
   jobs: [],
-  employmentTypes: ['정규직'],
-  salaryType: '',
-  disabilityTypes: [],
+  employmentTypes: ['FULL_TIME'],
+  workAvailability: '',
+  disabilityType: '',
   disabilitySeverity: '',
   registeredYn: '',
   introduction: '',
@@ -153,7 +197,17 @@ const toBooleanFromChoice = (value, trueValue) => value === trueValue;
 const hasText = (value) => Boolean(value.trim());
 
 const withoutEmptyOptionalFields = (payload) =>
-  Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== null && value !== undefined));
+  Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => {
+      if (value === null || value === undefined || value === '') {
+        return false;
+      }
+
+      return !(Array.isArray(value) && value.length === 0);
+    })
+  );
+
+const findOptionLabel = (options, value) => options.find((option) => option.value === value)?.label || value;
 
 const formatPhoneNumber = (value) => {
   const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -234,24 +288,24 @@ const getStepValidationMessage = (step, form) => {
   }
 
   if (step === 2) {
-    if (!form.education || !form.jobs.length) {
-      return '최종 학력과 지원 직무를 선택해 주세요.';
+    if (!form.education || !form.graduationStatus || !form.jobs.length) {
+      return '최종 학력, 졸업 상태, 지원 직무를 선택해 주세요.';
     }
 
     return '';
   }
 
   if (step === 3) {
-    if (!form.employmentTypes.length) {
-      return '가능한 고용형태를 하나 이상 선택해 주세요.';
+    if (!form.employmentTypes.length || !form.workAvailability) {
+      return '가능한 고용형태와 근무 가능 시점을 선택해 주세요.';
     }
 
     return '';
   }
 
   if (step === 4) {
-    if (!form.disabilityTypes.length || !form.disabilitySeverity || !form.registeredYn) {
-      return '장애 유형, 장애 정도, 장애인 등록 여부를 모두 선택해 주세요. 아직 확인이 어렵다면 "확인 필요"를 선택해 주세요.';
+    if (!form.disabilityType || !form.disabilitySeverity || !form.registeredYn) {
+      return '장애 유형, 장애 정도, 장애인 등록 여부를 모두 선택해 주세요.';
     }
 
     return '';
@@ -275,12 +329,92 @@ const getSignupValidationMessage = (form) => {
   return invalidStep ? getStepValidationMessage(invalidStep.id, form) : '';
 };
 
-const toSignupProfile = (form) => {
+const onboardingInputFields = [
+  { key: 'name', value: (form) => form.name },
+  { key: 'gender', value: (form) => form.gender },
+  { key: 'phone', value: (form) => form.phone },
+  { key: 'email', value: (form) => form.email },
+  { key: 'birthDate', value: (form) => form.birthDate },
+  { key: 'region', value: (form) => form.region },
+  { key: 'address', value: (form) => form.address },
+  { key: 'education', value: (form) => form.education },
+  { key: 'graduationStatus', value: (form) => form.graduationStatus },
+  { key: 'career', value: (form) => form.career },
+  { key: 'jobs', value: (form) => form.jobs },
+  { key: 'employmentTypes', value: (form) => form.employmentTypes },
+  { key: 'workAvailability', value: (form) => form.workAvailability },
+  { key: 'disabilityType', value: (form) => form.disabilityType },
+  { key: 'disabilitySeverity', value: (form) => form.disabilitySeverity },
+  { key: 'registeredYn', value: (form) => form.registeredYn },
+  { key: 'introduction', value: (form) => form.introduction },
+  { key: 'motivation', value: (form) => form.motivation }
+];
+
+const detailProfileGroups = [
+  {
+    label: '통근·근무환경',
+    fields: ['commuteRange', 'preferredWorkEnvironments', 'avoidedWorkEnvironments', 'requiredSupports']
+  },
+  {
+    label: '세부 경력',
+    fields: ['careerDetail', 'projectExperience', 'careerGapReason']
+  },
+  {
+    label: '자격·포트폴리오',
+    fields: ['certifications', 'portfolioUrl', 'awards', 'trainings']
+  },
+  {
+    label: '상세 장애·지원',
+    fields: ['disabilityDescription', 'assistiveDevices', 'workSupportRequirements']
+  },
+  {
+    label: '희망 근무조건',
+    fields: ['expectedSalary', 'workTimePreference', 'remoteAvailableYn', 'mobilityRange']
+  },
+  {
+    label: '소개 보강',
+    fields: ['jobFitDescription', 'careerGoal', 'strengthsWeaknesses']
+  },
+  {
+    label: '추가 연락·기타',
+    fields: ['emergencyContact', 'militaryService', 'patrioticVeteranYn', 'snsUrl']
+  }
+];
+
+const hasCompletedValue = (value) => {
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+
+  if (typeof value === 'boolean') {
+    return true;
+  }
+
+  return value !== null && value !== undefined && String(value).trim().length > 0;
+};
+
+const getCompletionSummary = (form) => {
+  const completedInputCount = onboardingInputFields.filter((field) => hasCompletedValue(field.value(form))).length;
+  const remainingDetailGroupCount = detailProfileGroups.length;
+  const remainingDetailFieldCount = detailProfileGroups.reduce((sum, group) => sum + group.fields.length, 0);
+  const estimatedMinutes = Math.max(3, Math.ceil(remainingDetailFieldCount / 5));
+
+  return {
+    completedInputCount,
+    remainingDetailGroupCount,
+    remainingDetailFieldCount,
+    estimatedMinutes,
+    totalProfileSignals: completedInputCount + remainingDetailFieldCount
+  };
+};
+
+const toSignupProfile = (form, employmentTypeOptions = []) => {
   const trimmedName = form.name.trim();
   const trimmedAddress = form.address.trim();
   const trimmedIntroduction = form.introduction.trim() || '확인 필요';
   const trimmedMotivation = form.motivation.trim() || '확인 필요';
   const selectedJobs = form.jobs.length ? form.jobs : ['확인 필요'];
+  const employmentTypeLabels = form.employmentTypes.map((type) => findOptionLabel(employmentTypeOptions, type));
 
   return withoutEmptyOptionalFields({
     desiredJob: selectedJobs.join(', '),
@@ -288,52 +422,28 @@ const toSignupProfile = (form) => {
     preferredWorkEnvironments: ['확인 필요'],
     avoidedWorkEnvironments: ['확인 필요'],
     requiredSupports: ['확인 필요'],
-    disabilityType: form.disabilityTypes.join(', ') || '확인 필요',
+    disabilityType: form.disabilityType,
     careerSummary: form.career.trim() || '확인 필요',
-    educationSummary: form.education || '확인 필요',
-    employmentTypeSummary: form.employmentTypes.join(', '),
+    educationSummary: findOptionLabel(educationOptions, form.education) || '확인 필요',
+    employmentTypeSummary: employmentTypeLabels.join(', ') || '확인 필요',
     fullName: trimmedName,
     contactPhone: form.phone.trim(),
     contactEmail: form.email.trim(),
     birthDate: normalizeBirthDate(form.birthDate),
     genderType: form.gender,
-    ageGroup: null,
     residenceRegion: toResidenceRegion(form.region, trimmedAddress),
     detailAddress: trimmedAddress,
-    emergencyContact: null,
-    profileImageUrl: null,
     highestEducation: form.education,
-    graduationStatus: '확인 필요',
+    graduationStatus: form.graduationStatus,
     majorCareer: form.career.trim() || '확인 필요',
-    careerDetail: null,
-    projectExperience: null,
-    careerGapReason: null,
     targetJob: selectedJobs.join(', '),
     skills: selectedJobs,
-    certifications: [],
-    portfolioUrl: null,
-    awards: null,
-    trainings: null,
-    disabilitySeverity: form.disabilitySeverity || '확인 필요',
+    disabilitySeverity: form.disabilitySeverity,
     disabilityRegisteredYn: toBooleanFromChoice(form.registeredYn, '등록'),
-    disabilityDescription: null,
-    assistiveDevices: null,
-    workSupportRequirements: null,
-    workAvailability: '확인 필요',
-    workTypes: form.employmentTypes.length ? form.employmentTypes : ['확인 필요'],
-    expectedSalary: form.salaryType || null,
-    workTimePreference: null,
-    remoteAvailableYn: null,
-    mobilityRange: null,
+    workAvailability: form.workAvailability,
+    workTypes: form.employmentTypes,
     selfIntroduction: trimmedIntroduction,
-    motivation: trimmedMotivation,
-    jobFitDescription: null,
-    careerGoal: null,
-    strengthsWeaknesses: null,
-    militaryService: null,
-    patrioticVeteranYn: null,
-    referrer: null,
-    snsUrl: null
+    motivation: trimmedMotivation
   });
 };
 
@@ -370,9 +480,13 @@ export function OnboardingPage() {
     setSubmitError('');
     setForm((prev) => {
       if (field === 'region') {
+        const nextRegion = typeof value === 'object' ? value.value : value;
+        const nextRegionLabel = typeof value === 'object' ? value.label : value;
+
         return {
           ...prev,
-          region: value
+          region: nextRegion,
+          regionLabel: nextRegionLabel
         };
       }
 
@@ -398,15 +512,7 @@ export function OnboardingPage() {
     setSubmitError('');
     setForm((prev) => {
       const values = prev[field];
-      let nextValues = values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
-
-      if (field === 'disabilityTypes') {
-        if (EXCLUSIVE_DISABILITY_TYPES.includes(value) && !values.includes(value)) {
-          nextValues = [value];
-        } else if (!EXCLUSIVE_DISABILITY_TYPES.includes(value)) {
-          nextValues = nextValues.filter((item) => !EXCLUSIVE_DISABILITY_TYPES.includes(item));
-        }
-      }
+      const nextValues = values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 
       return {
         ...prev,
@@ -456,7 +562,7 @@ export function OnboardingPage() {
         await completeSignup({
           signupToken: pendingSignup.signupToken,
           email: form.email.trim(),
-          profile: toSignupProfile(form)
+          profile: toSignupProfile(form, signupOptions.employmentTypes)
         });
         setIsComplete(true);
       } catch (error) {
@@ -474,6 +580,7 @@ export function OnboardingPage() {
     <main className="onboarding-page">
       {isComplete ? (
         <CompletionPanel
+          summary={getCompletionSummary(form)}
           onBack={() => navigate(ROUTE_PATHS.accessibilityMap)}
           onProfile={() => navigate(ROUTE_PATHS.myProfile)}
         />
@@ -506,7 +613,7 @@ export function OnboardingPage() {
               ) : signupOptions.status === 'empty' ? (
                 <OptionStatePanel
                   title="회원가입 옵션을 확인할 수 없습니다."
-                  message="고용형태, 희망 직무, 근무지역, 급여 방식 옵션을 다시 불러와 주세요."
+                  message="고용형태, 희망 직무, 근무지역 옵션을 다시 불러와 주세요."
                   actionLabel="다시 시도"
                   onAction={retryLoadOptions}
                 />
@@ -609,7 +716,7 @@ function StepContent({
       email: formatValidationVisible.email ? getFieldFormatMessage('email', formatValidationForm.email) : '',
       birthDate: formatValidationVisible.birthDate ? getFieldFormatMessage('birthDate', formatValidationForm.birthDate) : ''
     };
-    const addressRegionGuide = form.region || '서울';
+    const addressRegionGuide = form.regionLabel || '서울';
 
     return (
       <div className="onboarding-panel__content">
@@ -666,7 +773,7 @@ function StepContent({
             className="onboarding-field--region"
             options={options.regions}
             value={form.region}
-            onChange={(value) => updateField('region', value)}
+            onChange={(value, label) => updateField('region', { value, label })}
             placeholder="근무지역 선택"
           />
           <TextField
@@ -695,6 +802,13 @@ function StepContent({
           value={form.education}
           onChange={(value) => updateField('education', value)}
         />
+        <ChoiceField
+          label="졸업 상태"
+          required
+          options={graduationStatusOptions}
+          value={form.graduationStatus}
+          onChange={(value) => updateField('graduationStatus', value)}
+        />
         <TextField
           label="주요 경력 한 줄"
           placeholder="예) 수원시 청년센터 행정보조 2년"
@@ -714,7 +828,7 @@ function StepContent({
 
   if (currentStep === 3) {
     return (
-      <div className="onboarding-panel__content onboarding-panel__content--short">
+      <div className="onboarding-panel__content">
         <h2>근무 조건</h2>
         <MultiChoiceField
           label="가능한 고용형태"
@@ -725,11 +839,11 @@ function StepContent({
           onToggle={(value) => toggleArrayValue('employmentTypes', value)}
         />
         <ChoiceField
-          label="희망 급여 방식"
-          helper="선택 입력"
-          options={options.salaryTypes}
-          value={form.salaryType}
-          onChange={(value) => updateField('salaryType', value)}
+          label="근무 가능 시점"
+          required
+          options={workAvailabilityOptions}
+          value={form.workAvailability}
+          onChange={(value) => updateField('workAvailability', value)}
         />
       </div>
     );
@@ -740,15 +854,14 @@ function StepContent({
       <div className="onboarding-panel__content">
         <h2>장애 정보</h2>
         <div className="onboarding-info-box onboarding-info-box--neutral">
-          장애 정보는 추천 이유와 근무 지원사항 판단에 사용됩니다. 아직 확인이 어렵다면 “확인 필요”를 선택해 주세요.
+          장애 정보는 추천 이유와 근무 지원사항 판단에 사용됩니다. 분류가 명확하지 않다면 기타를 선택하고 설명에 필요한 내용을 남겨 주세요.
         </div>
-        <MultiChoiceField
+        <ChoiceField
           label="장애 유형"
           required
-          helper="다중 선택 가능"
           options={disabilityTypes}
-          values={form.disabilityTypes}
-          onToggle={(value) => toggleArrayValue('disabilityTypes', value)}
+          value={form.disabilityType}
+          onChange={(value) => updateField('disabilityType', value)}
         />
         <ChoiceField
           label="장애 정도"
@@ -1110,13 +1223,19 @@ function TextField({ label, required, placeholder, value, onChange, onBlur, hint
 }
 
 function SelectField({ label, required, options, value, onChange, placeholder, className = '' }) {
+  const handleChange = (event) => {
+    const selected = options.find((option) => (typeof option === 'string' ? option : option.value) === event.target.value);
+    const optionLabel = typeof selected === 'string' ? selected : selected?.label || event.target.value;
+    onChange(event.target.value, optionLabel);
+  };
+
   return (
     <label className={`onboarding-field onboarding-select-field ${className}`.trim()}>
       <span>
         <FieldLabel label={label} required={required} />
       </span>
       <span className="onboarding-input-wrap onboarding-select-wrap">
-        <select value={value} required={required} onChange={(event) => onChange(event.target.value)}>
+        <select value={value} required={required} onChange={handleChange}>
           <option value="" disabled>
             {placeholder}
           </option>
@@ -1176,17 +1295,22 @@ function MultiChoiceField({ label, required, helper, options, values, onToggle, 
         <FieldLabel label={label} required={required} helper={helper} />
       </legend>
       <div className="onboarding-chip-row">
-        {options.map((option) => (
-          <button
-            key={option}
-            type="button"
-            className={`onboarding-chip ${values.includes(option) ? 'is-selected' : ''}`}
-            onClick={() => onToggle(option)}
-            aria-pressed={values.includes(option)}
-          >
-            {option}
-          </button>
-        ))}
+        {options.map((option) => {
+          const optionValue = typeof option === 'string' ? option : option.value;
+          const optionLabel = typeof option === 'string' ? option : option.label;
+
+          return (
+            <button
+              key={optionValue}
+              type="button"
+              className={`onboarding-chip ${values.includes(optionValue) ? 'is-selected' : ''}`}
+              onClick={() => onToggle(optionValue)}
+              aria-pressed={values.includes(optionValue)}
+            >
+              {optionLabel}
+            </button>
+          );
+        })}
       </div>
     </fieldset>
   );
@@ -1324,7 +1448,7 @@ function JobPickerColumn({ title, description, children }) {
   );
 }
 
-function CompletionPanel({ onBack, onProfile }) {
+function CompletionPanel({ summary, onBack, onProfile }) {
   return (
     <section className="onboarding-complete" aria-labelledby="onboarding-complete-title">
       <div className="onboarding-complete__icon" aria-hidden="true">
@@ -1335,22 +1459,22 @@ function CompletionPanel({ onBack, onProfile }) {
         지금부터 일자리를 추천받을 수 있어요.
         <br />더 정확한 추천을 위해 <strong>상세 정보</strong>를 추가하면
         <br />
-        매칭 정확도가 평균 <strong>2.4배</strong> 높아져요.
+        추천 판단에 쓰이는 정보가 최대 <strong>{summary.totalProfileSignals}개</strong>까지 늘어나요.
       </p>
       <dl className="onboarding-complete__summary">
         <div>
           <dt>입력 항목</dt>
-          <dd>10개</dd>
-          <span>기본 입력</span>
+          <dd>{summary.completedInputCount}개</dd>
+          <span>방금 완료한 정보</span>
         </div>
         <div>
-          <dt>추가 기능</dt>
-          <dd>7 카테고리</dd>
-          <span>선택 입력</span>
+          <dt>추가 항목</dt>
+          <dd>{summary.remainingDetailGroupCount}개 묶음</dd>
+          <span>{summary.remainingDetailFieldCount}개 선택 정보</span>
         </div>
         <div>
           <dt>예상 시간</dt>
-          <dd>약 5분</dd>
+          <dd>약 {summary.estimatedMinutes}분</dd>
           <span>나중에도 가능</span>
         </div>
       </dl>
