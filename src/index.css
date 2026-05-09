@@ -2204,7 +2204,7 @@ a:hover {
   content: '';
   position: absolute;
   top: 11px;
-  bottom: 64px;
+  bottom: 37px;
   left: 10px;
   width: 2px;
   background: #d7dce2;
@@ -2217,12 +2217,7 @@ a:hover {
   gap: 17px;
   align-items: start;
   min-height: 48px;
-  color: #707781;
-}
-
-.onboarding-rail__item.is-complete,
-.onboarding-rail__item.is-current {
-  color: #101419;
+  color: #303640;
 }
 
 .onboarding-rail__marker {
@@ -2249,12 +2244,13 @@ a:hover {
 }
 
 .onboarding-rail__text span {
+  color: #303640;
   font-size: 14px;
   line-height: 1.25;
 }
 
 .onboarding-rail__text strong {
-  color: inherit;
+  color: #101419;
   font-size: 15px;
   font-weight: 800;
   line-height: 1.35;
@@ -2371,6 +2367,14 @@ a:hover {
   min-height: 278px;
   padding: 16px 15px;
   resize: vertical;
+}
+
+.onboarding-field--intro textarea {
+  min-height: 220px;
+}
+
+.onboarding-field--motivation textarea {
+  min-height: 180px;
 }
 
 .onboarding-field input::placeholder,
