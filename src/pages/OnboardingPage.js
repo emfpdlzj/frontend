@@ -52,7 +52,8 @@ const toInitialForm = (seed) => ({
   disabilityTypes: [],
   disabilitySeverity: '',
   registeredYn: '',
-  introduction: ''
+  introduction: '',
+  motivation: ''
 });
 
 const normalizeBirthDate = (value) => {
@@ -255,8 +256,14 @@ const getStepValidationMessage = (step, form) => {
     return '';
   }
 
-  if (step === 5 && !hasText(form.introduction)) {
-    return '자기소개를 입력해 주세요.';
+  if (step === 5) {
+    if (!hasText(form.introduction)) {
+      return '자기소개를 입력해 주세요.';
+    }
+
+    if (!hasText(form.motivation)) {
+      return '지원동기를 입력해 주세요.';
+    }
   }
 
   return '';
@@ -270,6 +277,8 @@ const getSignupValidationMessage = (form) => {
 const toSignupProfile = (form) => {
   const trimmedName = form.name.trim();
   const trimmedAddress = form.address.trim();
+  const trimmedIntroduction = form.introduction.trim() || '확인 필요';
+  const trimmedMotivation = form.motivation.trim() || '확인 필요';
   const selectedJobs = form.jobs.length ? form.jobs : ['확인 필요'];
 
   return withoutEmptyOptionalFields({
@@ -315,8 +324,8 @@ const toSignupProfile = (form) => {
     workTimePreference: null,
     remoteAvailableYn: null,
     mobilityRange: null,
-    selfIntroduction: form.introduction.trim() || '확인 필요',
-    motivation: null,
+    selfIntroduction: trimmedIntroduction,
+    motivation: trimmedMotivation,
     jobFitDescription: null,
     careerGoal: null,
     strengthsWeaknesses: null,
@@ -763,13 +772,22 @@ function StepContent({
   return (
     <div className="onboarding-panel__content">
       <h2>자기소개</h2>
-      <label className="onboarding-field onboarding-field--full">
+      <label className="onboarding-field onboarding-field--full onboarding-field--intro">
         <span>자기소개 <em>*</em></span>
         <textarea
           value={form.introduction}
           onChange={(event) => updateField('introduction', event.target.value)}
           placeholder="간단하게 본인을 소개해 주세요. 채용 담당자에게 표시될 수 있어요."
           rows={9}
+        />
+      </label>
+      <label className="onboarding-field onboarding-field--full onboarding-field--motivation">
+        <span>지원동기 <em>*</em></span>
+        <textarea
+          value={form.motivation}
+          onChange={(event) => updateField('motivation', event.target.value)}
+          placeholder="지원하려는 이유와 기대하는 근무 방향을 적어 주세요."
+          rows={6}
         />
       </label>
     </div>

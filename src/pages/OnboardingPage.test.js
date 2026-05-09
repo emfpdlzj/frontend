@@ -125,6 +125,11 @@ test('blocks each signup step until required fields are completed', async () => 
 
   userEvent.type(screen.getByPlaceholderText('간단하게 본인을 소개해 주세요. 채용 담당자에게 표시될 수 있어요.'), '사무 지원 경험이 있습니다.');
   userEvent.click(screen.getByRole('button', { name: '가입 완료' }));
+  expect(screen.getByRole('alert')).toHaveTextContent('지원동기를 입력해 주세요.');
+  expect(completeSignup).not.toHaveBeenCalled();
+
+  userEvent.type(screen.getByPlaceholderText('지원하려는 이유와 기대하는 근무 방향을 적어 주세요.'), '안정적으로 일하며 역량을 키우고 싶습니다.');
+  userEvent.click(screen.getByRole('button', { name: '가입 완료' }));
 
   await waitFor(() => expect(completeSignup).toHaveBeenCalledTimes(1));
   expect(completeSignup).toHaveBeenCalledWith(
@@ -133,7 +138,9 @@ test('blocks each signup step until required fields are completed', async () => 
         birthDate: '1990-01-01',
         genderType: 'MALE',
         residenceRegion: '서울',
-        expectedSalary: '월급'
+        expectedSalary: '월급',
+        selfIntroduction: '사무 지원 경험이 있습니다.',
+        motivation: '안정적으로 일하며 역량을 키우고 싶습니다.'
       })
     })
   );
@@ -181,6 +188,7 @@ test('normalizes keyboard birth date input before signup submit', async () => {
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
   userEvent.type(screen.getByPlaceholderText('간단하게 본인을 소개해 주세요. 채용 담당자에게 표시될 수 있어요.'), '사무 지원 경험이 있습니다.');
+  userEvent.type(screen.getByPlaceholderText('지원하려는 이유와 기대하는 근무 방향을 적어 주세요.'), '지원동기입니다.');
   userEvent.click(screen.getByRole('button', { name: '가입 완료' }));
 
   await waitFor(() => expect(completeSignup).toHaveBeenCalledTimes(1));
@@ -222,10 +230,10 @@ test('allows non-disability choices without hiding required accessibility fields
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
-  const noDisabilityButtons = screen.getAllByRole('button', { name: '해당 없음' });
-  userEvent.click(noDisabilityButtons[0]);
-  userEvent.click(noDisabilityButtons[1]);
-  userEvent.click(screen.getByRole('button', { name: '등록 안 됨 / 해당 없음' }));
+  const needsReviewButtons = screen.getAllByRole('button', { name: '확인 필요' });
+  userEvent.click(needsReviewButtons[0]);
+  userEvent.click(needsReviewButtons[1]);
+  userEvent.click(screen.getByRole('button', { name: '등록 안 됨' }));
 
   expect(screen.getByRole('group', { name: /장애 유형/ })).toBeInTheDocument();
   expect(screen.getByRole('group', { name: /장애 정도/ })).toBeInTheDocument();
