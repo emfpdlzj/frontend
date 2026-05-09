@@ -17,7 +17,7 @@ export function ProfileSectionPanel({ activeSection }) {
     extra: <ExtraPanel />
   };
 
-  return <section className="profile-section-panel">{panels[activeSection]}</section>;
+  return <section className={`profile-section-panel profile-section-panel--${activeSection}`}>{panels[activeSection]}</section>;
 }
 
 function BasicInfoPanel() {
@@ -182,7 +182,7 @@ function WorkConditionPanel() {
           <RadioGroup options={['즉시 가능', '협의 가능']} selected="즉시 가능" />
         </Field>
         <Field label="근무 형태 가능 범위" required>
-          <CheckboxRow options={['정규직', '계약직', '파트 타임', '인턴', '프리랜서']} />
+          <CheckboxRow options={['정규직', '계약직', '파트 타임', '인턴', '프리랜서']} selectedOptions={['인턴']} />
         </Field>
       </div>
       <Divider />
@@ -293,7 +293,9 @@ function PanelHeader({ title, action }) {
 function OptionalStrip({ items }) {
   return (
     <div>
-      <h2>선택 정보</h2>
+      <h2>
+        선택 정보 <span className="profile-section-caption">선택 정보는 선택 사항이며, 제공하지 않으셔도 불이익이 없습니다.</span>
+      </h2>
       <div className="profile-optional-strip">
         {items.map((item) => (
           <button type="button" key={item}>
@@ -308,14 +310,14 @@ function OptionalStrip({ items }) {
 
 function Field({ label, required = false, hint, children, width }) {
   return (
-    <label className={`profile-field${width ? ` profile-field--${width}` : ''}`}>
+    <div className={`profile-field${width ? ` profile-field--${width}` : ''}`}>
       <span className="profile-label">
         {label}
         {required ? <RequiredMark /> : null}
       </span>
       {children}
       {hint ? <span className="profile-help">{hint}</span> : null}
-    </label>
+    </div>
   );
 }
 
@@ -360,12 +362,12 @@ function RadioGroup({ options, selected }) {
   );
 }
 
-function CheckboxRow({ options }) {
+function CheckboxRow({ options, selectedOptions = [] }) {
   return (
     <div className="profile-checkbox-row">
       {options.map((option) => (
         <label key={option} className="profile-checkbox">
-          <input type="checkbox" readOnly />
+          <input type="checkbox" checked={selectedOptions.includes(option)} readOnly />
           <span aria-hidden="true" />
           {option}
         </label>

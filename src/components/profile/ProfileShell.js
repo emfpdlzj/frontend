@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import arrowDownIcon from '../../assets/profile/arrow-down.png';
+import arrowUpWhiteIcon from '../../assets/profile/arrow_up_white.png';
 import editIcon from '../../assets/profile/edit_icon.png';
 import moreIcon from '../../assets/profile/more_icon.png';
 import plusIcon from '../../assets/profile/plus_icon.png';
@@ -114,7 +116,12 @@ function ProfileTabs({ rows, activeSection, onTabClick, compact = false }) {
                 aria-expanded={active}
               >
                 <span>{section.label}</span>
-                <span className="profile-tabs__chevron" aria-hidden="true" />
+                <img
+                  className="profile-tabs__chevron"
+                  src={active ? arrowUpWhiteIcon : arrowDownIcon}
+                  alt=""
+                  aria-hidden="true"
+                />
               </button>
             );
           })}

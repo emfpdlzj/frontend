@@ -3929,21 +3929,17 @@ a:hover {
 }
 
 .profile-tabs__chevron {
-  width: 10px;
-  height: 10px;
-  border-right: 1.8px solid currentColor;
-  border-bottom: 1.8px solid currentColor;
-  transform: rotate(45deg) translateY(-2px);
-}
-
-.profile-tabs__button.is-active .profile-tabs__chevron {
-  transform: rotate(225deg) translateY(-2px);
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex: 0 0 auto;
 }
 
 .profile-section-panel {
   border: 1px solid #cbd2dc;
   background: #fff;
   padding: 30px 31px;
+  min-height: 0;
 }
 
 .profile-section-panel h2 {
@@ -3959,6 +3955,11 @@ a:hover {
   color: #6b7280;
   font-size: 13px;
   font-weight: 400;
+}
+
+.profile-form-grid + .profile-field,
+.profile-disability-detail + .profile-field {
+  margin-top: 32px;
 }
 
 .profile-basic-grid {
@@ -4029,7 +4030,8 @@ a:hover {
 }
 
 .profile-form-grid--work-top {
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 205px 1fr;
+  gap: 80px;
 }
 
 .profile-form-grid--work {
@@ -4048,7 +4050,7 @@ a:hover {
 }
 
 .profile-form-grid--extra-top {
-  grid-template-columns: 1fr 280px 1fr;
+  grid-template-columns: minmax(320px, 400px) 260px minmax(320px, 376px);
   gap: 50px;
 }
 
@@ -4206,6 +4208,7 @@ a:hover {
 
 .profile-radio span,
 .profile-checkbox span {
+  position: relative;
   width: 20px;
   height: 20px;
   border: 1px solid #6b7280;
@@ -4229,6 +4232,18 @@ a:hover {
 .profile-checkbox input:checked + span {
   border-color: #2f7df6;
   background: #2f7df6;
+}
+
+.profile-checkbox input:checked + span::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 6px;
+  height: 10px;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(45deg);
 }
 
 .profile-divider {
