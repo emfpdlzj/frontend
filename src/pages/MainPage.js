@@ -11,13 +11,6 @@ import { loadNaverMapScript } from '../utils/naverMapSdk';
 const NAVER_MAP_SCRIPT_ID = 'bridgework-naver-map-sdk';
 const NAVER_MAP_READY_CALLBACK = '__bridgeworkNaverMapReady__';
 
-const sortTabs = [
-  { id: 'recommended', label: '추천순' },
-  { id: 'latest', label: '최신순' },
-  { id: 'deadline', label: '마감임박순' },
-  { id: 'accessibility', label: '접근성 높은순' }
-];
-
 const shortcuts = [
   { id: 'quick', icon: '↗', label: '퀵 맞춤 추천', href: '#recommended-jobs-title' },
   { id: 'map', icon: '⌖', label: '접근성 지도 추천', to: ROUTE_PATHS.accessibilityMap },
@@ -275,55 +268,6 @@ function HomeNaverMapPreview({ job }) {
   );
 }
 
-function getComparableFitScore(job) {
-  return typeof job.fitScore === 'number' ? job.fitScore : -1;
-}
-
-function getComparableDeadline(job) {
-  return job.deadlineValue || Number.MAX_SAFE_INTEGER;
-}
-
-function sortJobs(jobs, sortId) {
-  const indexedJobs = jobs.map((job, index) => ({ job, index }));
-
-  const sorted = [...indexedJobs].sort((left, right) => {
-    if (sortId === 'latest') {
-      const registeredDiff = (right.job.registeredValue || 0) - (left.job.registeredValue || 0);
-      if (registeredDiff !== 0) {
-        return registeredDiff;
-      }
-    }
-
-    if (sortId === 'deadline') {
-      const deadlineDiff = getComparableDeadline(left.job) - getComparableDeadline(right.job);
-      if (deadlineDiff !== 0) {
-        return deadlineDiff;
-      }
-    }
-
-    if (sortId === 'accessibility') {
-      const geoDiff = Number(right.job.hasGeo) - Number(left.job.hasGeo);
-      if (geoDiff !== 0) {
-        return geoDiff;
-      }
-    }
-
-    const scoreDiff = getComparableFitScore(right.job) - getComparableFitScore(left.job);
-    if (scoreDiff !== 0) {
-      return scoreDiff;
-    }
-
-    const deadlineDiff = getComparableDeadline(left.job) - getComparableDeadline(right.job);
-    if (deadlineDiff !== 0) {
-      return deadlineDiff;
-    }
-
-    return left.index - right.index;
-  });
-
-  return sorted.map(({ job }) => job);
-}
-
 function getProfileSummary(profile) {
   const targetJob = profile?.targetJob || profile?.desiredJob || '기본 프로필';
   const skills = Array.isArray(profile?.skills) ? profile.skills.filter(Boolean) : [];
@@ -501,9 +445,7 @@ function HomeFeedback({ status, error, variant = 'block' }) {
 
 export function MainPage() {
   const { status, error, profile, jobs, aiEnabled } = useHomeRecommendations();
-  const [activeSort, setActiveSort] = useState('recommended');
-  const sortedJobs = useMemo(() => sortJobs(jobs, activeSort), [activeSort, jobs]);
-  const visibleJobs = useMemo(() => sortedJobs.slice(0, 5), [sortedJobs]);
+  const visibleJobs = useMemo(() => jobs.slice(0, 5), [jobs]);
   const isLoggedOut = status === 'disabled';
   const deadlineSoonCount = jobs.filter((job) => job.dueLabel.startsWith('D-') && Number(job.dueLabel.slice(2)) <= 7).length;
   const geoReadyCount = jobs.filter((job) => job.hasGeo).length;
@@ -580,21 +522,6 @@ export function MainPage() {
                   더보기
                 </Link>
               </div>
-            </div>
-
-            <div className="home-sort-tabs" role="tablist" aria-label="추천 공고 정렬">
-              {sortTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  className={`home-sort-tab${activeSort === tab.id ? ' is-active' : ''}`}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeSort === tab.id}
-                  onClick={() => setActiveSort(tab.id)}
-                >
-                  {tab.label}
-                </button>
-              ))}
             </div>
 
             <HomeFeedback status={status} error={error} variant={isLoggedOut ? 'inline' : 'block'} />
