@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../../assets/header/logo.png';
 import logoText from '../../assets/header/logo-text.png';
+import searchIcon from '../../assets/header/search.png';
 import { useAuth } from '../../auth/AuthContext';
 import { LoginModal } from '../auth/LoginModal';
 import { accessibilityMapMockData } from '../../config/accessibilityMapMockData';
@@ -13,6 +14,10 @@ export function AppHeader() {
   const { isAuthenticated, isInitializing, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+  };
 
   const handleLogout = async () => {
     if (isLoggingOut) {
@@ -35,7 +40,12 @@ export function AppHeader() {
         <img className="app-header__logo-text" src={logoText} alt="Bridgework" />
       </a>
 
-      <form className="app-header__map-search" role="search" aria-label="접근성 지도 출발지 검색">
+      <form
+        className="app-header__map-search"
+        role="search"
+        aria-label="접근성 지도 출발지 검색"
+        onSubmit={handleSearchSubmit}
+      >
         <label className="sr-only" htmlFor="app-header-map-search">
           접근성 지도 출발지 입력
         </label>
@@ -44,6 +54,9 @@ export function AppHeader() {
           type="search"
           placeholder={accessibilityMapMockData.searchPlaceholder}
         />
+        <button className="app-header__search-button" type="submit" aria-label="출발지 검색">
+          <img src={searchIcon} alt="" aria-hidden="true" />
+        </button>
       </form>
 
       <div className="app-header__actions" aria-label="사용자 메뉴">

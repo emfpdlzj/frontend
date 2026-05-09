@@ -53,6 +53,122 @@ a:hover {
   padding-left: var(--app-tab-nav-width);
 }
 
+.app-frame__main {
+  min-height: calc(100vh - var(--app-header-height));
+  min-height: calc(100dvh - var(--app-header-height));
+}
+
+.app-footer {
+  background: #f4f5f6;
+  border-top: 1px solid #eef0f3;
+  color: #242a31;
+}
+
+.app-footer__inner {
+  margin: 0 120px 0 60px;
+  padding: 48px 0 28px;
+}
+
+.app-footer__top,
+.app-footer__bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.app-footer__top {
+  padding-bottom: 40px;
+}
+
+.app-footer__brand-group {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  min-width: 0;
+}
+
+.app-footer__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  width: fit-content;
+}
+
+.app-footer__logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.app-footer__logo-text {
+  width: 118px;
+  height: auto;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.app-footer__description {
+  margin: 0;
+  color: #222831;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.app-footer__social-list {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-footer__social-item {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.app-footer__social-item img {
+  width: 40px;
+  height: 40px;
+  display: block;
+  object-fit: contain;
+}
+
+.app-footer__bottom {
+  min-height: 54px;
+  padding-top: 18px;
+  border-top: 1px solid #cfd4da;
+}
+
+.app-footer__policy-list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  color: #1f2933;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.app-footer__copyright {
+  margin: 0;
+  color: #5b6470;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.6;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .app-tab-nav {
   position: fixed;
   inset: 0 auto 0 0;
@@ -166,7 +282,8 @@ a:hover {
   height: 42px;
   display: flex;
   align-items: center;
-  padding: 0 20px;
+  gap: 12px;
+  padding: 0 8px 0 20px;
   border: 1px solid #cfd6df;
   border-radius: 8px;
   background: #fff;
@@ -187,6 +304,35 @@ a:hover {
 .app-header__map-search input::placeholder {
   color: #6b7280;
   opacity: 1;
+}
+
+.app-header__search-button {
+  appearance: none;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.app-header__search-button:hover {
+  background: #f3f6fb;
+}
+
+.app-header__search-button:focus-visible {
+  outline: 3px solid rgba(13, 99, 243, 0.28);
+  outline-offset: 1px;
+}
+
+.app-header__search-button img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .app-header__actions {
@@ -396,15 +542,6 @@ a:hover {
 .page-header-actions {
   display: flex;
   align-items: center;
-}
-
-.page-footer {
-  margin-top: 14px;
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  color: var(--text-sub);
-  font-size: 0.9rem;
 }
 
 .not-found-page {
@@ -2277,13 +2414,53 @@ a:hover {
     min-width: 0;
     width: auto;
     flex: 1 1 auto;
-    padding: 0 14px;
+    gap: 8px;
+    padding: 0 6px 0 14px;
   }
 
   .app-header__auth-button {
     min-width: 78px;
     min-height: 40px;
     font-size: 14px;
+  }
+
+  .app-footer__inner {
+    width: auto;
+    margin: 0 16px;
+    padding: 36px 0 26px;
+  }
+
+  .app-footer__top,
+  .app-footer__bottom {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .app-footer__top {
+    padding-bottom: 28px;
+  }
+
+  .app-footer__brand-group {
+    gap: 22px;
+  }
+
+  .app-footer__description {
+    font-size: 15px;
+  }
+
+  .app-footer__social-list {
+    flex-wrap: wrap;
+  }
+
+  .app-footer__bottom {
+    min-height: auto;
+    padding-top: 18px;
+  }
+
+  .app-footer__copyright {
+    text-align: left;
+    white-space: normal;
   }
 
   .login-modal-backdrop {
