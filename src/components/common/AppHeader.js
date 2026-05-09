@@ -10,7 +10,7 @@ import { ROUTE_PATHS } from '../../config/routes';
 
 const BRIDGEWORK_HOME_URL = 'https://www.bridgework.cloud/';
 
-export function AppHeader({ hideLoginButton = false }) {
+export function AppHeader({ showMapSearch = false }) {
   const navigate = useNavigate();
   const { isAuthenticated, isInitializing, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -41,24 +41,26 @@ export function AppHeader({ hideLoginButton = false }) {
         <img className="app-header__logo-text" src={logoText} alt="Bridgework" />
       </a>
 
-      <form
-        className="app-header__map-search"
-        role="search"
-        aria-label="접근성 지도 출발지 검색"
-        onSubmit={handleSearchSubmit}
-      >
-        <label className="sr-only" htmlFor="app-header-map-search">
-          접근성 지도 출발지 입력
-        </label>
-        <input
-          id="app-header-map-search"
-          type="search"
-          placeholder={accessibilityMapMockData.searchPlaceholder}
-        />
-        <button className="app-header__search-button" type="submit" aria-label="출발지 검색">
-          <img src={searchIcon} alt="" aria-hidden="true" />
-        </button>
-      </form>
+      {showMapSearch ? (
+        <form
+          className="app-header__map-search"
+          role="search"
+          aria-label="접근성 지도 출발지 검색"
+          onSubmit={handleSearchSubmit}
+        >
+          <label className="sr-only" htmlFor="app-header-map-search">
+            접근성 지도 출발지 입력
+          </label>
+          <input
+            id="app-header-map-search"
+            type="search"
+            placeholder={accessibilityMapMockData.searchPlaceholder}
+          />
+          <button className="app-header__search-button" type="submit" aria-label="출발지 검색">
+            <img src={searchIcon} alt="" aria-hidden="true" />
+          </button>
+        </form>
+      ) : null}
 
       <div className="app-header__actions" aria-label="사용자 메뉴">
         {isAuthenticated ? (
@@ -70,7 +72,7 @@ export function AppHeader({ hideLoginButton = false }) {
           >
             {isLoggingOut ? '로그아웃 중' : '로그아웃'}
           </button>
-        ) : hideLoginButton ? null : (
+        ) : (
           <button
             className="app-header__auth-button app-header__auth-button--login"
             type="button"
