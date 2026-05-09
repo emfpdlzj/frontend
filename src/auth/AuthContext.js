@@ -52,6 +52,7 @@ export function AuthProvider({ children }) {
 
   const tokensRef = useRef(tokens);
   const refreshingRef = useRef(null);
+  const sessionVersionRef = useRef(0);
 
   useEffect(() => {
     tokensRef.current = tokens;
@@ -65,6 +66,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const clearSession = useCallback(() => {
+    sessionVersionRef.current += 1;
+    refreshingRef.current = null;
     authStorage.clearTokens();
     authStorage.clearSignupSession();
     setTokens(null);
@@ -89,8 +92,13 @@ export function AuthProvider({ children }) {
     return me;
   }, []);
 
+  const isStaleSessionResult = useCallback((error) => error?.errorCode === 'STALE_SESSION_RESULT', []);
+
   const refreshTokens = useCallback(async () => {
-    if (!tokensRef.current?.refreshToken) {
+    const refreshToken = tokensRef.current?.refreshToken;
+
+    if (!refreshToken) {
+      clearSession();
       throw new ApiError('리프레시 토큰이 없습니다.', 401, 'MISSING_REFRESH_TOKEN');
     }
 
@@ -98,13 +106,24 @@ export function AuthProvider({ children }) {
       return refreshingRef.current;
     }
 
-    refreshingRef.current = authApi
-      .refreshToken(tokensRef.current.refreshToken)
+    const refreshSessionVersion = sessionVersionRef.current;
+
+    let refreshRequest;
+    refreshRequest = authApi
+      .refreshToken(refreshToken)
       .then((tokenPair) => {
+        if (sessionVersionRef.current !== refreshSessionVersion) {
+          throw new ApiError('이미 종료된 세션의 토큰 갱신 결과입니다.', 401, 'STALE_SESSION_RESULT');
+        }
+
         logger.info('Access token refreshed.');
         return saveTokens(tokenPair);
       })
       .catch((error) => {
+        if (isStaleSessionResult(error)) {
+          throw error;
+        }
+
         logger.warn('Token refresh failed. Clearing session.', {
           status: error?.status,
           errorCode: error?.errorCode
@@ -113,11 +132,14 @@ export function AuthProvider({ children }) {
         throw error;
       })
       .finally(() => {
-        refreshingRef.current = null;
+        if (refreshingRef.current === refreshRequest) {
+          refreshingRef.current = null;
+        }
       });
+    refreshingRef.current = refreshRequest;
 
     return refreshingRef.current;
-  }, [clearSession, saveTokens]);
+  }, [clearSession, isStaleSessionResult, saveTokens]);
 
   const callWithAuth = useCallback(
     async (operation, signal) => {
@@ -158,10 +180,11 @@ export function AuthProvider({ children }) {
         return { ...result, signupRequired: true };
       }
 
+      const tokenPair = normalizeTokenPair(extractTokenPair(result));
+      await fetchMe(tokenPair.accessToken, signal);
       setPendingSignup(null);
       authStorage.writeAuthProvider(payload.provider || result.provider);
-      const tokenPair = saveTokens(result);
-      await fetchMe(tokenPair.accessToken, signal);
+      saveTokens(tokenPair);
       return result;
     },
     [fetchMe, saveTokens, setPendingSignup]
@@ -170,10 +193,11 @@ export function AuthProvider({ children }) {
   const completeSignup = useCallback(
     async (payload, signal) => {
       const response = await authApi.completeSignup(payload, signal);
-      authStorage.writeAuthProvider(payload.provider || pendingSignup?.provider);
-      const tokenPair = saveTokens(response);
-      setPendingSignup(null);
+      const tokenPair = normalizeTokenPair(extractTokenPair(response));
       await fetchMe(tokenPair.accessToken, signal);
+      authStorage.writeAuthProvider(payload.provider || pendingSignup?.provider);
+      saveTokens(tokenPair);
+      setPendingSignup(null);
       return tokenPair;
     },
     [fetchMe, pendingSignup?.provider, saveTokens, setPendingSignup]
