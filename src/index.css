@@ -2101,7 +2101,7 @@ a:hover {
 
 .onboarding-main {
   width: min(1698px, calc(100% - 222px));
-  margin: 28px auto 0;
+  margin: 28px auto 200px;
 }
 
 .onboarding-intro {
@@ -2272,6 +2272,10 @@ a:hover {
   row-gap: 29px;
 }
 
+.onboarding-field--address {
+  grid-column: 2;
+}
+
 .onboarding-field,
 .onboarding-choice-group {
   display: flex;
@@ -2305,6 +2309,7 @@ a:hover {
   margin-bottom: 22px;
 }
 
+.onboarding-label-helper,
 .onboarding-choice-group legend span {
   color: #1f2329;
   font-weight: 500;
@@ -2366,6 +2371,11 @@ a:hover {
   padding-right: 54px;
 }
 
+.onboarding-date-field {
+  position: relative;
+  z-index: 3;
+}
+
 .onboarding-date-picker-button {
   position: absolute;
   top: 50%;
@@ -2389,22 +2399,287 @@ a:hover {
   color: #111418;
 }
 
+.onboarding-date-picker-button[aria-expanded='true'] {
+  background: #eef5ff;
+  color: #0d63f3;
+}
+
 .onboarding-date-picker-button .onboarding-input-icon {
   position: static;
   transform: none;
   fill: currentColor;
 }
 
-.onboarding-native-date-input {
+.onboarding-calendar-popover {
   position: absolute;
-  right: 9px;
-  bottom: 0;
-  width: 40px;
-  height: 1px;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  width: min(356px, calc(100vw - var(--app-tab-nav-width) - 44px));
+  padding: 18px;
+  border: 1px solid #d8e0ea;
+  border-radius: 8px;
+  background: #f8f9fb;
+  box-shadow: 0 18px 42px rgba(26, 45, 74, 0.14), 0 2px 8px rgba(26, 45, 74, 0.08);
+}
+
+.onboarding-calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.onboarding-calendar-title {
+  margin: 0;
+  color: #111418;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.35;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.onboarding-calendar-select-wrap {
+  position: relative;
+}
+
+.onboarding-calendar-select-button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #111418;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.onboarding-calendar-select-button:hover,
+.onboarding-calendar-select-button[aria-expanded='true'] {
+  border-color: #cbe0ff;
+  background: #eef5ff;
+  color: #0d63f3;
+}
+
+.onboarding-calendar-select-button:focus-visible {
+  outline: 3px solid rgba(47, 111, 242, 0.24);
+  outline-offset: 2px;
+  border-color: #2f6ff2;
+}
+
+.onboarding-calendar-select-button span {
+  color: #5f6f83;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.onboarding-calendar-select-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 25;
+  width: 104px;
+  max-height: 214px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid #d8e0ea;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(26, 45, 74, 0.13), 0 2px 8px rgba(26, 45, 74, 0.08);
+}
+
+.onboarding-calendar-select-menu--year {
+  width: 126px;
+}
+
+.onboarding-calendar-select-menu button {
+  width: 100%;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #2d333b;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.onboarding-calendar-select-menu button:hover,
+.onboarding-calendar-select-menu button.is-selected {
+  border-color: #cbe0ff;
+  background: #eef5ff;
+  color: #0d63f3;
+}
+
+.onboarding-calendar-select-menu button:focus-visible {
+  outline: 3px solid rgba(47, 111, 242, 0.24);
+  outline-offset: 1px;
+  border-color: #2f6ff2;
+}
+
+.onboarding-calendar-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.onboarding-calendar-nav button {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
-  border: 0;
-  opacity: 0;
-  pointer-events: none;
+  border: 1px solid #d7e1ee;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #344253;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.onboarding-calendar-nav button:hover {
+  border-color: #bfd7ff;
+  background: #eef5ff;
+  color: #0d63f3;
+}
+
+.onboarding-calendar-nav button:focus-visible,
+.onboarding-calendar-day:focus-visible,
+.onboarding-calendar-action:focus-visible {
+  outline: 3px solid rgba(47, 111, 242, 0.24);
+  outline-offset: 2px;
+  border-color: #2f6ff2;
+}
+
+.onboarding-calendar-nav svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.onboarding-calendar-weekdays,
+.onboarding-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.onboarding-calendar-weekdays {
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #667385;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+
+.onboarding-calendar-weekdays span {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboarding-calendar-grid {
+  gap: 7px 8px;
+}
+
+.onboarding-calendar-day {
+  position: relative;
+  min-width: 0;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #232a33;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.onboarding-calendar-day:hover {
+  border-color: #cbe0ff;
+  background: #eef5ff;
+  color: #0d63f3;
+}
+
+.onboarding-calendar-day.is-muted {
+  color: #9aa5b3;
+  font-weight: 600;
+}
+
+.onboarding-calendar-day.is-today {
+  border-color: #bfd7ff;
+  background: #ffffff;
+  color: #145ad7;
+}
+
+.onboarding-calendar-day.is-selected {
+  border-color: #2f6ff2;
+  background: #eef5ff;
+  color: #0d63f3;
+  box-shadow: inset 0 0 0 1px rgba(47, 111, 242, 0.18);
+}
+
+.onboarding-calendar-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e6ebf1;
+}
+
+.onboarding-calendar-action {
+  min-width: 60px;
+  min-height: 38px;
+  padding: 0 13px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.onboarding-calendar-action--ghost {
+  border: 1px solid #d4dce6;
+  background: #ffffff;
+  color: #344253;
+}
+
+.onboarding-calendar-action--ghost:hover {
+  border-color: #c3cfdd;
+  background: #f3f6fa;
+}
+
+.onboarding-calendar-action--primary {
+  border: 1px solid #2f6ff2;
+  background: #2f6ff2;
+  color: #ffffff;
+}
+
+.onboarding-calendar-action--primary:hover {
+  background: #1f5ee5;
 }
 
 .onboarding-input-icon {
@@ -2425,6 +2700,11 @@ a:hover {
   line-height: 1.5;
 }
 
+.onboarding-field .onboarding-field-hint {
+  color: #6b7280;
+  font-weight: 500;
+}
+
 .onboarding-field .onboarding-field-error {
   color: var(--danger);
   font-weight: 700;
@@ -2434,6 +2714,20 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 12px 9px;
+}
+
+.onboarding-choice-group--region .onboarding-chip-row {
+  width: min(612px, calc(100vw - var(--app-tab-nav-width) - 96px));
+  display: grid;
+  grid-template-columns: repeat(7, minmax(64px, max-content));
+  align-items: center;
+  gap: 12px 9px;
+}
+
+.onboarding-choice-group--region .onboarding-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .onboarding-chip {
@@ -2455,6 +2749,10 @@ a:hover {
 }
 
 .onboarding-job-picker {
+  --job-picker-visible-rows: 6;
+  --job-picker-row-height: 50px;
+  --job-picker-row-gap: 8px;
+  --job-picker-list-padding-block: 24px;
   margin-bottom: 24px;
 }
 
@@ -2468,7 +2766,7 @@ a:hover {
   display: grid;
   grid-template-columns: 1fr 1fr 1.2fr;
   gap: 16px;
-  min-height: 330px;
+  align-items: start;
 }
 
 .onboarding-job-picker__column {
@@ -2505,7 +2803,16 @@ a:hover {
 .onboarding-job-picker__list {
   flex: 1;
   min-height: 0;
-  height: 258px;
+  height: calc(
+    (var(--job-picker-row-height) * var(--job-picker-visible-rows)) +
+    (var(--job-picker-row-gap) * (var(--job-picker-visible-rows) - 1)) +
+    var(--job-picker-list-padding-block)
+  );
+  max-height: calc(
+    (var(--job-picker-row-height) * var(--job-picker-visible-rows)) +
+    (var(--job-picker-row-gap) * (var(--job-picker-visible-rows) - 1)) +
+    var(--job-picker-list-padding-block)
+  );
   overflow-y: auto;
   padding: 8px 12px 16px;
   scrollbar-width: thin;
@@ -2528,7 +2835,7 @@ a:hover {
 .onboarding-job-picker__option {
   position: relative;
   width: 100%;
-  min-height: 50px;
+  min-height: var(--job-picker-row-height);
   padding: 12px 14px 12px 16px;
   border: 1px solid transparent;
   border-radius: 14px;
@@ -2547,7 +2854,7 @@ a:hover {
 }
 
 .onboarding-job-picker__option + .onboarding-job-picker__option {
-  margin-top: 8px;
+  margin-top: var(--job-picker-row-gap);
 }
 
 .onboarding-job-picker__option:hover {
@@ -2560,7 +2867,6 @@ a:hover {
   background: #eef5ff;
   color: #145ad7;
   font-weight: 800;
-  box-shadow: inset 4px 0 0 #2f6ff2;
 }
 
 .onboarding-job-picker__option--check {
@@ -2602,7 +2908,7 @@ a:hover {
   gap: 9px;
   font: inherit;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.35;
   cursor: pointer;
 }
@@ -2652,6 +2958,11 @@ a:hover {
   font-size: 14px;
   font-weight: 700;
   line-height: 1.45;
+}
+
+.onboarding-disability-fields-placeholder {
+  min-height: 280px;
+  background: #ffffff;
 }
 
 .onboarding-actions {
@@ -2970,6 +3281,39 @@ a:hover {
 
   .onboarding-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .onboarding-field--address {
+    grid-column: auto;
+  }
+
+  .onboarding-choice-group--region .onboarding-chip-row {
+    width: 100%;
+    grid-template-columns: repeat(auto-fit, minmax(64px, max-content));
+  }
+
+  .onboarding-calendar-popover {
+    left: 0;
+    width: min(100%, 360px);
+    padding: 16px;
+  }
+
+  .onboarding-calendar-grid {
+    gap: 8px;
+  }
+
+  .onboarding-calendar-day {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .onboarding-calendar-nav button {
+    width: 42px;
+    height: 42px;
+  }
+
+  .onboarding-calendar-action {
+    min-height: 42px;
   }
 
   .onboarding-job-picker__columns {

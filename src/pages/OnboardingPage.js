@@ -5,7 +5,15 @@ import stepBeforeIcon from '../assets/signup/item-before.png';
 import stepCompleteIcon from '../assets/signup/item-completion.png';
 import stepCurrentIcon from '../assets/signup/item-ing.png';
 import { useAuth } from '../auth/AuthContext';
+import { LoadingView } from '../components/common/LoadingView';
 import { StatusMessage } from '../components/common/StatusMessage';
+import { useSignupOptions } from '../hooks/useSignupOptions';
+
+const genderOptions = [
+  { value: 'MALE', label: '남성' },
+  { value: 'FEMALE', label: '여성' },
+  { value: 'NOT_DISCLOSED', label: '선택 안 함' }
+];
 
 const STEPS = [
   { id: 1, title: '기본 정보' },
@@ -17,66 +25,9 @@ const STEPS = [
 
 const educationOptions = ['고졸 이하', '초대졸', '대졸', '석사', '박사'];
 const MAX_JOB_SELECTIONS = 5;
-const jobCategories = [
-  {
-    label: '기획·전략',
-    groups: [
-      { label: '기획', jobs: ['서비스 기획', '사업기획', '전략기획', '문서 작성'] },
-      { label: '운영지원', jobs: ['사무보조', '운영보조', '자료 정리', '일정 관리'] }
-    ]
-  },
-  {
-    label: '법무·사무·총무',
-    groups: [
-      { label: '사무·총무', jobs: ['사무보조', '행정', '총무', '문서관리'] },
-      { label: '비서·안내', jobs: ['접수', '안내', '비서', '사무지원'] }
-    ]
-  },
-  {
-    label: '회계·세무',
-    groups: [
-      { label: '회계', jobs: ['회계 보조', '전표 입력', '정산 보조', '경리'] },
-      { label: '세무', jobs: ['세무 보조', '자료 입력', '급여 관리', '매입매출 관리'] }
-    ]
-  },
-  {
-    label: 'AI·개발·데이터',
-    groups: [
-      { label: '데이터', jobs: ['데이터 입력', '데이터 라벨링', '데이터 검수', '자료 수집'] },
-      { label: 'IT 지원', jobs: ['IT 지원', '헬프데스크', 'QA 보조', '시스템 운영 보조'] }
-    ]
-  },
-  {
-    label: '디자인',
-    groups: [
-      { label: '디자인', jobs: ['디자인', '웹디자인', '편집디자인', '콘텐츠 디자인'] },
-      { label: '콘텐츠', jobs: ['이미지 편집', '상세페이지 제작', '영상 보조', 'SNS 콘텐츠'] }
-    ]
-  },
-  {
-    label: '물류·무역',
-    groups: [
-      { label: '물류', jobs: ['물류', '입출고 관리', '재고 관리', '포장·분류'] },
-      { label: '무역사무', jobs: ['무역사무 보조', '수출입 서류', '배송 관리', '발주 관리'] }
-    ]
-  },
-  {
-    label: '고객상담·TM',
-    groups: [
-      { label: '고객상담', jobs: ['고객상담', 'CS', '인바운드 상담', '채팅 상담'] },
-      { label: 'TM', jobs: ['전화상담', '예약 안내', '고객관리', '민원 응대'] }
-    ]
-  },
-  {
-    label: '공공·복지',
-    groups: [
-      { label: '공공행정', jobs: ['행정', '민원 안내', '공공기관 사무보조', '자료 정리'] },
-      { label: '복지', jobs: ['복지 행정', '상담 보조', '프로그램 운영 보조', '기관 안내'] }
-    ]
-  }
-];
-const employmentOptions = ['정규직', '계약직', '무기계약직', '시간제', '일용직', '인턴', '파견/용역', '재택/원격'];
 const disabilityTypes = ['지체', '시각', '청각', '발달', '뇌병변', '내부장애'];
+const MIN_WORKING_AGE = 15;
+const MIN_WORKING_AGE_MESSAGE = '근로기준법상 취업 가능한 노동 가능 연령은 원칙적으로 만 15세 이상입니다.';
 
 const toInitialForm = (seed) => ({
   name: '',
@@ -84,12 +35,14 @@ const toInitialForm = (seed) => ({
   phone: '',
   email: seed?.email || '',
   birthDate: '',
+  region: '',
   address: '',
   education: '',
   career: '',
   jobs: [],
   employmentTypes: ['정규직'],
-  disabilityYn: '있음',
+  salaryType: '',
+  disabilityYn: '',
   disabilityTypes: [],
   disabilitySeverity: '',
   registeredYn: '',
@@ -106,14 +59,99 @@ const normalizeBirthDate = (value) => {
 
 const toBirthDateDisplay = (value) => value.replaceAll('-', '.');
 
-const toResidenceRegion = (address) => {
-  const parts = address.trim().split(/\s+/).filter(Boolean);
-  return parts.slice(0, 2).join(' ') || address.trim();
+const toDateValue = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 };
+
+const toCalendarDate = (value) => {
+  const normalized = normalizeBirthDate(value);
+
+  if (!normalized) {
+    return null;
+  }
+
+  const [year, month, day] = normalized.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null;
+  }
+
+  return date;
+};
+
+const toMonthStart = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
+
+const addMonths = (date, amount) => new Date(date.getFullYear(), date.getMonth() + amount, 1);
+
+const getLatestAllowedBirthYear = (today = new Date()) => today.getFullYear() - MIN_WORKING_AGE;
+
+const getBirthYearOptions = () => {
+  const latestYear = getLatestAllowedBirthYear();
+  const earliestYear = latestYear - 100;
+
+  return Array.from({ length: latestYear - earliestYear + 1 }, (_, index) => latestYear - index);
+};
+
+const monthOptions = Array.from({ length: 12 }, (_, index) => index);
+
+const getFullAge = (birthDate, today = new Date()) => {
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const hasBirthdayPassed =
+    today.getMonth() > birthDate.getMonth() ||
+    (today.getMonth() === birthDate.getMonth() && today.getDate() >= birthDate.getDate());
+
+  if (!hasBirthdayPassed) {
+    age -= 1;
+  }
+
+  return age;
+};
+
+const isUnderMinimumWorkingAge = (birthDate) => getFullAge(birthDate) < MIN_WORKING_AGE;
+
+const getCalendarDays = (monthDate) => {
+  const firstDay = toMonthStart(monthDate);
+  const start = new Date(firstDay);
+  start.setDate(firstDay.getDate() - firstDay.getDay());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return date;
+  });
+};
+
+const toResidenceRegion = (region, address) => region || address.trim().split(/\s+/).filter(Boolean).slice(0, 2).join(' ') || address.trim();
 
 const toBooleanFromChoice = (value, trueValue) => value === trueValue;
 
 const hasText = (value) => Boolean(value.trim());
+
+const withoutEmptyOptionalFields = (payload) =>
+  Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== null && value !== undefined));
+
+const formatPhoneNumber = (value) => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+
+  if (digits.length <= 3) {
+    return digits;
+  }
+
+  if (digits.length <= 7) {
+    return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  }
+
+  if (digits.length === 10) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+};
 
 const formatMismatchMessage = (example) => `형식이 일치하지 않아요. "${example}"의 형태로 입력해주세요.`;
 
@@ -127,7 +165,7 @@ const fieldFormats = {
     isValid: (value) => /^01[016789]-\d{3,4}-\d{4}$/.test(value.trim())
   },
   email: {
-    example: 'me@bridgework.kr',
+    example: 'me@bridgework.com',
     isValid: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
   },
   birthDate: {
@@ -150,8 +188,16 @@ const getFieldFormatMessage = (field, value) => {
 
 const getStepValidationMessage = (step, form) => {
   if (step === 1) {
-    if (!hasText(form.name) || !form.gender || !hasText(form.phone) || !hasText(form.email) || !hasText(form.address)) {
-      return '이름, 성별, 연락처, 이메일, 거주지 상세 주소를 입력해 주세요.';
+    if (
+      !hasText(form.name) ||
+      !form.gender ||
+      !hasText(form.phone) ||
+      !hasText(form.email) ||
+      !hasText(form.birthDate) ||
+      !form.region ||
+      !hasText(form.address)
+    ) {
+      return '이름, 성별, 연락처, 이메일, 생년월일, 근무지역, 거주지 상세 주소를 입력해 주세요.';
     }
 
     const formatValidationMessage =
@@ -189,7 +235,7 @@ const getStepValidationMessage = (step, form) => {
     }
 
     if (form.disabilityYn === '있음' && (!form.disabilityTypes.length || !form.disabilitySeverity || !form.registeredYn)) {
-      return '장애 유형, 장애 정도, 장애인 등록 여부를 함께 선택해 주세요.';
+      return '장애 유형, 장애 정도, 장애인 등록 여부를 모두 선택해 주세요.';
     }
 
     return '';
@@ -213,7 +259,7 @@ const toSignupProfile = (form) => {
   const selectedJobs = form.jobs.length ? form.jobs : ['확인 필요'];
   const disabilityYn = toBooleanFromChoice(form.disabilityYn, '있음');
 
-  return {
+  return withoutEmptyOptionalFields({
     desiredJob: selectedJobs.join(', '),
     commuteRange: '확인 필요',
     preferredWorkEnvironments: ['확인 필요'],
@@ -227,8 +273,9 @@ const toSignupProfile = (form) => {
     contactPhone: form.phone.trim(),
     contactEmail: form.email.trim(),
     birthDate: normalizeBirthDate(form.birthDate),
+    genderType: form.gender,
     ageGroup: null,
-    residenceRegion: toResidenceRegion(trimmedAddress),
+    residenceRegion: toResidenceRegion(form.region, trimmedAddress),
     detailAddress: trimmedAddress,
     emergencyContact: null,
     profileImageUrl: null,
@@ -252,7 +299,7 @@ const toSignupProfile = (form) => {
     workSupportRequirements: null,
     workAvailability: '확인 필요',
     workTypes: form.employmentTypes.length ? form.employmentTypes : ['확인 필요'],
-    expectedSalary: null,
+    expectedSalary: form.salaryType || null,
     workTimePreference: null,
     remoteAvailableYn: null,
     mobilityRange: null,
@@ -265,12 +312,13 @@ const toSignupProfile = (form) => {
     patrioticVeteranYn: null,
     referrer: null,
     snsUrl: null
-  };
+  });
 };
 
 export function OnboardingPage() {
   const navigate = useNavigate();
   const { pendingSignup, completeSignup } = useAuth();
+  const signupOptions = useSignupOptions();
   const [currentStep, setCurrentStep] = useState(1);
   const [isComplete, setIsComplete] = useState(false);
   const [form, setForm] = useState(() => toInitialForm(pendingSignup));
@@ -281,6 +329,10 @@ export function OnboardingPage() {
 
   const progressWidth = useMemo(() => `${(currentStep / STEPS.length) * 100}%`, [currentStep]);
   const validationMessage = useMemo(() => getSignupValidationMessage(form), [form]);
+
+  const retryLoadOptions = () => {
+    window.location.reload();
+  };
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -294,10 +346,22 @@ export function OnboardingPage() {
 
   const updateField = (field, value) => {
     setSubmitError('');
-    setForm((prev) => ({
-      ...prev,
-      [field]: value
-    }));
+    setForm((prev) => {
+      if (field === 'region') {
+        const shouldSyncAddress = !prev.address.trim() || prev.address.trim() === prev.region;
+
+        return {
+          ...prev,
+          region: value,
+          address: shouldSyncAddress ? value : prev.address
+        };
+      }
+
+      return {
+        ...prev,
+        [field]: field === 'phone' ? formatPhoneNumber(value) : value
+      };
+    });
   };
 
   const showFormatValidation = (field) => {
@@ -400,15 +464,34 @@ export function OnboardingPage() {
           <div className="onboarding-workspace">
             <StepRail currentStep={currentStep} />
             <section className="onboarding-panel" aria-label={`${currentStep}단계 입력 영역`}>
-              <StepContent
-                currentStep={currentStep}
-                form={form}
-                formatValidationForm={formatValidationForm}
-                formatValidationVisible={formatValidationVisible}
-                updateField={updateField}
-                showFormatValidation={showFormatValidation}
-                toggleArrayValue={toggleArrayValue}
-              />
+              {signupOptions.status === 'idle' || signupOptions.status === 'loading' ? (
+                <LoadingView label="회원가입 옵션을 불러오는 중입니다..." />
+              ) : signupOptions.status === 'error' ? (
+                <OptionStatePanel
+                  title="회원가입 옵션을 불러오지 못했습니다."
+                  message={signupOptions.error}
+                  actionLabel="다시 시도"
+                  onAction={retryLoadOptions}
+                />
+              ) : signupOptions.status === 'empty' ? (
+                <OptionStatePanel
+                  title="회원가입 옵션을 확인할 수 없습니다."
+                  message="고용형태, 희망 직무, 근무지역, 급여 방식 옵션을 다시 불러와 주세요."
+                  actionLabel="다시 시도"
+                  onAction={retryLoadOptions}
+                />
+              ) : (
+                <StepContent
+                  currentStep={currentStep}
+                  form={form}
+                  options={signupOptions}
+                  formatValidationForm={formatValidationForm}
+                  formatValidationVisible={formatValidationVisible}
+                  updateField={updateField}
+                  showFormatValidation={showFormatValidation}
+                  toggleArrayValue={toggleArrayValue}
+                />
+              )}
 
               <StatusMessage kind="error">{submitError}</StatusMessage>
 
@@ -417,7 +500,7 @@ export function OnboardingPage() {
                   type="button"
                   className="onboarding-button onboarding-button--secondary"
                   onClick={goPrevious}
-                  disabled={currentStep === 1 || submitting}
+                  disabled={currentStep === 1 || submitting || signupOptions.status !== 'success'}
                 >
                   이전
                 </button>
@@ -425,7 +508,7 @@ export function OnboardingPage() {
                   type="button"
                   className="onboarding-button onboarding-button--primary"
                   onClick={goNext}
-                  disabled={submitting}
+                  disabled={submitting || signupOptions.status !== 'success'}
                 >
                   {currentStep === STEPS.length ? (submitting ? '가입 처리 중...' : '가입 완료') : '다음 단계'}
                 </button>
@@ -467,9 +550,22 @@ function StepRail({ currentStep }) {
   );
 }
 
+function OptionStatePanel({ title, message, actionLabel, onAction }) {
+  return (
+    <div className="onboarding-panel__content onboarding-panel__content--short">
+      <h2>{title}</h2>
+      <StatusMessage kind="error">{message}</StatusMessage>
+      <button type="button" className="onboarding-button onboarding-button--primary" onClick={onAction}>
+        {actionLabel}
+      </button>
+    </div>
+  );
+}
+
 function StepContent({
   currentStep,
   form,
+  options,
   formatValidationForm,
   formatValidationVisible,
   updateField,
@@ -483,6 +579,7 @@ function StepContent({
       email: formatValidationVisible.email ? getFieldFormatMessage('email', formatValidationForm.email) : '',
       birthDate: formatValidationVisible.birthDate ? getFieldFormatMessage('birthDate', formatValidationForm.birthDate) : ''
     };
+    const addressRegionGuide = form.region || '서울';
 
     return (
       <div className="onboarding-panel__content">
@@ -500,7 +597,7 @@ function StepContent({
           <ChoiceField
             label="성별"
             required
-            options={['남성', '여성', '선택 안 함']}
+            options={genderOptions}
             value={form.gender}
             onChange={(value) => updateField('gender', value)}
           />
@@ -512,11 +609,13 @@ function StepContent({
             onChange={(value) => updateField('phone', value)}
             onBlur={() => showFormatValidation('phone')}
             error={errors.phone}
+            inputMode="numeric"
+            autoComplete="tel"
           />
           <TextField
             label="이메일"
             required
-            placeholder="me@bridgework.kr"
+            placeholder="me@bridgework.com"
             value={form.email}
             onChange={(value) => updateField('email', value)}
             onBlur={() => showFormatValidation('email')}
@@ -531,13 +630,22 @@ function StepContent({
             onBlur={() => showFormatValidation('birthDate')}
             error={errors.birthDate}
           />
+          <ChoiceField
+            label="근무지역"
+            required
+            className="onboarding-choice-group--region"
+            options={options.regions}
+            value={form.region}
+            onChange={(value) => updateField('region', value)}
+          />
           <TextField
             label="거주지 상세 주소"
             required
-            placeholder="서울시 영등포구 OO로 12"
+            className="onboarding-field--address"
+            placeholder={`${addressRegionGuide} OO구 OO동`}
             value={form.address}
             onChange={(value) => updateField('address', value)}
-            hint="동·읍·면 단위까지 입력하면 통근 시간 계산이 정확해져요"
+            hint={`예: 서울시 강남구 또는 서울시 강남구 역삼동`}
           />
         </div>
       </div>
@@ -558,15 +666,14 @@ function StepContent({
         />
         <TextField
           label="주요 경력 한 줄"
-          placeholder="예) OO센터 행정보조 2년"
+          placeholder="예) 수원시 청년센터 행정보조 2년"
           value={form.career}
           onChange={(value) => updateField('career', value)}
-          hint="없으면 비워두셔도 됩니다"
         />
         <JobCategoryField
           label="지원 직무"
           required
-          categories={jobCategories}
+          categories={options.jobCategories}
           values={form.jobs}
           onToggle={(value) => toggleArrayValue('jobs', value)}
         />
@@ -581,20 +688,28 @@ function StepContent({
         <MultiChoiceField
           label="가능한 고용형태"
           required
-          helper="여러 개 선택 가능"
-          options={employmentOptions}
+          helper="다중 선택 가능"
+          options={options.employmentTypes}
           values={form.employmentTypes}
           onToggle={(value) => toggleArrayValue('employmentTypes', value)}
+        />
+        <ChoiceField
+          label="희망 급여 방식"
+          helper="선택 입력"
+          options={options.salaryTypes}
+          value={form.salaryType}
+          onChange={(value) => updateField('salaryType', value)}
         />
       </div>
     );
   }
 
   if (currentStep === 4) {
+    const shouldShowDisabilityDetailFields = form.disabilityYn !== '없음';
+
     return (
       <div className="onboarding-panel__content">
         <h2>장애 정보</h2>
-        <p className="onboarding-info-box">민감 정보입니다. 입력하지 않으셔도 가입은 가능하며, 입력하시면 접근성 점수와 맞춤 추천 정확도가 높아집니다.</p>
         <ChoiceField
           label="장애 여부"
           required
@@ -602,24 +717,33 @@ function StepContent({
           value={form.disabilityYn}
           onChange={(value) => updateField('disabilityYn', value)}
         />
-        <MultiChoiceField
-          label="장애 유형"
-          options={disabilityTypes}
-          values={form.disabilityTypes}
-          onToggle={(value) => toggleArrayValue('disabilityTypes', value)}
-        />
-        <ChoiceField
-          label="장애 정도"
-          options={['심한 장애 (1~3급)', '심하지 않은 장애 (4~6급)']}
-          value={form.disabilitySeverity}
-          onChange={(value) => updateField('disabilitySeverity', value)}
-        />
-        <ChoiceField
-          label="장애인 등록 여부"
-          options={['등록', '미등록']}
-          value={form.registeredYn}
-          onChange={(value) => updateField('registeredYn', value)}
-        />
+        {shouldShowDisabilityDetailFields ? (
+          <>
+            <MultiChoiceField
+              label="장애 유형"
+              required
+              options={disabilityTypes}
+              values={form.disabilityTypes}
+              onToggle={(value) => toggleArrayValue('disabilityTypes', value)}
+            />
+            <ChoiceField
+              label="장애 정도"
+              required
+              options={['심한 장애 (1~3급)', '심하지 않은 장애 (4~6급)']}
+              value={form.disabilitySeverity}
+              onChange={(value) => updateField('disabilitySeverity', value)}
+            />
+            <ChoiceField
+              label="장애인 등록 여부"
+              required
+              options={['등록', '미등록']}
+              value={form.registeredYn}
+              onChange={(value) => updateField('registeredYn', value)}
+            />
+          </>
+        ) : (
+          <div className="onboarding-disability-fields-placeholder" aria-hidden="true" />
+        )}
       </div>
     );
   }
@@ -641,69 +765,295 @@ function StepContent({
 }
 
 function BirthDateField({ label, required, placeholder, value, onChange, onBlur, error }) {
-  const pickerRef = useRef(null);
-  const pickerValue = normalizeBirthDate(value);
+  const fieldRef = useRef(null);
+  const inputId = 'signup-birth-date';
+  const dialogId = 'signup-birth-date-calendar';
+  const selectedDate = toCalendarDate(value);
+  const [isOpen, setIsOpen] = useState(false);
+  const [ageRestrictionError, setAgeRestrictionError] = useState('');
+  const [openSelector, setOpenSelector] = useState('');
+  const [visibleMonth, setVisibleMonth] = useState(() => toMonthStart(selectedDate || new Date()));
+  const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
+  const yearOptions = useMemo(() => getBirthYearOptions(), []);
+  const todayValue = toDateValue(new Date());
+  const selectedValue = selectedDate ? toDateValue(selectedDate) : '';
+  const visibleError = ageRestrictionError || error;
 
-  const openDatePicker = () => {
-    if (!pickerRef.current) {
-      return;
+  useEffect(() => {
+    const nextSelectedDate = toCalendarDate(selectedValue);
+
+    if (nextSelectedDate) {
+      setVisibleMonth(toMonthStart(nextSelectedDate));
+    }
+  }, [selectedValue]);
+
+  useEffect(() => {
+    setAgeRestrictionError('');
+  }, [value]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
     }
 
-    if (typeof pickerRef.current.showPicker === 'function') {
-      pickerRef.current.showPicker();
-      return;
+    const handlePointerDown = (event) => {
+      if (!fieldRef.current?.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setOpenSelector('');
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const toggleDatePicker = () => {
+    setIsOpen((open) => {
+      if (open) {
+        setOpenSelector('');
+      }
+
+      return !open;
+    });
+  };
+
+  const commitBirthDate = (nextValue) => {
+    const nextDate = toCalendarDate(nextValue);
+
+    if (nextDate && isUnderMinimumWorkingAge(nextDate)) {
+      setAgeRestrictionError(MIN_WORKING_AGE_MESSAGE);
+      return false;
     }
 
-    pickerRef.current.click();
+    setAgeRestrictionError('');
+    onChange(nextValue);
+    return true;
+  };
+
+  const handleTextChange = (event) => {
+    commitBirthDate(event.target.value);
+  };
+
+  const selectDate = (date) => {
+    if (commitBirthDate(toBirthDateDisplay(toDateValue(date)))) {
+      setIsOpen(false);
+    }
+  };
+
+  const selectToday = () => {
+    const today = new Date();
+    if (commitBirthDate(toBirthDateDisplay(toDateValue(today)))) {
+      setVisibleMonth(toMonthStart(today));
+      setIsOpen(false);
+    }
+  };
+
+  const clearDate = () => {
+    setAgeRestrictionError('');
+    onChange('');
+    setOpenSelector('');
+    setIsOpen(false);
+  };
+
+  const updateVisibleYear = (year) => {
+    setVisibleMonth((month) => new Date(year, month.getMonth(), 1));
+    setOpenSelector('');
+  };
+
+  const updateVisibleMonth = (monthIndex) => {
+    setVisibleMonth((month) => new Date(month.getFullYear(), monthIndex, 1));
+    setOpenSelector('');
+  };
+
+  const toggleSelector = (selector) => {
+    setOpenSelector((current) => (current === selector ? '' : selector));
   };
 
   return (
-    <div className="onboarding-field">
+    <div className="onboarding-field onboarding-date-field" ref={fieldRef}>
       <span>
-        {label} {required ? <em>*</em> : null}
+        <FieldLabel label={label} required={required} />
       </span>
       <span className="onboarding-input-wrap onboarding-input-wrap--with-button">
         <input
+          id={inputId}
           value={value}
           placeholder={placeholder}
           inputMode="numeric"
           autoComplete="bday"
           aria-label={label}
-          onChange={(event) => onChange(event.target.value)}
+          aria-describedby={visibleError ? `${inputId}-error` : undefined}
+          onChange={handleTextChange}
           onBlur={onBlur}
         />
-        <button type="button" className="onboarding-date-picker-button" onClick={openDatePicker} aria-label="캘린더에서 생년월일 선택">
+        <button
+          type="button"
+          className="onboarding-date-picker-button"
+          onClick={toggleDatePicker}
+          aria-label="캘린더에서 생년월일 선택"
+          aria-haspopup="dialog"
+          aria-expanded={isOpen}
+          aria-controls={dialogId}
+        >
           <svg aria-hidden="true" viewBox="0 0 24 24" className="onboarding-input-icon">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v12A2.5 2.5 0 0 1 19.5 21h-15A2.5 2.5 0 0 1 2 18.5v-12A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 8h-15v8.5a.5.5 0 0 0 .5.5h14a.5.5 0 0 0 .5-.5V10ZM5 6a.5.5 0 0 0-.5.5V8h15V6.5A.5.5 0 0 0 19 6H5Z" />
           </svg>
         </button>
-        <input
-          ref={pickerRef}
-          className="onboarding-native-date-input"
-          type="date"
-          value={pickerValue}
-          tabIndex={-1}
-          aria-hidden="true"
-          onChange={(event) => onChange(toBirthDateDisplay(event.target.value))}
-        />
+        {isOpen ? (
+          <div className="onboarding-calendar-popover" id={dialogId} role="dialog" aria-modal="false" aria-label="생년월일 달력">
+            <div className="onboarding-calendar-head">
+              <div className="onboarding-calendar-title" aria-live="polite">
+                <div className="onboarding-calendar-select-wrap">
+                  <button
+                    type="button"
+                    className="onboarding-calendar-select-button"
+                    onClick={() => toggleSelector('year')}
+                    aria-haspopup="listbox"
+                    aria-expanded={openSelector === 'year'}
+                  >
+                    {visibleMonth.getFullYear()}년
+                    <span aria-hidden="true">⌄</span>
+                  </button>
+                  {openSelector === 'year' ? (
+                    <div className="onboarding-calendar-select-menu onboarding-calendar-select-menu--year" role="listbox" aria-label="연도 선택">
+                      {yearOptions.map((year) => (
+                        <button
+                          key={year}
+                          type="button"
+                          role="option"
+                          aria-selected={visibleMonth.getFullYear() === year}
+                          className={visibleMonth.getFullYear() === year ? 'is-selected' : ''}
+                          onClick={() => updateVisibleYear(year)}
+                        >
+                          {year}년
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="onboarding-calendar-select-wrap">
+                  <button
+                    type="button"
+                    className="onboarding-calendar-select-button"
+                    onClick={() => toggleSelector('month')}
+                    aria-haspopup="listbox"
+                    aria-expanded={openSelector === 'month'}
+                  >
+                    {visibleMonth.getMonth() + 1}월
+                    <span aria-hidden="true">⌄</span>
+                  </button>
+                  {openSelector === 'month' ? (
+                    <div className="onboarding-calendar-select-menu" role="listbox" aria-label="월 선택">
+                      {monthOptions.map((monthIndex) => (
+                        <button
+                          key={monthIndex}
+                          type="button"
+                          role="option"
+                          aria-selected={visibleMonth.getMonth() === monthIndex}
+                          className={visibleMonth.getMonth() === monthIndex ? 'is-selected' : ''}
+                          onClick={() => updateVisibleMonth(monthIndex)}
+                        >
+                          {monthIndex + 1}월
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              <div className="onboarding-calendar-nav" aria-label="월 이동">
+                <button type="button" onClick={() => setVisibleMonth((month) => addMonths(month, -1))} aria-label="이전 월">
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="M15.7 5.3a1 1 0 0 1 0 1.4L10.42 12l5.3 5.3a1 1 0 1 1-1.42 1.4l-6-6a1 1 0 0 1 0-1.4l6-6a1 1 0 0 1 1.42 0Z" />
+                  </svg>
+                </button>
+                <button type="button" onClick={() => setVisibleMonth((month) => addMonths(month, 1))} aria-label="다음 월">
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="M8.3 18.7a1 1 0 0 1 0-1.4l5.28-5.3-5.3-5.3A1 1 0 0 1 9.7 5.3l6 6a1 1 0 0 1 0 1.4l-6 6a1 1 0 0 1-1.42 0Z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="onboarding-calendar-weekdays" aria-hidden="true">
+              {['일', '월', '화', '수', '목', '금', '토'].map((day) => (
+                <span key={day}>{day}</span>
+              ))}
+            </div>
+            <div className="onboarding-calendar-grid" role="group" aria-label={`${visibleMonth.getFullYear()}년 ${visibleMonth.getMonth() + 1}월 날짜 선택`}>
+              {calendarDays.map((date) => {
+                const dateValue = toDateValue(date);
+                const isCurrentMonth = date.getMonth() === visibleMonth.getMonth();
+                const isSelected = dateValue === selectedValue;
+                const isToday = dateValue === todayValue;
+
+                return (
+                  <button
+                    key={dateValue}
+                    type="button"
+                    className={[
+                      'onboarding-calendar-day',
+                      isCurrentMonth ? '' : 'is-muted',
+                      isSelected ? 'is-selected' : '',
+                      isToday ? 'is-today' : ''
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    onClick={() => selectDate(date)}
+                    aria-label={`${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일${isToday ? ', 오늘' : ''}`}
+                    aria-pressed={isSelected}
+                  >
+                    {date.getDate()}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="onboarding-calendar-actions">
+              <button type="button" className="onboarding-calendar-action onboarding-calendar-action--ghost" onClick={clearDate}>
+                삭제
+              </button>
+              <button type="button" className="onboarding-calendar-action onboarding-calendar-action--primary" onClick={selectToday}>
+                오늘
+              </button>
+            </div>
+          </div>
+        ) : null}
       </span>
-      {error ? (
-        <small className="onboarding-field-error" role="alert">
-          {error}
+      {visibleError ? (
+        <small className="onboarding-field-error" id={`${inputId}-error`} role="alert">
+          {visibleError}
         </small>
-      ) : null}
+      ) : (
+        <small className="onboarding-field-hint">{MIN_WORKING_AGE_MESSAGE}</small>
+      )}
     </div>
   );
 }
 
-function TextField({ label, required, placeholder, value, onChange, onBlur, hint, icon, error }) {
+function TextField({ label, required, placeholder, value, onChange, onBlur, hint, icon, error, inputMode, autoComplete, className = '' }) {
   return (
-    <label className="onboarding-field">
+    <label className={`onboarding-field ${className}`.trim()}>
       <span>
-        {label} {required ? <em>*</em> : null}
+        <FieldLabel label={label} required={required} />
       </span>
       <span className="onboarding-input-wrap">
-        <input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} onBlur={onBlur} />
+        <input
+          value={value}
+          placeholder={placeholder}
+          inputMode={inputMode}
+          autoComplete={autoComplete}
+          onChange={(event) => onChange(event.target.value)}
+          onBlur={onBlur}
+        />
         {icon === 'calendar' ? (
           <svg aria-hidden="true" viewBox="0 0 24 24" className="onboarding-input-icon">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v12A2.5 2.5 0 0 1 19.5 21h-15A2.5 2.5 0 0 1 2 18.5v-12A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 8h-15v8.5a.5.5 0 0 0 .5.5h14a.5.5 0 0 0 .5-.5V10ZM5 6a.5.5 0 0 0-.5.5V8h15V6.5A.5.5 0 0 0 19 6H5Z" />
@@ -720,24 +1070,31 @@ function TextField({ label, required, placeholder, value, onChange, onBlur, hint
   );
 }
 
-function ChoiceField({ label, required, options, value, onChange, className = '' }) {
+function ChoiceField({ label, required, helper, options, value, onChange, className = '' }) {
+  const isOptional = !required;
+
   return (
     <fieldset className={`onboarding-choice-group ${className}`.trim()}>
       <legend>
-        {label} {required ? <em>*</em> : null}
+        <FieldLabel label={label} required={required} helper={helper} />
       </legend>
       <div className="onboarding-chip-row">
-        {options.map((option) => (
-          <button
-            key={option}
-            type="button"
-            className={`onboarding-chip ${value === option ? 'is-selected' : ''}`}
-            onClick={() => onChange(option)}
-            aria-pressed={value === option}
-          >
-            {option}
-          </button>
-        ))}
+        {options.map((option) => {
+          const optionValue = typeof option === 'string' ? option : option.value;
+          const optionLabel = typeof option === 'string' ? option : option.label;
+
+          return (
+            <button
+              key={optionValue}
+              type="button"
+              className={`onboarding-chip ${value === optionValue ? 'is-selected' : ''}`}
+              onClick={() => onChange(isOptional && value === optionValue ? '' : optionValue)}
+              aria-pressed={value === optionValue}
+            >
+              {optionLabel}
+            </button>
+          );
+        })}
       </div>
     </fieldset>
   );
@@ -747,8 +1104,7 @@ function MultiChoiceField({ label, required, helper, options, values, onToggle, 
   return (
     <fieldset className={`onboarding-choice-group ${compact ? 'is-compact' : ''}`}>
       <legend>
-        {label}
-        {helper ? <span> · {helper}</span> : null} {required ? <em>*</em> : null}
+        <FieldLabel label={label} required={required} helper={helper} />
       </legend>
       <div className="onboarding-chip-row">
         {options.map((option) => (
@@ -807,7 +1163,7 @@ function JobCategoryField({ label, required, categories, values, onToggle }) {
   return (
     <fieldset className="onboarding-choice-group onboarding-job-picker" aria-describedby={limitMessage ? 'job-picker-limit-message' : undefined}>
       <legend>
-        {label} {required ? <em>*</em> : null}
+        <FieldLabel label={label} required={required} />
       </legend>
       {values.length ? (
         <div className="onboarding-job-picker__selected-paths" aria-label="선택 완료된 지원 직무 경로">
@@ -821,6 +1177,11 @@ function JobCategoryField({ label, required, categories, values, onToggle }) {
       ) : (
         <p className="onboarding-job-picker__empty">관심 있는 분야부터 실제 수행 업무까지 차례로 선택해 주세요.</p>
       )}
+      {limitMessage ? (
+        <p id="job-picker-limit-message" className="onboarding-job-picker__limit" role="alert">
+          {limitMessage}
+        </p>
+      ) : null}
       <div className="onboarding-job-picker__box">
         <div className="onboarding-job-picker__columns">
           <JobPickerColumn title="1차 선택" description="분야 선택">
@@ -867,12 +1228,18 @@ function JobCategoryField({ label, required, categories, values, onToggle }) {
         </div>
       </div>
       <p className="onboarding-job-picker__helper">최대 {MAX_JOB_SELECTIONS}개까지 선택할 수 있습니다.</p>
-      {limitMessage ? (
-        <p id="job-picker-limit-message" className="onboarding-job-picker__limit" role="alert">
-          {limitMessage}
-        </p>
-      ) : null}
     </fieldset>
+  );
+}
+
+function FieldLabel({ label, required, helper }) {
+  const visibleHelper = helper || (!required ? '선택 입력' : '');
+
+  return (
+    <>
+      {label}
+      {visibleHelper ? <span className="onboarding-label-helper"> · {visibleHelper}</span> : null} {required ? <em>*</em> : null}
+    </>
   );
 }
 

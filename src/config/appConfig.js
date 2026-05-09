@@ -10,7 +10,8 @@ export const STORAGE_KEYS = {
   tokenType: 'bridgework.tokenType',
   accessTokenExpiresAt: 'bridgework.accessTokenExpiresAt',
   refreshTokenExpiresAt: 'bridgework.refreshTokenExpiresAt',
-  signupSession: 'bridgework.signupSession'
+  signupSession: 'bridgework.signupSession',
+  signupOptionsCache: 'bridgework.signupOptionsCache'
 };
 
 export const SOCIAL_PROVIDER = {
