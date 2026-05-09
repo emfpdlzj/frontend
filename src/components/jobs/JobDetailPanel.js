@@ -72,8 +72,8 @@ export function JobDetailPanel({
     ['요구학력', job.education],
     ['요구전공', job.major],
     ['요구자격증', job.certificates],
-    ['등록일', job.source.regDt],
-    ['모집기간', `${job.source.offerregDt} ~ ${job.source.termDate}`],
+    ['등록일', job.registeredDate],
+    ['모집기간', job.recruitmentPeriod],
     ['담당기관', job.agency],
     ['연락처', job.contact]
   ];
@@ -90,9 +90,11 @@ export function JobDetailPanel({
     <aside className="jobs-detail" aria-label="선택된 공고 상세">
       <header className="jobs-detail__header">
         <div className="jobs-detail__header-top">
-          <strong className="jobs-detail__dday" aria-label={`마감까지 ${job.dueLabel.replace('D-', '')}일`}>
-            {job.dueLabel}
-          </strong>
+          {job.dueLabel ? (
+            <strong className="jobs-detail__dday" aria-label={`마감까지 ${job.dueLabel.replace('D-', '')}일`}>
+              {job.dueLabel}
+            </strong>
+          ) : null}
           <div className="jobs-detail__actions">
             <button type="button" className="secondary-button" aria-label="관심 공고로 저장">
               저장
@@ -127,7 +129,7 @@ export function JobDetailPanel({
           </div>
           <div>
             <span>모집기간</span>
-            <strong>~ {job.deadlineDate}</strong>
+            <strong>{job.recruitmentPeriod}</strong>
           </div>
         </section>
         <div className="jobs-detail__tabs" role="tablist" aria-label="공고 상세 탭">
