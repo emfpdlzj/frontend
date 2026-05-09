@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import checkCircleIcon from '../assets/signup/check_circle.png';
 import stepBeforeIcon from '../assets/signup/item-before.png';
@@ -8,7 +8,10 @@ import { useAuth } from '../auth/AuthContext';
 import { ROUTE_PATHS } from '../config/routes';
 import { LoadingView } from '../components/common/LoadingView';
 import { StatusMessage } from '../components/common/StatusMessage';
+import { BirthDateField } from '../components/common/BirthDateField';
 import { useSignupOptions } from '../hooks/useSignupOptions';
+import { normalizeBirthDate } from '../utils/birthDate';
+import { fieldFormats, formatPhoneNumber, getFieldFormatMessage } from '../utils/formValidation';
 
 const genderOptions = [
   { value: 'MALE', label: '남성' },
@@ -70,9 +73,6 @@ const disabilityRegisteredOptions = [
   { value: '등록', label: '등록됨' },
   { value: '미등록', label: '등록 안 됨' }
 ];
-const MIN_WORKING_AGE = 15;
-const MIN_WORKING_AGE_MESSAGE = '근로기준법상 취업 가능한 노동 가능 연령은 원칙적으로 만 15세 이상입니다.';
-
 const toInitialForm = (seed) => ({
   name: '',
   gender: '',
@@ -91,95 +91,6 @@ const toInitialForm = (seed) => ({
   introduction: ''
 });
 
-const normalizeBirthDate = (value) => {
-  const match = value.trim().match(/^(\d{4})[.-](\d{1,2})[.-](\d{1,2})$/);
-
-  if (!match) {
-    return '';
-  }
-
-  const [, rawYear, rawMonth, rawDay] = match;
-  const year = Number(rawYear);
-  const month = Number(rawMonth);
-  const day = Number(rawDay);
-  const date = new Date(year, month - 1, day);
-
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
-    return '';
-  }
-
-  return `${rawYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-};
-
-const toBirthDateDisplay = (value) => value.replaceAll('-', '.');
-
-const toDateValue = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
-};
-
-const toCalendarDate = (value) => {
-  const normalized = normalizeBirthDate(value);
-
-  if (!normalized) {
-    return null;
-  }
-
-  const [year, month, day] = normalized.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
-    return null;
-  }
-
-  return date;
-};
-
-const toMonthStart = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
-
-const addMonths = (date, amount) => new Date(date.getFullYear(), date.getMonth() + amount, 1);
-
-const getLatestAllowedBirthYear = (today = new Date()) => today.getFullYear() - MIN_WORKING_AGE;
-
-const getBirthYearOptions = () => {
-  const latestYear = getLatestAllowedBirthYear();
-  const earliestYear = latestYear - 100;
-
-  return Array.from({ length: latestYear - earliestYear + 1 }, (_, index) => latestYear - index);
-};
-
-const monthOptions = Array.from({ length: 12 }, (_, index) => index);
-
-const getFullAge = (birthDate, today = new Date()) => {
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const hasBirthdayPassed =
-    today.getMonth() > birthDate.getMonth() ||
-    (today.getMonth() === birthDate.getMonth() && today.getDate() >= birthDate.getDate());
-
-  if (!hasBirthdayPassed) {
-    age -= 1;
-  }
-
-  return age;
-};
-
-const isUnderMinimumWorkingAge = (birthDate) => getFullAge(birthDate) < MIN_WORKING_AGE;
-
-const getCalendarDays = (monthDate) => {
-  const firstDay = toMonthStart(monthDate);
-  const start = new Date(firstDay);
-  start.setDate(firstDay.getDate() - firstDay.getDay());
-
-  return Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    return date;
-  });
-};
-
 const toBooleanFromChoice = (value, trueValue) => value === trueValue;
 
 const hasText = (value) => Boolean(value.trim());
@@ -195,56 +106,7 @@ const withoutEmptyOptionalFields = (payload) =>
     })
   );
 
-const formatPhoneNumber = (value) => {
-  const digits = value.replace(/\D/g, '').slice(0, 11);
-
-  if (digits.length <= 3) {
-    return digits;
-  }
-
-  if (digits.length <= 7) {
-    return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-  }
-
-  if (digits.length === 10) {
-    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }
-
-  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
-};
-
-const formatMismatchMessage = (example) => `형식이 일치하지 않아요. "${example}"의 형태로 입력해주세요.`;
-
-const fieldFormats = {
-  name: {
-    example: '홍길동',
-    isValid: (value) => /^[가-힣a-zA-Z\s]{2,30}$/.test(value.trim())
-  },
-  phone: {
-    example: '010-1234-5678',
-    isValid: (value) => /^01[016789]-\d{3,4}-\d{4}$/.test(value.trim())
-  },
-  email: {
-    example: 'me@bridgework.com',
-    isValid: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
-  },
-  birthDate: {
-    example: 'YYYY.MM.DD',
-    isValid: (value) => Boolean(normalizeBirthDate(value))
-  }
-};
-
 const formatValidationFields = Object.keys(fieldFormats);
-
-const getFieldFormatMessage = (field, value) => {
-  const format = fieldFormats[field];
-
-  if (!format || !hasText(value) || format.isValid(value)) {
-    return '';
-  }
-
-  return formatMismatchMessage(format.example);
-};
 
 const getStepValidationMessage = (step, form) => {
   if (step === 1) {
@@ -711,6 +573,7 @@ function StepContent({
             error={errors.email}
           />
           <BirthDateField
+            id="signup-birth-date"
             label="생년월일"
             required
             placeholder="YYYY.MM.DD"
@@ -834,287 +697,6 @@ function StepContent({
   );
 }
 
-function BirthDateField({ label, required, placeholder, value, onChange, onBlur, error }) {
-  const fieldRef = useRef(null);
-  const inputId = 'signup-birth-date';
-  const dialogId = 'signup-birth-date-calendar';
-  const selectedDate = toCalendarDate(value);
-  const [isOpen, setIsOpen] = useState(false);
-  const [ageRestrictionError, setAgeRestrictionError] = useState('');
-  const [openSelector, setOpenSelector] = useState('');
-  const [visibleMonth, setVisibleMonth] = useState(() => toMonthStart(selectedDate || new Date()));
-  const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
-  const yearOptions = useMemo(() => getBirthYearOptions(), []);
-  const todayValue = toDateValue(new Date());
-  const selectedValue = selectedDate ? toDateValue(selectedDate) : '';
-  const visibleError = ageRestrictionError || error;
-
-  useEffect(() => {
-    const nextSelectedDate = toCalendarDate(selectedValue);
-
-    if (nextSelectedDate) {
-      setVisibleMonth(toMonthStart(nextSelectedDate));
-    }
-  }, [selectedValue]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      return undefined;
-    }
-
-    const handlePointerDown = (event) => {
-      if (!fieldRef.current?.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        setOpenSelector('');
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen]);
-
-  const toggleDatePicker = () => {
-    setIsOpen((open) => {
-      if (open) {
-        setOpenSelector('');
-      }
-
-      return !open;
-    });
-  };
-
-  const commitBirthDate = (nextValue) => {
-    const nextDate = toCalendarDate(nextValue);
-
-    if (nextDate && isUnderMinimumWorkingAge(nextDate)) {
-      setAgeRestrictionError(MIN_WORKING_AGE_MESSAGE);
-      return false;
-    }
-
-    setAgeRestrictionError('');
-    onChange(nextValue);
-    return true;
-  };
-
-  const handleTextChange = (event) => {
-    commitBirthDate(event.target.value);
-  };
-
-  const handleTextBlur = () => {
-    const normalized = normalizeBirthDate(value);
-
-    if (normalized) {
-      onChange(toBirthDateDisplay(normalized));
-    }
-
-    onBlur();
-  };
-
-  const selectDate = (date) => {
-    if (commitBirthDate(toBirthDateDisplay(toDateValue(date)))) {
-      setIsOpen(false);
-    }
-  };
-
-  const selectToday = () => {
-    const today = new Date();
-    if (commitBirthDate(toBirthDateDisplay(toDateValue(today)))) {
-      setVisibleMonth(toMonthStart(today));
-      setIsOpen(false);
-    }
-  };
-
-  const clearDate = () => {
-    setAgeRestrictionError('');
-    onChange('');
-    setOpenSelector('');
-    setIsOpen(false);
-  };
-
-  const updateVisibleYear = (year) => {
-    setVisibleMonth((month) => new Date(year, month.getMonth(), 1));
-    setOpenSelector('');
-  };
-
-  const updateVisibleMonth = (monthIndex) => {
-    setVisibleMonth((month) => new Date(month.getFullYear(), monthIndex, 1));
-    setOpenSelector('');
-  };
-
-  const toggleSelector = (selector) => {
-    setOpenSelector((current) => (current === selector ? '' : selector));
-  };
-
-  return (
-    <div className="onboarding-field onboarding-date-field" ref={fieldRef}>
-      <span>
-        <FieldLabel label={label} required={required} />
-      </span>
-      <span className="onboarding-input-wrap onboarding-input-wrap--with-button">
-        <input
-          id={inputId}
-          value={value}
-          placeholder={placeholder}
-          inputMode="numeric"
-          autoComplete="bday"
-          aria-label={label}
-          aria-describedby={visibleError ? `${inputId}-error` : undefined}
-          onChange={handleTextChange}
-          onBlur={handleTextBlur}
-        />
-        <button
-          type="button"
-          className="onboarding-date-picker-button"
-          onClick={toggleDatePicker}
-          aria-label="캘린더에서 생년월일 선택"
-          aria-haspopup="dialog"
-          aria-expanded={isOpen}
-          aria-controls={dialogId}
-        >
-          <svg aria-hidden="true" viewBox="0 0 24 24" className="onboarding-input-icon">
-            <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v12A2.5 2.5 0 0 1 19.5 21h-15A2.5 2.5 0 0 1 2 18.5v-12A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 8h-15v8.5a.5.5 0 0 0 .5.5h14a.5.5 0 0 0 .5-.5V10ZM5 6a.5.5 0 0 0-.5.5V8h15V6.5A.5.5 0 0 0 19 6H5Z" />
-          </svg>
-        </button>
-        {isOpen ? (
-          <div className="onboarding-calendar-popover" id={dialogId} role="dialog" aria-modal="false" aria-label="생년월일 달력">
-            <div className="onboarding-calendar-head">
-              <div className="onboarding-calendar-title" aria-live="polite">
-                <div className="onboarding-calendar-select-wrap">
-                  <button
-                    type="button"
-                    className="onboarding-calendar-select-button"
-                    onClick={() => toggleSelector('year')}
-                    aria-haspopup="listbox"
-                    aria-expanded={openSelector === 'year'}
-                  >
-                    {visibleMonth.getFullYear()}년
-                    <span aria-hidden="true">⌄</span>
-                  </button>
-                  {openSelector === 'year' ? (
-                    <div className="onboarding-calendar-select-menu onboarding-calendar-select-menu--year" role="listbox" aria-label="연도 선택">
-                      {yearOptions.map((year) => (
-                        <button
-                          key={year}
-                          type="button"
-                          role="option"
-                          aria-selected={visibleMonth.getFullYear() === year}
-                          className={visibleMonth.getFullYear() === year ? 'is-selected' : ''}
-                          onClick={() => updateVisibleYear(year)}
-                        >
-                          {year}년
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="onboarding-calendar-select-wrap">
-                  <button
-                    type="button"
-                    className="onboarding-calendar-select-button"
-                    onClick={() => toggleSelector('month')}
-                    aria-haspopup="listbox"
-                    aria-expanded={openSelector === 'month'}
-                  >
-                    {visibleMonth.getMonth() + 1}월
-                    <span aria-hidden="true">⌄</span>
-                  </button>
-                  {openSelector === 'month' ? (
-                    <div className="onboarding-calendar-select-menu" role="listbox" aria-label="월 선택">
-                      {monthOptions.map((monthIndex) => (
-                        <button
-                          key={monthIndex}
-                          type="button"
-                          role="option"
-                          aria-selected={visibleMonth.getMonth() === monthIndex}
-                          className={visibleMonth.getMonth() === monthIndex ? 'is-selected' : ''}
-                          onClick={() => updateVisibleMonth(monthIndex)}
-                        >
-                          {monthIndex + 1}월
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-              <div className="onboarding-calendar-nav" aria-label="월 이동">
-                <button type="button" onClick={() => setVisibleMonth((month) => addMonths(month, -1))} aria-label="이전 월">
-                  <svg aria-hidden="true" viewBox="0 0 24 24">
-                    <path d="M15.7 5.3a1 1 0 0 1 0 1.4L10.42 12l5.3 5.3a1 1 0 1 1-1.42 1.4l-6-6a1 1 0 0 1 0-1.4l6-6a1 1 0 0 1 1.42 0Z" />
-                  </svg>
-                </button>
-                <button type="button" onClick={() => setVisibleMonth((month) => addMonths(month, 1))} aria-label="다음 월">
-                  <svg aria-hidden="true" viewBox="0 0 24 24">
-                    <path d="M8.3 18.7a1 1 0 0 1 0-1.4l5.28-5.3-5.3-5.3A1 1 0 0 1 9.7 5.3l6 6a1 1 0 0 1 0 1.4l-6 6a1 1 0 0 1-1.42 0Z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div className="onboarding-calendar-weekdays" aria-hidden="true">
-              {['일', '월', '화', '수', '목', '금', '토'].map((day) => (
-                <span key={day}>{day}</span>
-              ))}
-            </div>
-            <div className="onboarding-calendar-grid" role="group" aria-label={`${visibleMonth.getFullYear()}년 ${visibleMonth.getMonth() + 1}월 날짜 선택`}>
-              {calendarDays.map((date) => {
-                const dateValue = toDateValue(date);
-                const isCurrentMonth = date.getMonth() === visibleMonth.getMonth();
-                const isSelected = dateValue === selectedValue;
-                const isToday = dateValue === todayValue;
-
-                return (
-                  <button
-                    key={dateValue}
-                    type="button"
-                    className={[
-                      'onboarding-calendar-day',
-                      isCurrentMonth ? '' : 'is-muted',
-                      isSelected ? 'is-selected' : '',
-                      isToday ? 'is-today' : ''
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    onClick={() => selectDate(date)}
-                    aria-label={`${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일${isToday ? ', 오늘' : ''}`}
-                    aria-pressed={isSelected}
-                  >
-                    {date.getDate()}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="onboarding-calendar-actions">
-              <button type="button" className="onboarding-calendar-action onboarding-calendar-action--ghost" onClick={clearDate}>
-                삭제
-              </button>
-              <button type="button" className="onboarding-calendar-action onboarding-calendar-action--primary" onClick={selectToday}>
-                오늘
-              </button>
-            </div>
-          </div>
-        ) : null}
-      </span>
-      {visibleError ? (
-        <small className="onboarding-field-error" id={`${inputId}-error`} role="alert">
-          {visibleError}
-        </small>
-      ) : (
-        <small className="onboarding-field-hint">{MIN_WORKING_AGE_MESSAGE}</small>
-      )}
-    </div>
-  );
-}
-
 function TextField({ label, required, placeholder, value, onChange, onBlur, hint, icon, error, inputMode, autoComplete, className = '' }) {
   return (
     <label className={`onboarding-field ${className}`.trim()}>
@@ -1142,42 +724,6 @@ function TextField({ label, required, placeholder, value, onChange, onBlur, hint
         </small>
       ) : null}
       {hint ? <small>{hint}</small> : null}
-    </label>
-  );
-}
-
-function SelectField({ label, required, options, value, onChange, placeholder, className = '' }) {
-  const handleChange = (event) => {
-    const selected = options.find((option) => (typeof option === 'string' ? option : option.value) === event.target.value);
-    const optionLabel = typeof selected === 'string' ? selected : selected?.label || event.target.value;
-    onChange(event.target.value, optionLabel);
-  };
-
-  return (
-    <label className={`onboarding-field onboarding-select-field ${className}`.trim()}>
-      <span>
-        <FieldLabel label={label} required={required} />
-      </span>
-      <span className="onboarding-input-wrap onboarding-select-wrap">
-        <select value={value} required={required} onChange={handleChange}>
-          <option value="" disabled>
-            {placeholder}
-          </option>
-          {options.map((option) => {
-            const optionValue = typeof option === 'string' ? option : option.value;
-            const optionLabel = typeof option === 'string' ? option : option.label;
-
-            return (
-              <option key={optionValue} value={optionValue}>
-                {optionLabel}
-              </option>
-            );
-          })}
-        </select>
-        <svg aria-hidden="true" viewBox="0 0 24 24" className="onboarding-select-icon">
-          <path d="M7.3 9.3a1 1 0 0 1 1.4 0l3.3 3.29 3.3-3.3a1 1 0 1 1 1.4 1.42l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 0-1.42Z" />
-        </svg>
-      </span>
     </label>
   );
 }

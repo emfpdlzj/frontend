@@ -1,6 +1,10 @@
+import { useEffect, useMemo, useState } from 'react';
 import basicProfile from '../../assets/profile/basic_profile.png';
+import { BirthDateField } from '../common/BirthDateField';
+import { useSignupOptions } from '../../hooks/useSignupOptions';
 
 const fallbackText = '확인 필요';
+const MAX_JOB_SELECTIONS = 5;
 
 const genderOptions = [
   { value: 'MALE', label: '남성' },
@@ -94,12 +98,12 @@ const booleanOptions = [
 
 const text = (value) => String(value ?? '').trim();
 
-export function ProfileSectionPanel({ activeSection, profile, onChange }) {
+export function ProfileSectionPanel({ activeSection, profile, onChange, validationErrors = {}, onFieldBlur = () => {} }) {
   if (!activeSection) {
     return null;
   }
 
-  const props = { profile, onChange };
+  const props = { profile, onChange, validationErrors, onFieldBlur };
   const panels = {
     basic: <BasicInfoPanel {...props} />,
     education: <EducationPanel {...props} />,
@@ -113,7 +117,7 @@ export function ProfileSectionPanel({ activeSection, profile, onChange }) {
   return <section className={`profile-section-panel profile-section-panel--${activeSection}`}>{panels[activeSection]}</section>;
 }
 
-function BasicInfoPanel({ profile, onChange }) {
+function BasicInfoPanel({ profile, onChange, validationErrors, onFieldBlur }) {
   return (
     <div className="profile-basic-grid">
       <div className="profile-photo-field">
@@ -123,21 +127,49 @@ function BasicInfoPanel({ profile, onChange }) {
         </div>
       </div>
       <div className="profile-two-column">
-        <Field label="이름" required>
-          <Input value={profile.fullName} onChange={(value) => onChange('fullName', value)} />
+        <Field label="이름" required error={validationErrors.fullName}>
+          <Input
+            value={profile.fullName}
+            onChange={(value) => onChange('fullName', value)}
+            onBlur={() => onFieldBlur('fullName')}
+            aria-invalid={Boolean(validationErrors.fullName)}
+          />
         </Field>
-        <Field label="연락처" required>
-          <Input value={profile.contactPhone} onChange={(value) => onChange('contactPhone', value)} placeholder="010-1234-5678" />
+        <Field label="연락처" required error={validationErrors.contactPhone}>
+          <Input
+            value={profile.contactPhone}
+            onChange={(value) => onChange('contactPhone', value)}
+            onBlur={() => onFieldBlur('contactPhone')}
+            placeholder="010-1234-5678"
+            inputMode="numeric"
+            autoComplete="tel"
+            aria-invalid={Boolean(validationErrors.contactPhone)}
+          />
         </Field>
         <Field label="성별" required>
           <PillGroup options={genderOptions} selected={profile.genderType} onChange={(value) => onChange('genderType', value)} />
         </Field>
-        <Field label="이메일" required>
-          <Input type="email" value={profile.contactEmail} onChange={(value) => onChange('contactEmail', value)} />
+        <Field label="이메일" required error={validationErrors.contactEmail}>
+          <Input
+            type="email"
+            value={profile.contactEmail}
+            onChange={(value) => onChange('contactEmail', value)}
+            onBlur={() => onFieldBlur('contactEmail')}
+            aria-invalid={Boolean(validationErrors.contactEmail)}
+          />
         </Field>
-        <Field label="생년월일" required>
-          <Input type="date" value={profile.birthDate} onChange={(value) => onChange('birthDate', value)} />
-        </Field>
+        <BirthDateField
+          id="profile-birth-date"
+          label="생년월일"
+          required
+          value={profile.birthDate}
+          onChange={(value) => onChange('birthDate', value)}
+          onBlur={() => onFieldBlur('birthDate')}
+          error={validationErrors.birthDate}
+          outputFormat="iso"
+          showAgeHint={false}
+          className="profile-birth-date-picker"
+        />
         <Field label="거주 지역" required>
           <Input value={profile.residenceRegion} onChange={(value) => onChange('residenceRegion', value)} placeholder="예) SEOUL" />
         </Field>
@@ -198,13 +230,38 @@ function EducationPanel({ profile, onChange }) {
 }
 
 function JobPanel({ profile, onChange }) {
+  const options = useSignupOptions();
+  const selectedJobs = splitJobValues(profile.targetJob);
+
+  const toggleTargetJob = (job) => {
+    const nextJobs = selectedJobs.includes(job)
+      ? selectedJobs.filter((item) => item !== job)
+      : [...selectedJobs, job];
+
+    onChange('targetJob', nextJobs.join(', '));
+  };
+
   return (
     <>
       <h2>지원 직무</h2>
+      <div className="profile-job-picker-area">
+        {options.status === 'idle' || options.status === 'loading' ? (
+          <ProfileOptionState kind="loading" message="지원 직무 목록을 불러오는 중입니다." />
+        ) : options.status === 'error' ? (
+          <ProfileOptionState kind="error" message={options.error || '지원 직무 목록을 불러오지 못했습니다.'} />
+        ) : options.status === 'empty' ? (
+          <ProfileOptionState kind="empty" message="선택 가능한 지원 직무 목록이 없습니다." />
+        ) : (
+          <ProfileJobCategoryField
+            label="지원 직무"
+            required
+            categories={options.jobCategories}
+            values={selectedJobs}
+            onToggle={toggleTargetJob}
+          />
+        )}
+      </div>
       <div className="profile-form-grid profile-form-grid--work">
-        <Field label="지원 직무" required>
-          <Input value={profile.targetJob} onChange={(value) => onChange('targetJob', value)} />
-        </Field>
         <Field label="희망 직무">
           <Input value={profile.desiredJob} onChange={(value) => onChange('desiredJob', value)} />
         </Field>
@@ -229,6 +286,149 @@ function JobPanel({ profile, onChange }) {
         </Field>
       </div>
     </>
+  );
+}
+
+function splitJobValues(value) {
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function ProfileOptionState({ kind, message }) {
+  const role = kind === 'error' ? 'alert' : 'status';
+
+  return (
+    <div className={`profile-option-state profile-option-state--${kind}`} role={role}>
+      {message}
+    </div>
+  );
+}
+
+function ProfileJobCategoryField({ label, required, categories, values, onToggle }) {
+  const [activePrimary, setActivePrimary] = useState(categories[0]?.label || '');
+  const primary = categories.find((category) => category.label === activePrimary) || categories[0];
+  const [activeSecondary, setActiveSecondary] = useState(primary?.groups[0]?.label || '');
+  const secondary = primary?.groups.find((group) => group.label === activeSecondary) || primary?.groups[0];
+  const [limitMessage, setLimitMessage] = useState('');
+  const selectedPaths = useMemo(() => {
+    const paths = new Map();
+
+    categories.forEach((category) => {
+      category.groups.forEach((group) => {
+        group.jobs.forEach((job) => {
+          if (!paths.has(job)) {
+            paths.set(job, `${category.label} > ${group.label} > ${job}`);
+          }
+        });
+      });
+    });
+
+    return paths;
+  }, [categories]);
+
+  useEffect(() => {
+    setActivePrimary(categories[0]?.label || '');
+    setActiveSecondary(categories[0]?.groups[0]?.label || '');
+  }, [categories]);
+
+  const selectPrimary = (category) => {
+    setActivePrimary(category.label);
+    setActiveSecondary(category.groups[0]?.label || '');
+  };
+
+  const toggleJob = (job) => {
+    if (!values.includes(job) && values.length >= MAX_JOB_SELECTIONS) {
+      setLimitMessage(`지원 직무는 최대 ${MAX_JOB_SELECTIONS}개까지 선택할 수 있어요.`);
+      return;
+    }
+
+    setLimitMessage('');
+    onToggle(job);
+  };
+
+  return (
+    <fieldset className="onboarding-choice-group onboarding-job-picker profile-job-picker" aria-describedby={limitMessage ? 'profile-job-picker-limit-message' : undefined}>
+      <legend>
+        {label} {required ? <RequiredMark /> : null}
+      </legend>
+      {values.length ? (
+        <div className="onboarding-job-picker__selected-paths" aria-label="선택 완료된 지원 직무 경로">
+          {values.map((job) => (
+            <button key={job} type="button" onClick={() => toggleJob(job)} aria-label={`${job} 선택 해제`}>
+              <span>{selectedPaths.get(job) || job}</span>
+              <span aria-hidden="true">×</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="onboarding-job-picker__empty">관심 있는 분야부터 실제 수행 업무까지 차례로 선택해 주세요.</p>
+      )}
+      {limitMessage ? (
+        <p id="profile-job-picker-limit-message" className="onboarding-job-picker__limit" role="alert">
+          {limitMessage}
+        </p>
+      ) : null}
+      <div className="onboarding-job-picker__box">
+        <div className="onboarding-job-picker__columns">
+          <JobPickerColumn title="1차 선택" description="분야 선택">
+            {categories.map((category) => (
+              <button
+                key={category.label}
+                type="button"
+                className={`onboarding-job-picker__option ${primary?.label === category.label ? 'is-active' : ''}`}
+                onClick={() => selectPrimary(category)}
+              >
+                <span>{category.label}</span>
+                <span aria-hidden="true">›</span>
+              </button>
+            ))}
+          </JobPickerColumn>
+
+          <JobPickerColumn title="2차 선택" description="세부 직군 선택">
+            {primary?.groups.map((group) => (
+              <button
+                key={group.label}
+                type="button"
+                className={`onboarding-job-picker__option ${secondary?.label === group.label ? 'is-active' : ''}`}
+                onClick={() => setActiveSecondary(group.label)}
+              >
+                <span>{group.label}</span>
+                <span aria-hidden="true">›</span>
+              </button>
+            ))}
+          </JobPickerColumn>
+
+          <JobPickerColumn title="3차 선택" description="실제 수행 업무 선택">
+            {secondary?.jobs.map((job) => (
+              <button
+                key={job}
+                type="button"
+                className={`onboarding-job-picker__option onboarding-job-picker__option--check ${values.includes(job) ? 'is-selected' : ''}`}
+                onClick={() => toggleJob(job)}
+                aria-pressed={values.includes(job)}
+              >
+                <span>{job}</span>
+              </button>
+            ))}
+          </JobPickerColumn>
+        </div>
+      </div>
+      <p className="onboarding-job-picker__helper">최대 {MAX_JOB_SELECTIONS}개까지 선택할 수 있습니다.</p>
+    </fieldset>
+  );
+}
+
+function JobPickerColumn({ title, description, children }) {
+  return (
+    <section className="onboarding-job-picker__column" aria-label={title}>
+      <div className="onboarding-job-picker__column-head">
+        <h3>{title}</h3>
+        <p>{description}</p>
+      </div>
+      <div className="onboarding-job-picker__list">{children}</div>
+    </section>
   );
 }
 
@@ -259,7 +459,6 @@ function DisabilityPanel({ profile, onChange }) {
       <div className="profile-disability-detail">
         <Field label="상세 장애 설명">
           <TextArea value={profile.disabilityDescription} onChange={(value) => onChange('disabilityDescription', value)} rows={5} />
-          <Counter value={profile.disabilityDescription} max={500} />
         </Field>
         <div>
           <Field label="보조기기">
@@ -300,7 +499,15 @@ function WorkConditionPanel({ profile, onChange }) {
       <Divider />
       <div className="profile-form-grid profile-form-grid--work">
         <Field label="희망 연봉">
-          <Input value={profile.expectedSalary} onChange={(value) => onChange('expectedSalary', value)} placeholder="예) 연봉 3200만원" />
+          <span className="profile-unit-input">
+            <Input
+              value={profile.expectedSalary}
+              onChange={(value) => onChange('expectedSalary', value.replace(/\D/g, ''))}
+              placeholder="예) 3200"
+              inputMode="numeric"
+            />
+            <span className="profile-unit-input__unit">만원</span>
+          </span>
         </Field>
         <Field label="근무 시간 선호">
           <SelectBox
@@ -322,7 +529,6 @@ function WorkConditionPanel({ profile, onChange }) {
       </div>
       <Field label="통근 범위">
         <TextArea value={profile.commuteRange} onChange={(value) => onChange('commuteRange', value)} rows={4} />
-        <Counter value={profile.commuteRange} max={500} />
       </Field>
     </>
   );
@@ -335,26 +541,21 @@ function IntroPanel({ profile, onChange }) {
       <div className="profile-form-grid profile-form-grid--intro">
         <Field label="자기소개" required>
           <TextArea value={profile.selfIntroduction} onChange={(value) => onChange('selfIntroduction', value)} rows={6} />
-          <Counter value={profile.selfIntroduction} max={1000} />
         </Field>
         <Field label="지원동기">
           <TextArea value={profile.motivation} onChange={(value) => onChange('motivation', value)} rows={6} />
-          <Counter value={profile.motivation} max={1000} />
         </Field>
       </div>
       <Divider />
       <div className="profile-form-grid profile-form-grid--intro-optional">
         <Field label="직무 적합성">
           <TextArea value={profile.jobFitDescription} onChange={(value) => onChange('jobFitDescription', value)} rows={5} />
-          <Counter value={profile.jobFitDescription} max={1000} />
         </Field>
         <Field label="커리어 목표">
           <TextArea value={profile.careerGoal} onChange={(value) => onChange('careerGoal', value)} rows={5} />
-          <Counter value={profile.careerGoal} max={1000} />
         </Field>
         <Field label="개인 강점/약점">
           <TextArea value={profile.strengthsWeaknesses} onChange={(value) => onChange('strengthsWeaknesses', value)} rows={5} />
-          <Counter value={profile.strengthsWeaknesses} max={1000} />
         </Field>
       </div>
     </>
@@ -387,7 +588,7 @@ function ExtraPanel({ profile, onChange }) {
   );
 }
 
-function Field({ label, required = false, hint, children, width }) {
+function Field({ label, required = false, hint, error, children, width }) {
   return (
     <div className={`profile-field${width ? ` profile-field--${width}` : ''}`}>
       <label className="profile-label">
@@ -395,6 +596,11 @@ function Field({ label, required = false, hint, children, width }) {
         {required ? <RequiredMark /> : null}
       </label>
       {children}
+      {error ? (
+        <span className="profile-field-error" role="alert">
+          {error}
+        </span>
+      ) : null}
       {hint ? <span className="profile-help">{hint}</span> : null}
     </div>
   );
@@ -428,14 +634,21 @@ function SelectBox({ value, onChange, options, placeholder = '선택해주세요
 }
 
 function TextArea({ rows, value, onChange, ...props }) {
+  const textValue = value || '';
+
   return (
-    <textarea
-      className="profile-textarea"
-      rows={rows}
-      value={value || ''}
-      onChange={(event) => onChange(event.target.value)}
-      {...props}
-    />
+    <span className="profile-textarea-wrap">
+      <textarea
+        className="profile-textarea"
+        rows={rows}
+        value={textValue}
+        onChange={(event) => onChange(event.target.value)}
+        {...props}
+      />
+      <span className="profile-textarea-count" aria-live="polite">
+        {String(textValue).length.toLocaleString('ko-KR')}자
+      </span>
+    </span>
   );
 }
 
@@ -554,12 +767,4 @@ function ChipEditor({ value = [], onChange, placeholder }) {
 
 function Divider() {
   return <hr className="profile-divider" />;
-}
-
-function Counter({ value = '', max }) {
-  return (
-    <span className="profile-counter">
-      <strong>{String(value || '').length}</strong>/{max.toLocaleString('ko-KR')}
-    </span>
-  );
 }

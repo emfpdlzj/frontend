@@ -1,31 +1,10 @@
 import { useEffect, useState } from 'react';
 import { optionsApi } from '../api/optionsApi';
 import { STORAGE_KEYS } from '../config/appConfig';
+import { toJobCategories } from '../utils/jobCategories';
 
 const CACHE_VERSION = 3;
 const MAX_TIMEOUT_DELAY = 2_147_483_647;
-
-const collectLeafNames = (node) => {
-  if (!Array.isArray(node?.children) || !node.children.length) {
-    return [node?.name].filter(Boolean);
-  }
-
-  return node.children.flatMap(collectLeafNames);
-};
-
-const toJobCategories = (tree) =>
-  tree
-    .filter((category) => Array.isArray(category.children) && category.children.length)
-    .map((category) => ({
-      label: category.name,
-      groups: category.children
-        .map((group) => ({
-          label: group.name,
-          jobs: collectLeafNames(group)
-        }))
-        .filter((group) => group.label && group.jobs.length)
-    }))
-    .filter((category) => category.label && category.groups.length);
 
 const initialState = {
   status: 'idle',

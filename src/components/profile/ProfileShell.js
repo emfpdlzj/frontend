@@ -6,6 +6,8 @@ import moreIcon from '../../assets/profile/more_icon.png';
 import plusIcon from '../../assets/profile/plus_icon.png';
 import { STORAGE_KEYS } from '../../config/appConfig';
 import { useProfiles } from '../../hooks/useProfiles';
+import { normalizeBirthDate } from '../../utils/birthDate';
+import { formatPhoneNumber, getFieldFormatMessage } from '../../utils/formValidation';
 import { LoadingView } from '../common/LoadingView';
 import { StatusMessage } from '../common/StatusMessage';
 import { ProfileSectionPanel } from './ProfileSectionPanel';
@@ -24,8 +26,9 @@ const sectionRows = [
   ]
 ];
 
-const PROFILE_DRAFT_AUTOSAVE_DEBOUNCE_MS = 30000;
+const PROFILE_DRAFT_AUTOSAVE_DEBOUNCE_MS = 1000;
 const PROFILE_DRAFT_AUTOSAVE_INTERVAL_MS = 60000;
+const PROFILE_DRAFT_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export function ProfileShell() {
   const {
@@ -49,8 +52,10 @@ export function ProfileShell() {
   const [draftProfile, setDraftProfile] = useState(null);
   const [isCreateMode, setIsCreateMode] = useState(false);
   const [formError, setFormError] = useState('');
+  const [formatValidationVisible, setFormatValidationVisible] = useState({});
   const [draftToast, setDraftToast] = useState(null);
   const [lastAutosavedAt, setLastAutosavedAt] = useState('');
+  const [cachedDraftCards, setCachedDraftCards] = useState([]);
   const loadedDraftKeyRef = useRef('');
   const lastAutosavedSnapshotRef = useRef('');
   const autosaveDebounceRef = useRef(null);
@@ -105,6 +110,10 @@ export function ProfileShell() {
     });
   }, []);
 
+  const refreshCachedDraftCards = useCallback(() => {
+    setCachedDraftCards(readProfileDraftSummaries());
+  }, []);
+
   useEffect(() => {
     if (!draftToast) {
       return undefined;
@@ -147,7 +156,9 @@ export function ProfileShell() {
 
     loadedDraftKeyRef.current = storageKey;
     setFormError('');
-  }, [isCreateMode, selectedProfile, showDraftToast]);
+    setFormatValidationVisible({});
+    refreshCachedDraftCards();
+  }, [isCreateMode, refreshCachedDraftCards, selectedProfile, showDraftToast]);
 
   const saveDraftLocally = useCallback(
     (toastMessage = '작성 중인 내용이 임시저장되었습니다.') => {
@@ -176,11 +187,16 @@ export function ProfileShell() {
 
       lastAutosavedSnapshotRef.current = snapshot;
       setLastAutosavedAt(formatAutosaveTime(savedAt));
+      refreshCachedDraftCards();
       showDraftToast(toastMessage, 'success');
       return true;
     },
-    [currentDraftStorageKey, draftProfile, hasAutosaveTarget, isCreateMode, selectedProfile?.profileId, showDraftToast]
+    [currentDraftStorageKey, draftProfile, hasAutosaveTarget, isCreateMode, refreshCachedDraftCards, selectedProfile?.profileId, showDraftToast]
   );
+
+  useEffect(() => {
+    refreshCachedDraftCards();
+  }, [refreshCachedDraftCards]);
 
   useEffect(() => {
     if (autosaveDebounceRef.current) {
@@ -252,6 +268,8 @@ export function ProfileShell() {
 
     setActiveSection('basic');
     setFormError('');
+    setFormatValidationVisible({});
+    refreshCachedDraftCards();
   };
 
   const handleSelectProfile = (profileId) => {
@@ -262,6 +280,7 @@ export function ProfileShell() {
     loadedDraftKeyRef.current = '';
     lastAutosavedSnapshotRef.current = '';
     selectProfile(profileId);
+    setFormatValidationVisible({});
   };
 
   const handleCancelCreate = () => {
@@ -272,14 +291,23 @@ export function ProfileShell() {
     loadedDraftKeyRef.current = '';
     lastAutosavedSnapshotRef.current = selectedProfile ? JSON.stringify(toDraftProfile(selectedProfile)) : '';
     setFormError('');
+    setFormatValidationVisible({});
   };
 
   const updateDraft = (field, value) => {
     setFormError('');
+    const nextValue = field === 'contactPhone' ? formatPhoneNumber(value) : value;
     setDraftProfile((prev) => ({
       ...createEmptyProfileDraft(),
       ...prev,
-      [field]: value
+      [field]: nextValue
+    }));
+  };
+
+  const showFormatValidation = (field) => {
+    setFormatValidationVisible((visible) => ({
+      ...visible,
+      [field]: true
     }));
   };
 
@@ -291,6 +319,12 @@ export function ProfileShell() {
     const validationMessage = getValidationMessage(draftProfile);
 
     if (validationMessage) {
+      setFormatValidationVisible({
+        fullName: true,
+        contactPhone: true,
+        contactEmail: true,
+        birthDate: true
+      });
       setFormError(validationMessage);
       return;
     }
@@ -303,6 +337,7 @@ export function ProfileShell() {
         const createDraftKey = getProfileDraftStorageKey('create');
         await createProfile(payload);
         clearProfileDraftCache(createDraftKey);
+        refreshCachedDraftCards();
         setLastAutosavedAt('');
         loadedDraftKeyRef.current = '';
         lastAutosavedSnapshotRef.current = savedDraftSnapshot;
@@ -313,6 +348,7 @@ export function ProfileShell() {
       const editDraftKey = getProfileDraftStorageKey(selectedProfile.profileId);
       await updateProfile(selectedProfile.profileId, payload);
       clearProfileDraftCache(editDraftKey);
+      refreshCachedDraftCards();
       setLastAutosavedAt('');
       loadedDraftKeyRef.current = '';
       lastAutosavedSnapshotRef.current = savedDraftSnapshot;
@@ -330,6 +366,7 @@ export function ProfileShell() {
 
     if (confirmed) {
       clearProfileDraftCache(getProfileDraftStorageKey(selectedProfile.profileId));
+      refreshCachedDraftCards();
       await deleteProfile(selectedProfile.profileId);
       loadedDraftKeyRef.current = '';
       lastAutosavedSnapshotRef.current = '';
@@ -370,7 +407,19 @@ export function ProfileShell() {
             <StatusMessage kind="info">등록된 프로필이 없습니다. 회원가입 완료 후 기본 프로필이 생성됩니다.</StatusMessage>
           ) : null}
 
-          {isCreateMode ? <DraftProfileCard profile={draftProfile} /> : null}
+          {isCreateMode ? <DraftProfileCard profile={draftProfile} savedAt={Date.now()} /> : null}
+          {!isCreateMode
+            ? cachedDraftCards
+                .filter((draft) => draft.profileId === 'create' || !profiles.some((profile) => String(profile.profileId) === String(draft.profileId)))
+                .map((draft) => (
+                  <DraftProfileCard
+                    key={draft.storageKey}
+                    profile={draft.draft}
+                    savedAt={draft.savedAt}
+                    onSelect={draft.profileId === 'create' ? handleAddProfile : undefined}
+                  />
+                ))
+            : null}
 
           {profiles.map((profile) => (
             <ProfileCard
@@ -378,6 +427,7 @@ export function ProfileShell() {
               profile={profile}
               selected={!isCreateMode && String(profile.profileId) === String(selectedProfileId)}
               onSelect={handleSelectProfile}
+              hasDraft={cachedDraftCards.some((draft) => String(draft.profileId) === String(profile.profileId))}
             />
           ))}
 
@@ -453,7 +503,13 @@ export function ProfileShell() {
                   </button>
                 </div>
                 <ProfileTabs rows={visibleTopRows} activeSection={activeSection} onTabClick={handleTabClick} />
-                <ProfileSectionPanel activeSection={activeSection} profile={visibleProfile} onChange={updateDraft} />
+                <ProfileSectionPanel
+                  activeSection={activeSection}
+                  profile={visibleProfile}
+                  onChange={updateDraft}
+                  validationErrors={getVisibleValidationErrors(visibleProfile, formatValidationVisible)}
+                  onFieldBlur={showFormatValidation}
+                />
                 {showBottomRow ? (
                   <ProfileTabs rows={[sectionRows[1]]} activeSection={activeSection} onTabClick={handleTabClick} compact />
                 ) : null}
@@ -587,7 +643,7 @@ function toProfilePayload(profile) {
     fullName: trimValue(profile.fullName),
     contactPhone: trimValue(profile.contactPhone),
     contactEmail: trimValue(profile.contactEmail),
-    birthDate: trimValue(profile.birthDate),
+    birthDate: normalizeBirthDate(profile.birthDate),
     genderType: trimValue(profile.genderType),
     residenceRegion: trimValue(profile.residenceRegion),
     detailAddress: trimValue(profile.detailAddress),
@@ -637,10 +693,47 @@ function readProfileDraftCache(storageKey) {
       return null;
     }
 
+    if (Date.now() - parsed.savedAt > PROFILE_DRAFT_CACHE_TTL_MS) {
+      clearProfileDraftCache(storageKey);
+      return null;
+    }
+
     return parsed;
   } catch {
     return null;
   }
+}
+
+function readProfileDraftSummaries() {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  const prefix = `${STORAGE_KEYS.profileDraftAutosave}:`;
+  const summaries = [];
+
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const storageKey = window.localStorage.key(index);
+
+    if (!storageKey?.startsWith(prefix)) {
+      continue;
+    }
+
+    const cached = readProfileDraftCache(storageKey);
+
+    if (!cached?.draft) {
+      continue;
+    }
+
+    summaries.push({
+      storageKey,
+      profileId: storageKey.slice(prefix.length),
+      draft: cached.draft,
+      savedAt: cached.savedAt
+    });
+  }
+
+  return summaries.sort((a, b) => b.savedAt - a.savedAt);
 }
 
 function writeProfileDraftCache(storageKey, value) {
@@ -678,11 +771,42 @@ function hasText(value) {
   return trimValue(value).length > 0;
 }
 
+const profileFormatFields = [
+  ['fullName', 'name'],
+  ['contactPhone', 'phone'],
+  ['contactEmail', 'email'],
+  ['birthDate', 'birthDate']
+];
+
+function getProfileFormatMessage(profile) {
+  const invalidField = profileFormatFields.find(([profileField, formatField]) => getFieldFormatMessage(formatField, profile[profileField]));
+  return invalidField ? getFieldFormatMessage(invalidField[1], profile[invalidField[0]]) : '';
+}
+
+function getVisibleValidationErrors(profile, visible) {
+  if (!profile) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    profileFormatFields
+      .filter(([profileField]) => visible[profileField])
+      .map(([profileField, formatField]) => [profileField, getFieldFormatMessage(formatField, profile[profileField])])
+      .filter(([, message]) => message)
+  );
+}
+
 function getValidationMessage(profile) {
   const missing = requiredFields.find(([field]) => !hasText(profile[field]));
 
   if (missing) {
     return `${missing[1]} 항목을 입력해 주세요.`;
+  }
+
+  const formatMessage = getProfileFormatMessage(profile);
+
+  if (formatMessage) {
+    return formatMessage;
   }
 
   if (!Array.isArray(profile.skills) || profile.skills.length === 0) {
@@ -700,40 +824,55 @@ function getValidationMessage(profile) {
   return '';
 }
 
-function ProfileCard({ profile, selected = false, onSelect }) {
+function ProfileCard({ profile, selected = false, hasDraft = false, onSelect }) {
   const title = profile.fullName || profile.targetJob || `프로필 ${profile.profileId}`;
   const updatedAtText = formatDate(profile.updatedAt);
 
   return (
-    <article className={`profile-card${selected ? ' is-selected' : ''}`} aria-current={selected ? 'true' : undefined}>
+    <button
+      type="button"
+      className={`profile-card profile-card--button${selected ? ' is-selected' : ''}`}
+      aria-current={selected ? 'true' : undefined}
+      onClick={() => onSelect(profile.profileId)}
+    >
       {profile.isDefault ? <span className="profile-card__badge">기본</span> : null}
+      {hasDraft ? <span className="profile-card__draft-label">임시저장 있음</span> : null}
       <div>
         <h3>{title}</h3>
-        <p>{updatedAtText ? `최종 수정일 ${updatedAtText}` : '최종 수정일 확인 필요'}</p>
+        <p>{hasDraft ? '5분 이내 임시저장 내용 있음' : updatedAtText ? `최종 수정일 ${updatedAtText}` : '최종 수정일 확인 필요'}</p>
       </div>
-      <button
-        type="button"
-        aria-label={`${title} 프로필 선택`}
-        className="profile-card__more"
-        onClick={() => onSelect(profile.profileId)}
-      >
+      <span className="profile-card__more" aria-hidden="true">
         <img src={moreIcon} alt="" aria-hidden="true" />
-      </button>
-    </article>
+      </span>
+    </button>
   );
 }
 
-function DraftProfileCard({ profile }) {
+function DraftProfileCard({ profile, savedAt, onSelect }) {
   const title = profile?.fullName?.trim() || profile?.targetJob?.trim() || '현재 작성중';
-
-  return (
-    <article className="profile-card profile-card--draft is-selected" aria-current="true">
+  const savedAtText = formatAutosaveTime(savedAt);
+  const content = (
+    <>
       <span className="profile-card__badge profile-card__badge--draft">작성 중</span>
       <div>
         <h3>{title}</h3>
-        <p>저장 전 임시 프로필</p>
+        <p>{savedAtText ? `임시저장됨 ${savedAtText}` : '저장 전 임시 프로필'}</p>
       </div>
       <span className="profile-card__draft-dot" aria-hidden="true" />
+    </>
+  );
+
+  if (onSelect) {
+    return (
+      <button type="button" className="profile-card profile-card--draft profile-card--draft-button" onClick={onSelect}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <article className="profile-card profile-card--draft is-selected" aria-current="true">
+      {content}
     </article>
   );
 }
