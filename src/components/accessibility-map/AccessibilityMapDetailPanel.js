@@ -1,11 +1,17 @@
+import infoIcon from '../../assets/accessibility-map/info-icon.png';
+import timeIcon from '../../assets/accessibility-map/time-icon.png';
+import transferIcon from '../../assets/accessibility-map/transfer-icon.svg';
+import walkIcon from '../../assets/accessibility-map/walk-icon.png';
+import warningIcon from '../../assets/accessibility-map/warning-icon.svg';
+
 function MetaIcon({ type }) {
   if (type === 'time') {
-    return <span className="accessibility-map__meta-icon">◔</span>;
+    return <img className="accessibility-map__meta-icon" src={timeIcon} alt="" aria-hidden="true" />;
   }
   if (type === 'transfer') {
-    return <span className="accessibility-map__meta-icon">⟳</span>;
+    return <img className="accessibility-map__meta-icon" src={transferIcon} alt="" aria-hidden="true" />;
   }
-  return <span className="accessibility-map__meta-icon">🚶</span>;
+  return <img className="accessibility-map__meta-icon is-walk" src={walkIcon} alt="" aria-hidden="true" />;
 }
 
 function DetailStatusBadge({ label }) {
@@ -17,42 +23,26 @@ function DetailStatusBadge({ label }) {
 
 export function AccessibilityMapDetailPanel({
   job,
-  personas,
   selectedPersonaKey,
   selectedTab,
-  onChangePersona,
   onChangeTab
 }) {
   const accessibility = job.accessibilityByPersona[selectedPersonaKey];
 
   return (
     <aside className="accessibility-map__detail-panel" aria-label="공고 상세 패널">
-      <div className="accessibility-map__persona-tabs" role="tablist" aria-label="장애 유형 선택">
-        {Object.entries(personas).map(([key, persona]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={selectedPersonaKey === key}
-            className={`accessibility-map__persona-button${selectedPersonaKey === key ? ' is-active' : ''}`}
-            onClick={() => onChangePersona(key)}
-          >
-            <strong>{persona.label}</strong>
-            <span>{persona.description}</span>
-          </button>
-        ))}
-      </div>
-
       <header className="accessibility-map__detail-header">
-        <div className="accessibility-map__badge-row">
-          <span className="accessibility-map__mini-badge is-public">공공</span>
-          <span className="accessibility-map__mini-badge is-workplace">표준사업장</span>
-        </div>
-        <div className="accessibility-map__deadline-row">
+        <div className="accessibility-map__detail-header-top">
+          <div className="accessibility-map__badge-row">
+            <span className="accessibility-map__mini-badge is-public">공공</span>
+            <span className="accessibility-map__mini-badge is-workplace">표준사업장</span>
+          </div>
           <span>{job.dueDateText}</span>
+        </div>
+        <div className="accessibility-map__title-row">
+          <h2>{job.title}</h2>
           <strong>{job.dueLabel}</strong>
         </div>
-        <h2>{job.title}</h2>
         <p>{job.company}</p>
         <div className="accessibility-map__tab-row" role="tablist" aria-label="상세 정보 탭">
           <button
@@ -109,7 +99,7 @@ export function AccessibilityMapDetailPanel({
         {selectedTab === 'company' ? (
           <>
             <div className="accessibility-map__company-card">
-              <div className="accessibility-map__company-icon">서</div>
+              <div className="accessibility-map__company-initial" aria-hidden="true">서</div>
               <div>
                 <strong>{job.companyInfo.name}</strong>
                 <p>{job.companyInfo.type}</p>
@@ -183,9 +173,7 @@ export function AccessibilityMapDetailPanel({
               <ul className="accessibility-map__accessibility-list">
                 {accessibility.detailItems.map(([title, description, status]) => (
                   <li key={`${title}-${status}`}>
-                    <span className="accessibility-map__warning-icon" aria-hidden="true">
-                      △
-                    </span>
+                    <img className="accessibility-map__warning-icon" src={warningIcon} alt="" aria-hidden="true" />
                     <div>
                       <strong>{title}</strong>
                       <p>{description}</p>
@@ -197,7 +185,8 @@ export function AccessibilityMapDetailPanel({
             </section>
 
             <div className="accessibility-map__source-note">
-              <strong>데이터 출처</strong> · {accessibility.source.replace('데이터 출처 · ', '')}
+              <img src={infoIcon} alt="" aria-hidden="true" />
+              <span><strong>데이터 출처</strong> · {accessibility.source.replace('데이터 출처 · ', '')}</span>
             </div>
           </>
         ) : null}

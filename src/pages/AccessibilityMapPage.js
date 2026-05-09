@@ -25,7 +25,6 @@ export function AccessibilityMapPage() {
     selectedTab,
     viewState,
     setSelectedJobId,
-    setSelectedPersona,
     setSelectedTab,
     setViewState
   } = useAccessibilityMapMock();
@@ -81,29 +80,12 @@ export function AccessibilityMapPage() {
         {viewState === 'success' ? (
           <AccessibilityMapDetailPanel
             job={selectedJob}
-            personas={personas}
             selectedPersonaKey={selectedPersona}
             selectedTab={selectedTab}
-            onChangePersona={setSelectedPersona}
             onChangeTab={setSelectedTab}
           />
         ) : (
           <aside className="accessibility-map__detail-panel">
-            <div className="accessibility-map__persona-tabs" role="tablist" aria-label="장애 유형 선택">
-              {Object.entries(personas).map(([key, persona]) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  aria-selected={selectedPersona === key}
-                  className={`accessibility-map__persona-button${selectedPersona === key ? ' is-active' : ''}`}
-                  onClick={() => setSelectedPersona(key)}
-                >
-                  <strong>{persona.label}</strong>
-                  <span>{persona.description}</span>
-                </button>
-              ))}
-            </div>
             <div className="accessibility-map__detail-content">
               {viewState === 'empty' ? (
                 <StatusMessage>선택 가능한 공고가 없어 상세 정보를 표시하지 않습니다.</StatusMessage>

@@ -1,4 +1,8 @@
 import { memo, useEffect, useRef, useState } from 'react';
+import accessibilityScorePanel from '../../assets/accessibility-map/accessibility-score-panel.png';
+import arrowDown from '../../assets/accessibility-map/arrow_down.png';
+import profileIcon from '../../assets/accessibility-map/profile-icon.png';
+import settingIcon from '../../assets/accessibility-map/setting-icon.png';
 import { NAVER_MAP_CONFIG } from '../../config/appConfig';
 import { loadNaverMapScript } from '../../utils/naverMapSdk';
 import { LoadingView } from '../common/LoadingView';
@@ -19,10 +23,12 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
   const mapElementRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const currentLocationMarkerRef = useRef(null);
+  const profileSelectRef = useRef(null);
   const [mapScriptStatus, setMapScriptStatus] = useState(() =>
     NAVER_MAP_CONFIG.clientId ? 'loading' : 'missing-client-id'
   );
   const [mapInitError, setMapInitError] = useState('');
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -169,6 +175,32 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
     []
   );
 
+  useEffect(() => {
+    if (!isProfileMenuOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event) => {
+      if (!profileSelectRef.current?.contains(event.target)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isProfileMenuOpen]);
+
   const handleZoomIn = () => {
     if (!mapInstanceRef.current) {
       return;
@@ -243,6 +275,51 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
       <div className="accessibility-map__map-surface">
         <div ref={mapElementRef} className="accessibility-map__naver-map" />
       </div>
+      <div
+        ref={profileSelectRef}
+        className={`accessibility-map__profile-select${isProfileMenuOpen ? ' is-open' : ''}`}
+        aria-label="프로필 선택"
+      >
+        <button
+          type="button"
+          className="accessibility-map__profile-trigger"
+          aria-haspopup="listbox"
+          aria-expanded={isProfileMenuOpen}
+          onClick={() => setIsProfileMenuOpen((isOpen) => !isOpen)}
+        >
+          <span>프로필을 선택하세요</span>
+          <img src={arrowDown} alt="" aria-hidden="true" />
+        </button>
+        {isProfileMenuOpen ? (
+          <div className="accessibility-map__profile-menu" role="listbox" aria-label="프로필 목록">
+            {['기본 프로필', '기본 프로필 2', '기본 프로필 3'].map((label) => (
+              <button
+                key={label}
+                type="button"
+                className="accessibility-map__profile-option"
+                role="option"
+                aria-selected="false"
+              >
+                <img src={profileIcon} alt="" aria-hidden="true" />
+                <span>
+                  <strong>{label}</strong>
+                  <small>설정된 정보 없음</small>
+                </span>
+              </button>
+            ))}
+            <button type="button" className="accessibility-map__profile-manage">
+              <img src={settingIcon} alt="" aria-hidden="true" />
+              프로필 관리
+            </button>
+          </div>
+        ) : null}
+      </div>
+      <img
+        className="accessibility-map__score-panel-image"
+        src={accessibilityScorePanel}
+        alt="접근성 점수 기준: A 80 이상, B 60~79, C 60 미만"
+      />
+      <div className="accessibility-map__map-pill">60분 이내</div>
       <div className="accessibility-map__map-actions" aria-label="지도 조작">
         <button
           type="button"
