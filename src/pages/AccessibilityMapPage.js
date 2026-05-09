@@ -31,18 +31,15 @@ export function AccessibilityMapPage() {
   } = useAccessibilityMapMock();
   const [currentViewport] = useState(mapViewport);
   const [currentLocation, setCurrentLocation] = useState(null);
-  const [locationNotice, setLocationNotice] = useState('');
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setLocationNotice('브라우저가 위치 확인을 지원하지 않아 기본 지도를 표시합니다.');
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         if (!isWithinSouthKoreaBounds(coords.latitude, coords.longitude)) {
-          setLocationNotice('현재 위치가 지도 제공 범위를 벗어나 기본 지도를 표시합니다.');
           return;
         }
 
@@ -50,16 +47,8 @@ export function AccessibilityMapPage() {
           lat: coords.latitude,
           lng: coords.longitude
         });
-        setLocationNotice('현재 위치를 확인했습니다. 현위치 버튼으로 이동할 수 있습니다.');
       },
-      (error) => {
-        if (error.code === error.PERMISSION_DENIED) {
-          setLocationNotice('위치 권한이 없어 기본 지도를 표시합니다.');
-          return;
-        }
-
-        setLocationNotice('현재 위치를 확인하지 못해 기본 지도를 표시합니다.');
-      },
+      () => {},
       {
         enableHighAccuracy: true,
         timeout: 10000,
@@ -70,32 +59,6 @@ export function AccessibilityMapPage() {
 
   return (
     <main className="accessibility-map">
-      <header className="accessibility-map__topbar">
-        {locationNotice ? (
-          <p className="accessibility-map__location-notice" role="status" aria-live="polite">
-            {locationNotice}
-          </p>
-        ) : (
-          <span aria-hidden="true" />
-        )}
-
-        <div className="accessibility-map__persona-tabs" role="tablist" aria-label="장애 유형 선택">
-          {Object.entries(personas).map(([key, persona]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={selectedPersona === key}
-              className={`accessibility-map__persona-button${selectedPersona === key ? ' is-active' : ''}`}
-              onClick={() => setSelectedPersona(key)}
-            >
-              <strong>{persona.label}</strong>
-              <span>{persona.description}</span>
-            </button>
-          ))}
-        </div>
-      </header>
-
       <div className="accessibility-map__layout">
         <TrafficFilterPanel
           filterGroups={filterGroups}
@@ -118,12 +81,29 @@ export function AccessibilityMapPage() {
         {viewState === 'success' ? (
           <AccessibilityMapDetailPanel
             job={selectedJob}
+            personas={personas}
             selectedPersonaKey={selectedPersona}
             selectedTab={selectedTab}
+            onChangePersona={setSelectedPersona}
             onChangeTab={setSelectedTab}
           />
         ) : (
           <aside className="accessibility-map__detail-panel">
+            <div className="accessibility-map__persona-tabs" role="tablist" aria-label="장애 유형 선택">
+              {Object.entries(personas).map(([key, persona]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={selectedPersona === key}
+                  className={`accessibility-map__persona-button${selectedPersona === key ? ' is-active' : ''}`}
+                  onClick={() => setSelectedPersona(key)}
+                >
+                  <strong>{persona.label}</strong>
+                  <span>{persona.description}</span>
+                </button>
+              ))}
+            </div>
             <div className="accessibility-map__detail-content">
               {viewState === 'empty' ? (
                 <StatusMessage>선택 가능한 공고가 없어 상세 정보를 표시하지 않습니다.</StatusMessage>

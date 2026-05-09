@@ -41,6 +41,11 @@ a:hover {
 
 .app-frame {
   min-height: 100vh;
+  background: linear-gradient(
+    90deg,
+    #0b2f5b 0 var(--app-tab-nav-width),
+    #fff var(--app-tab-nav-width) 100%
+  );
 }
 
 .app-frame__body {
@@ -1073,37 +1078,25 @@ a:hover {
 }
 
 .accessibility-map {
-  min-height: calc(100vh - var(--app-header-height));
+  --accessibility-map-height: calc(100vh - var(--app-header-height));
+  --accessibility-map-height: calc(100dvh - var(--app-header-height));
+  height: var(--accessibility-map-height);
+  overflow: hidden;
   background: #f8fafc;
   color: #111827;
 }
 
-.accessibility-map__topbar {
-  display: grid;
-  grid-template-columns: minmax(320px, 1fr) auto;
-  align-items: center;
-  gap: 20px;
-  padding: 12px 18px;
-  background: #fff;
+.accessibility-map__persona-tabs {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 14px 18px 12px;
+  background: #eef2f7;
   border-bottom: 1px solid #e5e7eb;
 }
 
-.accessibility-map__location-notice {
-  margin: 0;
-  color: #4b5563;
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-.accessibility-map__persona-tabs {
-  display: inline-flex;
-  gap: 6px;
-  padding: 4px;
-  border-radius: 16px;
-  background: #eef2f7;
-}
-
 .accessibility-map__persona-button {
+  flex: 1;
   border: 0;
   background: transparent;
   border-radius: 12px;
@@ -1111,6 +1104,7 @@ a:hover {
   cursor: pointer;
   display: inline-flex;
   align-items: baseline;
+  justify-content: center;
   gap: 4px;
   color: #1f2937;
 }
@@ -1133,7 +1127,8 @@ a:hover {
 .accessibility-map__layout {
   display: grid;
   grid-template-columns: 360px minmax(520px, 1fr) 420px;
-  min-height: calc(100vh - var(--app-header-height) - 65px);
+  height: var(--accessibility-map-height);
+  min-height: 0;
   align-items: stretch;
 }
 
@@ -1143,9 +1138,10 @@ a:hover {
 }
 
 .accessibility-map__filter-panel {
-  padding: 14px 12px 0;
+  height: var(--accessibility-map-height);
+  padding: 14px 12px 18px;
   border-right: 1px solid #e5e7eb;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .accessibility-map__filter-header h2 {
@@ -1277,8 +1273,6 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: calc(100vh - var(--app-header-height) - 345px);
-  overflow: auto;
   padding: 0 10px 16px;
 }
 
@@ -1290,11 +1284,6 @@ a:hover {
   background: #fff;
   padding: 14px 14px 16px;
   cursor: pointer;
-}
-
-.accessibility-map__job-card.is-selected {
-  border-color: #2563eb;
-  box-shadow: inset 3px 0 0 #2563eb;
 }
 
 .accessibility-map__job-card-top,
@@ -1380,8 +1369,8 @@ a:hover {
   overflow: hidden;
   background: #fff;
   align-self: stretch;
-  height: calc(100vh - 77px);
-  min-height: calc(100vh - 77px);
+  height: var(--accessibility-map-height);
+  min-height: 0;
 }
 
 .accessibility-map__map-panel.is-feedback {
@@ -1494,27 +1483,50 @@ a:hover {
   z-index: 3;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.accessibility-map__zoom-actions {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #d7dde8;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
 }
 
 .accessibility-map__map-action-button {
-  min-width: 52px;
-  min-height: 52px;
-  border: 1px solid #d1d5db;
-  border-radius: 14px;
+  width: 54px;
+  height: 54px;
+  border: 0;
   background: rgba(255, 255, 255, 0.96);
   color: #111827;
   font: inherit;
-  font-size: 1.35rem;
-  font-weight: 700;
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1;
   cursor: pointer;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
 }
 
 .accessibility-map__map-action-button.is-location {
-  min-width: 72px;
-  padding: 0 12px;
-  font-size: 0.95rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d7dde8;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+}
+
+.accessibility-map__map-action-button.is-zoom-in {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.accessibility-map__location-icon {
+  display: block;
+  width: 29px;
+  height: 29px;
+  fill: #4b5563;
 }
 
 .accessibility-map__map-action-button:disabled {
@@ -1644,7 +1656,9 @@ a:hover {
   border-left: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
+  height: var(--accessibility-map-height);
   min-width: 0;
+  overflow: hidden;
 }
 
 .accessibility-map__detail-header {
@@ -1689,6 +1703,7 @@ a:hover {
 
 .accessibility-map__detail-content {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 20px;
 }
@@ -2028,9 +2043,11 @@ a:hover {
 }
 
 .accessibility-map__action-bar {
+  flex: 0 0 auto;
   gap: 10px;
   padding: 16px 14px;
   border-top: 1px solid #e5e7eb;
+  background: #fff;
 }
 
 .accessibility-map__icon-action {
@@ -2058,17 +2075,23 @@ a:hover {
 }
 
 @media (max-width: 1280px) {
-  .accessibility-map__topbar {
-    grid-template-columns: 1fr;
+  .accessibility-map {
+    height: auto;
+    min-height: var(--accessibility-map-height);
+    overflow: visible;
   }
 
   .accessibility-map__layout {
     grid-template-columns: 1fr;
+    height: auto;
   }
 
+  .accessibility-map__filter-panel,
   .accessibility-map__map-panel,
   .accessibility-map__detail-panel {
     grid-column: 1;
+    height: auto;
+    min-height: 520px;
   }
 }
 

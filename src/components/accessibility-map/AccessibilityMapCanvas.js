@@ -7,6 +7,14 @@ import { StatusMessage } from '../common/StatusMessage';
 const NAVER_MAP_SCRIPT_ID = 'bridgework-naver-map-sdk';
 const NAVER_MAP_READY_CALLBACK = '__bridgeworkNaverMapReady__';
 
+function createNaverLatLng(location) {
+  if (!location) {
+    return null;
+  }
+
+  return new window.naver.maps.LatLng(location.lat, location.lng);
+}
+
 function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState, onRetry }) {
   const mapElementRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -77,7 +85,8 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
           center: new window.naver.maps.LatLng(viewport.center.lat, viewport.center.lng),
           zoom: viewport.zoom,
           mapTypeId: window.naver.maps.MapTypeId.NORMAL,
-          zoomControl: true
+          zoomControl: false,
+          zoomOrigin: createNaverLatLng(currentLocation)
         });
 
         setMapInitError('');
@@ -94,7 +103,7 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
         window.cancelAnimationFrame(frameId);
       }
     };
-  }, [mapScriptStatus, viewport, viewState]);
+  }, [currentLocation, mapScriptStatus, viewport, viewState]);
 
   useEffect(() => {
     if (!mapInstanceRef.current || mapScriptStatus !== 'ready' || viewState !== 'success') {
@@ -110,6 +119,14 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
       return;
     }
 
+    mapInstanceRef.current.setOptions('zoomOrigin', createNaverLatLng(currentLocation));
+  }, [currentLocation, mapScriptStatus, viewState]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current || mapScriptStatus !== 'ready' || viewState !== 'success') {
+      return;
+    }
+
     if (!currentLocation) {
       if (currentLocationMarkerRef.current) {
         currentLocationMarkerRef.current.setMap(null);
@@ -118,7 +135,7 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
       return;
     }
 
-    const position = new window.naver.maps.LatLng(currentLocation.lat, currentLocation.lng);
+    const position = createNaverLatLng(currentLocation);
 
     if (!currentLocationMarkerRef.current) {
       currentLocationMarkerRef.current = new window.naver.maps.Marker({
@@ -157,7 +174,7 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
       return;
     }
 
-    mapInstanceRef.current.setZoom(mapInstanceRef.current.getZoom() + 1, true);
+    mapInstanceRef.current.zoomBy(1, createNaverLatLng(currentLocation) || undefined, true);
   };
 
   const handleZoomOut = () => {
@@ -165,7 +182,7 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
       return;
     }
 
-    mapInstanceRef.current.setZoom(mapInstanceRef.current.getZoom() - 1, true);
+    mapInstanceRef.current.zoomBy(-1, createNaverLatLng(currentLocation) || undefined, true);
   };
 
   const handleMoveToCurrentLocation = () => {
@@ -173,7 +190,7 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
       return;
     }
 
-    mapInstanceRef.current.panTo(new window.naver.maps.LatLng(currentLocation.lat, currentLocation.lng));
+    mapInstanceRef.current.panTo(createNaverLatLng(currentLocation));
   };
 
   if (viewState === 'loading') {
@@ -229,29 +246,33 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
       <div className="accessibility-map__map-actions" aria-label="지도 조작">
         <button
           type="button"
-          className="accessibility-map__map-action-button"
-          onClick={handleZoomIn}
-          aria-label="지도 확대"
-        >
-          +
-        </button>
-        <button
-          type="button"
-          className="accessibility-map__map-action-button"
-          onClick={handleZoomOut}
-          aria-label="지도 축소"
-        >
-          -
-        </button>
-        <button
-          type="button"
           className="accessibility-map__map-action-button is-location"
           onClick={handleMoveToCurrentLocation}
           aria-label="현재 위치로 이동"
           disabled={!currentLocation}
         >
-          현위치
+          <svg className="accessibility-map__location-icon" viewBox="0 0 29 29" aria-hidden="true" focusable="false">
+            <path d="M13.89 23.01V21a0.61 0.61 0 0 1 1.22 0v2.01a8.533 8.533 0 0 0 7.9-7.9H21a0.61 0.61 0 0 1 0-1.22h2.01a8.533 8.533 0 0 0-7.9-7.9V8a0.61 0.61 0 0 1-1.22 0V5.99a8.533 8.533 0 0 0-7.9 7.9H8a0.61 0.61 0 0 1 0 1.22H5.99a8.533 8.533 0 0 0 7.9 7.9Zm10.36-8.51c0 5.385-4.365 9.75-9.75 9.75s-9.75-4.365-9.75-9.75 4.365-9.75 9.75-9.75 9.75 4.365 9.75 9.75Zm-9.75 1.625a1.625 1.625 0 1 0 0-3.25 1.625 1.625 0 0 0 0 3.25Z" />
+          </svg>
         </button>
+        <div className="accessibility-map__zoom-actions" role="group" aria-label="지도 확대 및 축소">
+          <button
+            type="button"
+            className="accessibility-map__map-action-button is-zoom-in"
+            onClick={handleZoomIn}
+            aria-label="지도 확대"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            className="accessibility-map__map-action-button is-zoom-out"
+            onClick={handleZoomOut}
+            aria-label="지도 축소"
+          >
+            -
+          </button>
+        </div>
       </div>
     </section>
   );

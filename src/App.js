@@ -1,9 +1,13 @@
+import { useLocation } from 'react-router-dom';
 import { AppRouter } from './app/AppRouter';
 import { AppFooter } from './components/common/AppFooter';
 import { AppHeader } from './components/common/AppHeader';
 import { AppTabNavigation } from './components/common/AppTabNavigation';
 
 function App() {
+  const location = useLocation();
+  const isMapPage = location.pathname === '/accessibility-map';
+
   return (
     <div className="app-frame">
       <AppHeader />
@@ -13,7 +17,7 @@ function App() {
           <div className="app-frame__main">
             <AppRouter />
           </div>
-          <AppFooter />
+          {isMapPage ? null : <AppFooter />}
         </div>
       </div>
     </div>

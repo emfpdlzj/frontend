@@ -15,11 +15,34 @@ function DetailStatusBadge({ label }) {
   return <span className={`accessibility-map__status-pill is-${tone}`}>{label}</span>;
 }
 
-export function AccessibilityMapDetailPanel({ job, selectedPersonaKey, selectedTab, onChangeTab }) {
+export function AccessibilityMapDetailPanel({
+  job,
+  personas,
+  selectedPersonaKey,
+  selectedTab,
+  onChangePersona,
+  onChangeTab
+}) {
   const accessibility = job.accessibilityByPersona[selectedPersonaKey];
 
   return (
     <aside className="accessibility-map__detail-panel" aria-label="공고 상세 패널">
+      <div className="accessibility-map__persona-tabs" role="tablist" aria-label="장애 유형 선택">
+        {Object.entries(personas).map(([key, persona]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={selectedPersonaKey === key}
+            className={`accessibility-map__persona-button${selectedPersonaKey === key ? ' is-active' : ''}`}
+            onClick={() => onChangePersona(key)}
+          >
+            <strong>{persona.label}</strong>
+            <span>{persona.description}</span>
+          </button>
+        ))}
+      </div>
+
       <header className="accessibility-map__detail-header">
         <div className="accessibility-map__badge-row">
           <span className="accessibility-map__mini-badge is-public">공공</span>
