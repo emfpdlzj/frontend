@@ -102,6 +102,7 @@ export function AccessibilityMapPage() {
           routes={mapRoutes}
           markers={mapMarkers}
           hasAppliedConditions={hasAppliedConditions}
+          showProfileSelect={isAiEnabled}
           profiles={profiles}
           selectedProfileId={selectedProfileId}
           supportAgencyStatus={supportAgencyStatus}

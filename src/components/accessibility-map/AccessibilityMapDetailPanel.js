@@ -64,11 +64,11 @@ export function AccessibilityMapDetailPanel({
               </span>
             ))}
           </div>
-          <span>{job.dueDateText}</span>
+          {job.dueDateText ? <span>{job.dueDateText}</span> : null}
         </div>
         <div className="accessibility-map__title-row">
           <h2>{job.title}</h2>
-          <strong>{job.dueLabel}</strong>
+          {job.dueLabel ? <strong>{job.dueLabel}</strong> : null}
         </div>
         <p>{job.company}</p>
         <div className="accessibility-map__tab-row" role="tablist" aria-label="상세 정보 탭">
@@ -106,7 +106,7 @@ export function AccessibilityMapDetailPanel({
         {selectedTab === 'job' ? (
           <>
             <div className="accessibility-map__info-card is-highlighted">
-              <div className="accessibility-map__highlight-badge">{job.dueLabel}</div>
+              {job.dueLabel ? <div className="accessibility-map__highlight-badge">{job.dueLabel}</div> : null}
               <div>
                 <strong>모집 마감까지</strong>
                 <p>{job.dateRangeText}</p>

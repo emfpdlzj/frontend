@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { optionsApi } from '../api/optionsApi';
 import { STORAGE_KEYS } from '../config/appConfig';
+import { toJobCategories } from '../utils/jobCategories';
 
 const CACHE_VERSION = 1;
 
@@ -8,6 +9,7 @@ const initialState = {
   status: 'idle',
   error: '',
   employmentTypes: [],
+  jobCategories: [],
   jobOptions: [],
   regions: [],
   salaryTypes: []
@@ -61,6 +63,7 @@ const isValidCache = (cached) =>
   cached?.version === CACHE_VERSION &&
   cached?.expiresAt > Date.now() &&
   Array.isArray(cached?.data?.employmentTypes) &&
+  Array.isArray(cached?.data?.jobCategories) &&
   Array.isArray(cached?.data?.jobOptions) &&
   Array.isArray(cached?.data?.regions) &&
   Array.isArray(cached?.data?.salaryTypes);
@@ -132,6 +135,7 @@ export function useJobFilterOptions() {
         ]);
         const data = {
           employmentTypes,
+          jobCategories: toJobCategories(jobCategoryTree),
           jobOptions: flattenJobTree(jobCategoryTree),
           regions,
           salaryTypes

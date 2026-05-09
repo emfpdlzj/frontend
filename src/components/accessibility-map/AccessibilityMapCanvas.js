@@ -54,6 +54,7 @@ function canRenderMap(viewState) {
 function AccessibilityMapCanvasComponent({
   markers = [],
   hasAppliedConditions = false,
+  showProfileSelect = true,
   profiles = [],
   selectedProfileId,
   supportAgencyStatus,
@@ -75,6 +76,12 @@ function AccessibilityMapCanvasComponent({
   );
   const [mapInitError, setMapInitError] = useState('');
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!showProfileSelect) {
+      setIsProfileMenuOpen(false);
+    }
+  }, [showProfileSelect]);
 
   useEffect(() => {
     let isMounted = true;
@@ -343,48 +350,50 @@ function AccessibilityMapCanvasComponent({
       <div className="accessibility-map__map-surface">
         <div ref={mapElementRef} className="accessibility-map__naver-map" />
       </div>
-      <div
-        ref={profileSelectRef}
-        className={`accessibility-map__profile-select${isProfileMenuOpen ? ' is-open' : ''}`}
-        aria-label="프로필 선택"
-      >
-        <button
-          type="button"
-          className="accessibility-map__profile-trigger"
-          aria-haspopup="listbox"
-          aria-expanded={isProfileMenuOpen}
-          onClick={() => setIsProfileMenuOpen((isOpen) => !isOpen)}
+      {showProfileSelect ? (
+        <div
+          ref={profileSelectRef}
+          className={`accessibility-map__profile-select${isProfileMenuOpen ? ' is-open' : ''}`}
+          aria-label="프로필 선택"
         >
-          <span>{selectedProfile ? selectedProfile.name : '프로필을 선택하세요'}</span>
-          <img src={arrowDown} alt="" aria-hidden="true" />
-        </button>
-        {isProfileMenuOpen ? (
-          <div className="accessibility-map__profile-menu" role="listbox" aria-label="프로필 목록">
-            {profiles.map((profile) => (
-              <button
-                key={profile.id}
-                type="button"
-                className="accessibility-map__profile-option"
-                role="option"
-                aria-selected={profile.id === String(selectedProfileId)}
-                onClick={() => {
-                  onSelectProfile?.(profile.id);
-                  setIsProfileMenuOpen(false);
-                }}
-              >
-                <img src={profileIcon} alt="" aria-hidden="true" />
-                <span>
-                  <strong>{profile.name}</strong>
-                </span>
-              </button>
-            ))}
-            <Link to={ROUTE_PATHS.myProfile} className="accessibility-map__profile-manage">
-              <img src={settingIcon} alt="" aria-hidden="true" />
-              프로필 관리
-            </Link>
-          </div>
-        ) : null}
-      </div>
+          <button
+            type="button"
+            className="accessibility-map__profile-trigger"
+            aria-haspopup="listbox"
+            aria-expanded={isProfileMenuOpen}
+            onClick={() => setIsProfileMenuOpen((isOpen) => !isOpen)}
+          >
+            <span>{selectedProfile ? selectedProfile.name : '프로필을 선택하세요'}</span>
+            <img src={arrowDown} alt="" aria-hidden="true" />
+          </button>
+          {isProfileMenuOpen ? (
+            <div className="accessibility-map__profile-menu" role="listbox" aria-label="프로필 목록">
+              {profiles.map((profile) => (
+                <button
+                  key={profile.id}
+                  type="button"
+                  className="accessibility-map__profile-option"
+                  role="option"
+                  aria-selected={profile.id === String(selectedProfileId)}
+                  onClick={() => {
+                    onSelectProfile?.(profile.id);
+                    setIsProfileMenuOpen(false);
+                  }}
+                >
+                  <img src={profileIcon} alt="" aria-hidden="true" />
+                  <span>
+                    <strong>{profile.name}</strong>
+                  </span>
+                </button>
+              ))}
+              <Link to={ROUTE_PATHS.myProfile} className="accessibility-map__profile-manage">
+                <img src={settingIcon} alt="" aria-hidden="true" />
+                프로필 관리
+              </Link>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {hasAppliedConditions ? (
         <>
           <img

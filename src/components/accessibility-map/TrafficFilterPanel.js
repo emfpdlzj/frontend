@@ -20,6 +20,8 @@ const getFilterValueSnapshot = (filterGroups) =>
       .map((group) => [group.id, group.selectedValue])
   );
 
+const FILTER_ALL_VALUE = '전체';
+
 function moveItem(items, sourceId, targetId) {
   const sourceIndex = items.indexOf(sourceId);
   const targetIndex = items.indexOf(targetId);
@@ -80,7 +82,10 @@ export function TrafficFilterPanel({
       ...filterGroups.map((group) => ({
         id: group.id,
         title: group.title,
+        type: group.type || 'chips',
         chips: group.chips,
+        options: group.options || [],
+        jobCategories: group.jobCategories || [],
         selectedValue: group.readonly ? group.selectedValue : draftFilterValues[group.id],
         readonly: group.readonly,
         dashed: false
@@ -148,7 +153,7 @@ export function TrafficFilterPanel({
     const resetValues = Object.fromEntries(
       filterGroups
         .filter((group) => !group.readonly)
-        .map((group) => [group.id, group.chips[0]])
+        .map((group) => [group.id, FILTER_ALL_VALUE])
     );
 
     setDraftFilterValues(resetValues);
@@ -211,24 +216,39 @@ export function TrafficFilterPanel({
               <span className="accessibility-map__filter-priority">{filterIndex + 1}</span>
               <div>
                 <h3>{filterItem.title}</h3>
-                <div className="accessibility-map__chip-row">
-                  {filterItem.chips.map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      className={`accessibility-map__chip${
-                        filterItem.selectedValue === chip ? ' is-selected' : ''
-                      }${
-                        filterItem.dashed ? ' accessibility-map__chip-dashed' : ''
-                      }`}
-                      disabled={filterItem.readonly}
-                      aria-pressed={filterItem.selectedValue === chip}
-                      onClick={() => handleSelectDraftFilter(filterItem.id, chip)}
-                    >
-                      {chip}
-                    </button>
-                  ))}
-                </div>
+                {filterItem.type === 'jobCategoryCascade' ? (
+                  <JobCategoryCascadeFilter
+                    categories={filterItem.jobCategories}
+                    value={filterItem.selectedValue}
+                    onChange={(value) => handleSelectDraftFilter(filterItem.id, value)}
+                  />
+                ) : filterItem.type === 'select' ? (
+                  <SelectFilter
+                    label={filterItem.title}
+                    options={filterItem.options}
+                    value={filterItem.selectedValue}
+                    onChange={(value) => handleSelectDraftFilter(filterItem.id, value)}
+                  />
+                ) : (
+                  <div className="accessibility-map__chip-row">
+                    {filterItem.chips.map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        className={`accessibility-map__chip${
+                          filterItem.selectedValue === chip ? ' is-selected' : ''
+                        }${
+                          filterItem.dashed ? ' accessibility-map__chip-dashed' : ''
+                        }`}
+                        disabled={filterItem.readonly}
+                        aria-pressed={filterItem.selectedValue === chip}
+                        onClick={() => handleSelectDraftFilter(filterItem.id, chip)}
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <button
                 type="button"
@@ -258,7 +278,7 @@ export function TrafficFilterPanel({
       <div className="accessibility-map__results-header">
         <h3>검색 결과 {resultCount}개{totalJobCount > resultCount ? ` / 전체 ${totalJobCount}개` : ''}</h3>
         <button type="button" className="accessibility-map__sort-button" disabled>
-          접근성 점수 높은순
+          {appliedAiEnabled ? '접근성 점수 높은순' : '최신순'}
           <img src={triangleDownBlue} alt="" aria-hidden="true" />
         </button>
       </div>
@@ -296,7 +316,7 @@ export function TrafficFilterPanel({
                       </span>
                     ))}
                   </div>
-                  <strong className="accessibility-map__dday">{job.dueLabel}</strong>
+                  {job.dueLabel ? <strong className="accessibility-map__dday">{job.dueLabel}</strong> : null}
                 </div>
                 <strong className="accessibility-map__job-company">{job.company}</strong>
                 <p className="accessibility-map__job-title">{job.title}</p>
@@ -311,5 +331,132 @@ export function TrafficFilterPanel({
         )}
       </div>
     </aside>
+  );
+}
+
+function SelectFilter({ label, options, value, onChange }) {
+  return (
+    <label className="accessibility-map__select-field">
+      <span className="sr-only">{label}</span>
+      <select value={value || FILTER_ALL_VALUE} onChange={(event) => onChange(event.target.value)}>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function JobCategoryCascadeFilter({ categories, value, onChange }) {
+  const safeCategories = useMemo(() => (Array.isArray(categories) ? categories : []), [categories]);
+  const selectedPath = useMemo(() => {
+    if (!value || value === FILTER_ALL_VALUE) {
+      return {
+        primary: '',
+        secondary: ''
+      };
+    }
+
+    for (const category of safeCategories) {
+      if (category.label === value) {
+        return {
+          primary: category.label,
+          secondary: ''
+        };
+      }
+
+      for (const group of category.groups) {
+        if (group.label === value) {
+          return {
+            primary: category.label,
+            secondary: group.label
+          };
+        }
+
+        if (group.jobs.includes(value)) {
+          return {
+            primary: category.label,
+            secondary: group.label
+          };
+        }
+      }
+    }
+
+    return {
+      primary: '',
+      secondary: ''
+    };
+  }, [safeCategories, value]);
+  const [primaryValue, setPrimaryValue] = useState(selectedPath.primary);
+  const [secondaryValue, setSecondaryValue] = useState(selectedPath.secondary);
+  const primaryCategory = safeCategories.find((category) => category.label === primaryValue) || null;
+  const secondaryGroup = primaryCategory?.groups.find((group) => group.label === secondaryValue) || null;
+
+  useEffect(() => {
+    setPrimaryValue(selectedPath.primary);
+    setSecondaryValue(selectedPath.secondary);
+  }, [selectedPath.primary, selectedPath.secondary]);
+
+  const handlePrimaryChange = (nextPrimary) => {
+    setPrimaryValue(nextPrimary);
+    setSecondaryValue('');
+    onChange(nextPrimary || FILTER_ALL_VALUE);
+  };
+
+  const handleSecondaryChange = (nextSecondary) => {
+    setSecondaryValue(nextSecondary);
+    onChange(nextSecondary || primaryValue || FILTER_ALL_VALUE);
+  };
+
+  const handleJobChange = (nextJob) => {
+    onChange(nextJob === FILTER_ALL_VALUE ? secondaryValue || primaryValue || FILTER_ALL_VALUE : nextJob);
+  };
+
+  return (
+    <div className="accessibility-map__cascade-filter" aria-label="희망 직무 1차, 2차, 3차 선택">
+      <label>
+        <span>1차</span>
+        <select value={primaryValue} onChange={(event) => handlePrimaryChange(event.target.value)}>
+          <option value="">전체</option>
+          {safeCategories.map((category) => (
+            <option key={category.label} value={category.label}>
+              {category.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span>2차</span>
+        <select
+          value={secondaryValue}
+          disabled={!primaryCategory}
+          onChange={(event) => handleSecondaryChange(event.target.value)}
+        >
+          <option value="">전체</option>
+          {primaryCategory?.groups.map((group) => (
+            <option key={group.label} value={group.label}>
+              {group.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span>3차</span>
+        <select
+          value={value && value !== FILTER_ALL_VALUE ? value : FILTER_ALL_VALUE}
+          disabled={!secondaryGroup}
+          onChange={(event) => handleJobChange(event.target.value)}
+        >
+          <option value={FILTER_ALL_VALUE}>전체</option>
+          {secondaryGroup?.jobs.map((job) => (
+            <option key={job} value={job}>
+              {job}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
   );
 }
