@@ -21,21 +21,48 @@ function DetailStatusBadge({ label }) {
   return <span className={`accessibility-map__status-pill is-${tone}`}>{label}</span>;
 }
 
+function formatScoreLabel(score) {
+  return typeof score === 'number' ? `${score}점` : '확인 필요';
+}
+
+function openNaverMapSearch(address) {
+  if (!address || address === '근무지 확인 필요') {
+    return;
+  }
+
+  window.open(`https://map.naver.com/p/search/${encodeURIComponent(address)}`, '_blank', 'noopener,noreferrer');
+}
+
 export function AccessibilityMapDetailPanel({
   job,
   selectedPersonaKey,
   selectedTab,
+  explanation,
+  explanationViewState,
+  explanationErrorMessage,
   onChangeTab
 }) {
   const accessibility = job.accessibilityByPersona[selectedPersonaKey];
+  const recommendationReasons = explanation?.recommendationReasons || explanation?.aiResponse?.result?.recommendation_reasons || [];
+  const cautionPoints = explanation?.cautionPoints || explanation?.aiResponse?.result?.caution_points || [];
+  const checklist = explanation?.checklist || explanation?.aiResponse?.result?.checklist || [];
+  const shortSummary = explanation?.shortSummary || explanation?.aiResponse?.result?.short_summary || '';
 
   return (
     <aside className="accessibility-map__detail-panel" aria-label="공고 상세 패널">
       <header className="accessibility-map__detail-header">
         <div className="accessibility-map__detail-header-top">
           <div className="accessibility-map__badge-row">
-            <span className="accessibility-map__mini-badge is-public">공공</span>
-            <span className="accessibility-map__mini-badge is-workplace">표준사업장</span>
+            {job.badges.map((badge) => (
+              <span
+                key={badge}
+                className={`accessibility-map__mini-badge ${
+                  badge === '공공' ? 'is-public' : badge.includes('등급') ? 'is-grade' : 'is-workplace'
+                }`}
+              >
+                {badge}
+              </span>
+            ))}
           </div>
           <span>{job.dueDateText}</span>
         </div>
@@ -52,7 +79,7 @@ export function AccessibilityMapDetailPanel({
             className={`accessibility-map__tab-button${selectedTab === 'accessibility' ? ' is-active' : ''}`}
             onClick={() => onChangeTab('accessibility')}
           >
-            접근성 {job.score}점
+            접근성 {formatScoreLabel(job.score)}
           </button>
           <button
             type="button"
@@ -82,7 +109,7 @@ export function AccessibilityMapDetailPanel({
               <div className="accessibility-map__highlight-badge">{job.dueLabel}</div>
               <div>
                 <strong>모집 마감까지</strong>
-                <p>2026.04.15 ~ 2026.04.25</p>
+                <p>{job.dateRangeText}</p>
               </div>
             </div>
             <dl className="accessibility-map__definition-list">
@@ -99,7 +126,7 @@ export function AccessibilityMapDetailPanel({
         {selectedTab === 'company' ? (
           <>
             <div className="accessibility-map__company-card">
-              <div className="accessibility-map__company-initial" aria-hidden="true">서</div>
+              <div className="accessibility-map__company-initial" aria-hidden="true">{job.companyInfo.initial}</div>
               <div>
                 <strong>{job.companyInfo.name}</strong>
                 <p>{job.companyInfo.type}</p>
@@ -126,9 +153,6 @@ export function AccessibilityMapDetailPanel({
                   <strong>{job.companyInfo.hiringRate}</strong>
                   <span>법정 의무율 {job.companyInfo.legalRate}</span>
                 </div>
-                <div className="accessibility-map__progress-track" aria-hidden="true">
-                  <div className="accessibility-map__progress-value" />
-                </div>
                 <p>{job.companyInfo.hiringSummary}</p>
               </div>
             </section>
@@ -147,7 +171,7 @@ export function AccessibilityMapDetailPanel({
               <div className="accessibility-map__score-body">
                 <div className="accessibility-map__score-ring">
                   <strong>{job.score}</strong>
-                  <span>/ 100</span>
+                  <span>{typeof job.score === 'number' ? '/ 100' : ''}</span>
                 </div>
                 <div className="accessibility-map__score-summary">
                   <span className="accessibility-map__score-badge">{accessibility.panelBadge}</span>
@@ -166,6 +190,35 @@ export function AccessibilityMapDetailPanel({
                 <span className="is-danger">불편/위험</span>
                 <span className="is-neutral">데이터 미확인</span>
               </div>
+            </section>
+
+            <section className="accessibility-map__detail-section">
+              <h3>추천 설명</h3>
+              {explanationViewState === 'loading' ? (
+                <div className="accessibility-map__muted-box" role="status">추천 이유를 불러오는 중입니다.</div>
+              ) : null}
+              {explanationViewState === 'error' ? (
+                <div className="accessibility-map__muted-box" role="alert">
+                  {explanationErrorMessage || '추천 설명을 불러오지 못했습니다.'}
+                </div>
+              ) : null}
+              {explanationViewState === 'success' ? (
+                <div className="accessibility-map__info-card">
+                  <strong>{shortSummary || '추천 설명을 확인했습니다.'}</strong>
+                  <ul className="accessibility-map__accessibility-list">
+                    {[...recommendationReasons, ...cautionPoints, ...checklist].map((item, index) => (
+                      <li key={`${item}-${index}`}>
+                        <img className="accessibility-map__warning-icon" src={warningIcon} alt="" aria-hidden="true" />
+                        <div>
+                          <strong>{index < recommendationReasons.length ? '추천 이유' : index < recommendationReasons.length + cautionPoints.length ? '주의점' : '체크리스트'}</strong>
+                          <p>{item}</p>
+                        </div>
+                        <DetailStatusBadge label={index < recommendationReasons.length ? '접근 양호' : '확인 필요'} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </section>
 
             <section className="accessibility-map__detail-section">
@@ -193,14 +246,19 @@ export function AccessibilityMapDetailPanel({
       </div>
 
       <footer className="accessibility-map__action-bar">
-        <button type="button" className="accessibility-map__icon-action" aria-label="관심 공고 저장">
+        <button type="button" className="accessibility-map__icon-action" aria-label="관심 공고 저장 API 확인 필요" disabled>
           ♡
         </button>
-        <button type="button" className="secondary-button accessibility-map__route-button">
+        <button
+          type="button"
+          className="secondary-button accessibility-map__route-button"
+          disabled={!job.companyInfo.address || job.companyInfo.address === '근무지 확인 필요'}
+          onClick={() => openNaverMapSearch(job.companyInfo.address)}
+        >
           경로 안내
         </button>
-        <button type="button" className="primary-button accessibility-map__apply-button">
-          지원하기
+        <button type="button" className="primary-button accessibility-map__apply-button" disabled>
+          지원 정보 확인 필요
         </button>
       </footer>
     </aside>

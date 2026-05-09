@@ -3,7 +3,7 @@ import { AccessibilityMapCanvas } from '../components/accessibility-map/Accessib
 import { AccessibilityMapDetailPanel } from '../components/accessibility-map/AccessibilityMapDetailPanel';
 import { TrafficFilterPanel } from '../components/accessibility-map/TrafficFilterPanel';
 import { StatusMessage } from '../components/common/StatusMessage';
-import { useAccessibilityMapMock } from '../hooks/useAccessibilityMapMock';
+import { useAccessibilityMap } from '../hooks/useAccessibilityMap';
 
 function isWithinSouthKoreaBounds(latitude, longitude) {
   return latitude >= 33 && latitude <= 39.5 && longitude >= 124 && longitude <= 132;
@@ -12,23 +12,39 @@ function isWithinSouthKoreaBounds(latitude, longitude) {
 export function AccessibilityMapPage() {
   const {
     jobs,
-    personas,
+    totalJobCount,
+    profiles,
     filterGroups,
+    filterOptionStatus,
+    filterOptionErrorMessage,
     mapLegend,
     mapRadiusMeters,
     mapRoutes,
     mapMarkers,
+    hasAppliedConditions,
     mapViewport,
+    errorMessage,
+    supportAgencyStatus,
+    supportAgencyErrorMessage,
+    supportAgencyCount,
+    explanation,
+    explanationViewState,
+    explanationErrorMessage,
     selectedJob,
     selectedJobId,
     selectedPersona,
+    selectedProfileId,
     selectedTab,
+    isAiEnabled,
+    appliedAiEnabled,
     viewState,
     setSelectedJobId,
+    setSelectedProfileId,
+    toggleAiScoring,
+    applyFilters,
     setSelectedTab,
-    setViewState
-  } = useAccessibilityMapMock();
-  const [currentViewport] = useState(mapViewport);
+    reloadRecommendations
+  } = useAccessibilityMap();
   const [currentLocation, setCurrentLocation] = useState(null);
 
   useEffect(() => {
@@ -54,34 +70,57 @@ export function AccessibilityMapPage() {
         maximumAge: 300000
       }
     );
-  }, [mapViewport]);
+  }, []);
+
+  const viewport = !hasAppliedConditions && currentLocation
+    ? {
+        center: currentLocation,
+        zoom: 16
+      }
+    : mapViewport;
 
   return (
     <main className="accessibility-map">
       <div className="accessibility-map__layout">
         <TrafficFilterPanel
           filterGroups={filterGroups}
+          filterOptionStatus={filterOptionStatus}
+          filterOptionErrorMessage={filterOptionErrorMessage}
           jobs={jobs}
-          persona={personas[selectedPersona]}
+          totalJobCount={totalJobCount}
+          isAiEnabled={isAiEnabled}
+          appliedAiEnabled={appliedAiEnabled}
           selectedJobId={selectedJobId}
           viewState={viewState}
           onSelectJob={setSelectedJobId}
+          onToggleAiScoring={toggleAiScoring}
+          onApplyFilters={applyFilters}
         />
         <AccessibilityMapCanvas
           legend={mapLegend}
           radiusMeters={mapRadiusMeters}
           routes={mapRoutes}
           markers={mapMarkers}
+          hasAppliedConditions={hasAppliedConditions}
+          profiles={profiles}
+          selectedProfileId={selectedProfileId}
+          supportAgencyStatus={supportAgencyStatus}
+          supportAgencyErrorMessage={supportAgencyErrorMessage}
+          supportAgencyCount={supportAgencyCount}
           currentLocation={currentLocation}
-          viewport={currentViewport}
+          viewport={viewport}
           viewState={viewState}
-          onRetry={() => setViewState('success')}
+          onSelectProfile={setSelectedProfileId}
+          onRetry={reloadRecommendations}
         />
-        {viewState === 'success' ? (
+        {viewState === 'success' && selectedJob ? (
           <AccessibilityMapDetailPanel
             job={selectedJob}
             selectedPersonaKey={selectedPersona}
             selectedTab={selectedTab}
+            explanation={explanation}
+            explanationViewState={explanationViewState}
+            explanationErrorMessage={explanationErrorMessage}
             onChangeTab={setSelectedTab}
           />
         ) : (
@@ -90,11 +129,14 @@ export function AccessibilityMapPage() {
               {viewState === 'empty' ? (
                 <StatusMessage>선택 가능한 공고가 없어 상세 정보를 표시하지 않습니다.</StatusMessage>
               ) : null}
+              {viewState === 'idle' ? (
+                <StatusMessage>조건 적용을 누르면 회사 공고와 접근성 정보를 지도에 표시합니다.</StatusMessage>
+              ) : null}
               {viewState === 'loading' ? (
-                <StatusMessage>목업 데이터를 준비하는 동안 상세 패널도 함께 대기합니다.</StatusMessage>
+                <StatusMessage>지역 접근성 지도 추천을 불러오는 중입니다.</StatusMessage>
               ) : null}
               {viewState === 'error' ? (
-                <StatusMessage kind="error">상세 데이터를 불러오지 못했습니다.</StatusMessage>
+                <StatusMessage kind="error">{errorMessage || '상세 데이터를 불러오지 못했습니다.'}</StatusMessage>
               ) : null}
             </div>
           </aside>

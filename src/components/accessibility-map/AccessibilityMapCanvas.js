@@ -1,9 +1,12 @@
 import { memo, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import accessibilityScorePanel from '../../assets/accessibility-map/accessibility-score-panel.png';
 import arrowDown from '../../assets/accessibility-map/arrow_down.png';
+import companyMapMarker from '../../assets/accessibility-map/company-map-marker.png';
 import profileIcon from '../../assets/accessibility-map/profile-icon.png';
 import settingIcon from '../../assets/accessibility-map/setting-icon.png';
 import { NAVER_MAP_CONFIG } from '../../config/appConfig';
+import { ROUTE_PATHS } from '../../config/routes';
 import { loadNaverMapScript } from '../../utils/naverMapSdk';
 import { LoadingView } from '../common/LoadingView';
 import { StatusMessage } from '../common/StatusMessage';
@@ -19,10 +22,53 @@ function createNaverLatLng(location) {
   return new window.naver.maps.LatLng(location.lat, location.lng);
 }
 
-function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState, onRetry }) {
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function createMarkerIcon(marker) {
+  if (marker.type === 'office') {
+    return {
+      url: companyMapMarker,
+      size: new window.naver.maps.Size(25, 25),
+      scaledSize: new window.naver.maps.Size(25, 25),
+      anchor: new window.naver.maps.Point(12, 25)
+    };
+  }
+
+  return {
+    content: `<div class="accessibility-map__marker is-sdk is-${escapeHtml(marker.type || 'support-agency')}" aria-hidden="true">기관</div>`,
+    anchor: new window.naver.maps.Point(24, 24)
+  };
+}
+
+function canRenderMap(viewState) {
+  return viewState !== 'loading' && viewState !== 'error';
+}
+
+function AccessibilityMapCanvasComponent({
+  markers = [],
+  hasAppliedConditions = false,
+  profiles = [],
+  selectedProfileId,
+  supportAgencyStatus,
+  supportAgencyErrorMessage,
+  supportAgencyCount = 0,
+  currentLocation,
+  viewport,
+  viewState,
+  onSelectProfile,
+  onRetry
+}) {
   const mapElementRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const currentLocationMarkerRef = useRef(null);
+  const markerRefs = useRef([]);
   const profileSelectRef = useRef(null);
   const [mapScriptStatus, setMapScriptStatus] = useState(() =>
     NAVER_MAP_CONFIG.clientId ? 'loading' : 'missing-client-id'
@@ -64,7 +110,7 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
   }, []);
 
   useEffect(() => {
-    if (viewState !== 'success' || mapScriptStatus !== 'ready' || !mapElementRef.current || mapInstanceRef.current) {
+    if (!canRenderMap(viewState) || mapScriptStatus !== 'ready' || !mapElementRef.current || mapInstanceRef.current) {
       return undefined;
     }
 
@@ -112,7 +158,7 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
   }, [currentLocation, mapScriptStatus, viewport, viewState]);
 
   useEffect(() => {
-    if (!mapInstanceRef.current || mapScriptStatus !== 'ready' || viewState !== 'success') {
+    if (!mapInstanceRef.current || mapScriptStatus !== 'ready' || !canRenderMap(viewState)) {
       return;
     }
 
@@ -121,7 +167,7 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
   }, [mapScriptStatus, viewport, viewState]);
 
   useEffect(() => {
-    if (!mapInstanceRef.current || mapScriptStatus !== 'ready' || viewState !== 'success') {
+    if (!mapInstanceRef.current || mapScriptStatus !== 'ready' || !canRenderMap(viewState)) {
       return;
     }
 
@@ -129,7 +175,7 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
   }, [currentLocation, mapScriptStatus, viewState]);
 
   useEffect(() => {
-    if (!mapInstanceRef.current || mapScriptStatus !== 'ready' || viewState !== 'success') {
+    if (!mapInstanceRef.current || mapScriptStatus !== 'ready' || !canRenderMap(viewState)) {
       return;
     }
 
@@ -161,15 +207,35 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
     currentLocationMarkerRef.current.setMap(mapInstanceRef.current);
   }, [currentLocation, mapScriptStatus, viewState]);
 
+  useEffect(() => {
+    if (!mapInstanceRef.current || mapScriptStatus !== 'ready' || !canRenderMap(viewState)) {
+      return;
+    }
+
+    markerRefs.current.forEach((marker) => marker.setMap(null));
+    markerRefs.current = markers
+      .filter((marker) => Number.isFinite(Number(marker.lat)) && Number.isFinite(Number(marker.lng)))
+      .map((marker) =>
+        new window.naver.maps.Marker({
+          position: new window.naver.maps.LatLng(Number(marker.lat), Number(marker.lng)),
+          map: mapInstanceRef.current,
+          title: marker.label,
+          icon: createMarkerIcon(marker)
+        })
+      );
+  }, [mapScriptStatus, markers, viewState]);
+
   useEffect(
     () => () => {
       if (currentLocationMarkerRef.current) {
         currentLocationMarkerRef.current.setMap(null);
       }
+      markerRefs.current.forEach((marker) => marker.setMap(null));
       if (mapElementRef.current) {
         mapElementRef.current.innerHTML = '';
       }
       currentLocationMarkerRef.current = null;
+      markerRefs.current = [];
       mapInstanceRef.current = null;
     },
     []
@@ -224,6 +290,8 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
 
     mapInstanceRef.current.panTo(createNaverLatLng(currentLocation));
   };
+
+  const selectedProfile = profiles.find((profile) => profile.id === String(selectedProfileId)) || null;
 
   if (viewState === 'loading') {
     return (
@@ -287,39 +355,55 @@ function AccessibilityMapCanvasComponent({ currentLocation, viewport, viewState,
           aria-expanded={isProfileMenuOpen}
           onClick={() => setIsProfileMenuOpen((isOpen) => !isOpen)}
         >
-          <span>프로필을 선택하세요</span>
+          <span>{selectedProfile ? selectedProfile.name : '프로필을 선택하세요'}</span>
           <img src={arrowDown} alt="" aria-hidden="true" />
         </button>
         {isProfileMenuOpen ? (
           <div className="accessibility-map__profile-menu" role="listbox" aria-label="프로필 목록">
-            {['기본 프로필', '기본 프로필 2', '기본 프로필 3'].map((label) => (
+            {profiles.map((profile) => (
               <button
-                key={label}
+                key={profile.id}
                 type="button"
                 className="accessibility-map__profile-option"
                 role="option"
-                aria-selected="false"
+                aria-selected={profile.id === String(selectedProfileId)}
+                onClick={() => {
+                  onSelectProfile?.(profile.id);
+                  setIsProfileMenuOpen(false);
+                }}
               >
                 <img src={profileIcon} alt="" aria-hidden="true" />
                 <span>
-                  <strong>{label}</strong>
-                  <small>설정된 정보 없음</small>
+                  <strong>{profile.name}</strong>
                 </span>
               </button>
             ))}
-            <button type="button" className="accessibility-map__profile-manage">
+            <Link to={ROUTE_PATHS.myProfile} className="accessibility-map__profile-manage">
               <img src={settingIcon} alt="" aria-hidden="true" />
               프로필 관리
-            </button>
+            </Link>
           </div>
         ) : null}
       </div>
-      <img
-        className="accessibility-map__score-panel-image"
-        src={accessibilityScorePanel}
-        alt="접근성 점수 기준: A 80 이상, B 60~79, C 60 미만"
-      />
-      <div className="accessibility-map__map-pill">60분 이내</div>
+      {hasAppliedConditions ? (
+        <>
+          <img
+            className="accessibility-map__score-panel-image"
+            src={accessibilityScorePanel}
+            alt="접근성 점수 기준: A 80 이상, B 60~79, C 60 미만"
+          />
+          <aside className="accessibility-map__support-agency-note" aria-label="근로지원인 수행기관 표시 상태">
+            {supportAgencyStatus === 'error' ? (
+              <p className="accessibility-map__legend-note" role="alert">{supportAgencyErrorMessage}</p>
+            ) : (
+              <p className="accessibility-map__legend-note">수행기관 {supportAgencyCount}곳 표시</p>
+            )}
+          </aside>
+          <div className="accessibility-map__map-pill">
+            공고 {markers.filter((marker) => marker.type === 'office').length}개 · 수행기관 {supportAgencyCount}곳
+          </div>
+        </>
+      ) : null}
       <div className="accessibility-map__map-actions" aria-label="지도 조작">
         <button
           type="button"

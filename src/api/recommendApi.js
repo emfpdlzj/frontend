@@ -20,3 +20,33 @@ export async function fetchQuickJobRecommendations(accessToken, { aiEnabled = tr
     })
   );
 }
+
+export async function fetchMapJobRecommendations(accessToken, { aiEnabled = true, profileId, signal } = {}) {
+  const body = {
+    aiEnabled
+  };
+
+  if (profileId) {
+    body.profileId = Number(profileId);
+  }
+
+  return unwrapApiResult(
+    await httpRequest('/recommend/map', {
+      method: 'POST',
+      token: accessToken,
+      body,
+      signal
+    })
+  );
+}
+
+export async function explainRecommendation(accessToken, payload, { signal } = {}) {
+  return unwrapApiResult(
+    await httpRequest('/recommend/explain', {
+      method: 'POST',
+      token: accessToken,
+      body: payload,
+      signal
+    })
+  );
+}
