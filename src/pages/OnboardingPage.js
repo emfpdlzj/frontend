@@ -5,6 +5,7 @@ import stepBeforeIcon from '../assets/signup/item-before.png';
 import stepCompleteIcon from '../assets/signup/item-completion.png';
 import stepCurrentIcon from '../assets/signup/item-ing.png';
 import { useAuth } from '../auth/AuthContext';
+import { ROUTE_PATHS } from '../config/routes';
 import { LoadingView } from '../components/common/LoadingView';
 import { StatusMessage } from '../components/common/StatusMessage';
 import { useSignupOptions } from '../hooks/useSignupOptions';
@@ -25,7 +26,13 @@ const STEPS = [
 
 const educationOptions = ['고졸 이하', '초대졸', '대졸', '석사', '박사'];
 const MAX_JOB_SELECTIONS = 5;
-const disabilityTypes = ['지체', '시각', '청각', '발달', '뇌병변', '내부장애'];
+const disabilityTypes = ['지체', '시각', '청각', '발달', '뇌병변', '내부장애', '해당 없음', '확인 필요'];
+const disabilitySeverityOptions = ['심한 장애 (1~3급)', '심하지 않은 장애 (4~6급)', '해당 없음', '확인 필요'];
+const disabilityRegisteredOptions = [
+  { value: '등록', label: '등록됨' },
+  { value: '미등록', label: '등록 안 됨 / 해당 없음' }
+];
+const EXCLUSIVE_DISABILITY_TYPES = ['해당 없음', '확인 필요'];
 const MIN_WORKING_AGE = 15;
 const MIN_WORKING_AGE_MESSAGE = '근로기준법상 취업 가능한 노동 가능 연령은 원칙적으로 만 15세 이상입니다.';
 
@@ -42,7 +49,6 @@ const toInitialForm = (seed) => ({
   jobs: [],
   employmentTypes: ['정규직'],
   salaryType: '',
-  disabilityYn: '',
   disabilityTypes: [],
   disabilitySeverity: '',
   registeredYn: '',
@@ -50,11 +56,23 @@ const toInitialForm = (seed) => ({
 });
 
 const normalizeBirthDate = (value) => {
-  const normalized = value.trim().replaceAll('.', '-');
-  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
-    return normalized;
+  const match = value.trim().match(/^(\d{4})[.-](\d{1,2})[.-](\d{1,2})$/);
+
+  if (!match) {
+    return '';
   }
-  return '';
+
+  const [, rawYear, rawMonth, rawDay] = match;
+  const year = Number(rawYear);
+  const month = Number(rawMonth);
+  const day = Number(rawDay);
+  const date = new Date(year, month - 1, day);
+
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return '';
+  }
+
+  return `${rawYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 };
 
 const toBirthDateDisplay = (value) => value.replaceAll('-', '.');
@@ -230,12 +248,8 @@ const getStepValidationMessage = (step, form) => {
   }
 
   if (step === 4) {
-    if (!form.disabilityYn) {
-      return '장애 여부를 선택해 주세요.';
-    }
-
-    if (form.disabilityYn === '있음' && (!form.disabilityTypes.length || !form.disabilitySeverity || !form.registeredYn)) {
-      return '장애 유형, 장애 정도, 장애인 등록 여부를 모두 선택해 주세요.';
+    if (!form.disabilityTypes.length || !form.disabilitySeverity || !form.registeredYn) {
+      return '장애 유형, 장애 정도, 장애인 등록 여부를 모두 선택해 주세요. 해당하지 않으면 "해당 없음"을 선택해 주세요.';
     }
 
     return '';
@@ -257,7 +271,6 @@ const toSignupProfile = (form) => {
   const trimmedName = form.name.trim();
   const trimmedAddress = form.address.trim();
   const selectedJobs = form.jobs.length ? form.jobs : ['확인 필요'];
-  const disabilityYn = toBooleanFromChoice(form.disabilityYn, '있음');
 
   return withoutEmptyOptionalFields({
     desiredJob: selectedJobs.join(', '),
@@ -265,7 +278,7 @@ const toSignupProfile = (form) => {
     preferredWorkEnvironments: ['확인 필요'],
     avoidedWorkEnvironments: ['확인 필요'],
     requiredSupports: ['확인 필요'],
-    disabilityType: disabilityYn ? form.disabilityTypes.join(', ') || '확인 필요' : '해당 없음',
+    disabilityType: form.disabilityTypes.join(', ') || '확인 필요',
     careerSummary: form.career.trim() || '확인 필요',
     educationSummary: form.education || '확인 필요',
     employmentTypeSummary: form.employmentTypes.join(', '),
@@ -291,8 +304,7 @@ const toSignupProfile = (form) => {
     portfolioUrl: null,
     awards: null,
     trainings: null,
-    disabilityYn,
-    disabilitySeverity: disabilityYn ? form.disabilitySeverity || '확인 필요' : '해당 없음',
+    disabilitySeverity: form.disabilitySeverity || '확인 필요',
     disabilityRegisteredYn: toBooleanFromChoice(form.registeredYn, '등록'),
     disabilityDescription: null,
     assistiveDevices: null,
@@ -379,7 +391,15 @@ export function OnboardingPage() {
     setSubmitError('');
     setForm((prev) => {
       const values = prev[field];
-      const nextValues = values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+      let nextValues = values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+
+      if (field === 'disabilityTypes') {
+        if (EXCLUSIVE_DISABILITY_TYPES.includes(value) && !values.includes(value)) {
+          nextValues = [value];
+        } else if (!EXCLUSIVE_DISABILITY_TYPES.includes(value)) {
+          nextValues = nextValues.filter((item) => !EXCLUSIVE_DISABILITY_TYPES.includes(item));
+        }
+      }
 
       return {
         ...prev,
@@ -446,7 +466,10 @@ export function OnboardingPage() {
   return (
     <main className="onboarding-page">
       {isComplete ? (
-        <CompletionPanel onBack={() => navigate('/home')} onProfile={() => navigate('/profile')} />
+        <CompletionPanel
+          onBack={() => navigate(ROUTE_PATHS.accessibilityMap)}
+          onProfile={() => navigate(ROUTE_PATHS.myProfile)}
+        />
       ) : (
         <section className="onboarding-main" aria-labelledby="onboarding-title">
           <div className="onboarding-intro">
@@ -705,45 +728,34 @@ function StepContent({
   }
 
   if (currentStep === 4) {
-    const shouldShowDisabilityDetailFields = form.disabilityYn !== '없음';
-
     return (
       <div className="onboarding-panel__content">
         <h2>장애 정보</h2>
-        <ChoiceField
-          label="장애 여부"
+        <div className="onboarding-info-box onboarding-info-box--neutral">
+          장애 정보는 추천 이유와 근무 지원사항 판단에 사용됩니다. 해당하지 않거나 아직 확인이 어렵다면 “해당 없음” 또는 “확인 필요”를 선택해 주세요.
+        </div>
+        <MultiChoiceField
+          label="장애 유형"
           required
-          options={['있음', '없음']}
-          value={form.disabilityYn}
-          onChange={(value) => updateField('disabilityYn', value)}
+          helper="다중 선택 가능"
+          options={disabilityTypes}
+          values={form.disabilityTypes}
+          onToggle={(value) => toggleArrayValue('disabilityTypes', value)}
         />
-        {shouldShowDisabilityDetailFields ? (
-          <>
-            <MultiChoiceField
-              label="장애 유형"
-              required
-              options={disabilityTypes}
-              values={form.disabilityTypes}
-              onToggle={(value) => toggleArrayValue('disabilityTypes', value)}
-            />
-            <ChoiceField
-              label="장애 정도"
-              required
-              options={['심한 장애 (1~3급)', '심하지 않은 장애 (4~6급)']}
-              value={form.disabilitySeverity}
-              onChange={(value) => updateField('disabilitySeverity', value)}
-            />
-            <ChoiceField
-              label="장애인 등록 여부"
-              required
-              options={['등록', '미등록']}
-              value={form.registeredYn}
-              onChange={(value) => updateField('registeredYn', value)}
-            />
-          </>
-        ) : (
-          <div className="onboarding-disability-fields-placeholder" aria-hidden="true" />
-        )}
+        <ChoiceField
+          label="장애 정도"
+          required
+          options={disabilitySeverityOptions}
+          value={form.disabilitySeverity}
+          onChange={(value) => updateField('disabilitySeverity', value)}
+        />
+        <ChoiceField
+          label="장애인 등록 여부"
+          required
+          options={disabilityRegisteredOptions}
+          value={form.registeredYn}
+          onChange={(value) => updateField('registeredYn', value)}
+        />
       </div>
     );
   }
@@ -845,6 +857,16 @@ function BirthDateField({ label, required, placeholder, value, onChange, onBlur,
     commitBirthDate(event.target.value);
   };
 
+  const handleTextBlur = () => {
+    const normalized = normalizeBirthDate(value);
+
+    if (normalized) {
+      onChange(toBirthDateDisplay(normalized));
+    }
+
+    onBlur();
+  };
+
   const selectDate = (date) => {
     if (commitBirthDate(toBirthDateDisplay(toDateValue(date)))) {
       setIsOpen(false);
@@ -895,7 +917,7 @@ function BirthDateField({ label, required, placeholder, value, onChange, onBlur,
           aria-label={label}
           aria-describedby={visibleError ? `${inputId}-error` : undefined}
           onChange={handleTextChange}
-          onBlur={onBlur}
+          onBlur={handleTextBlur}
         />
         <button
           type="button"

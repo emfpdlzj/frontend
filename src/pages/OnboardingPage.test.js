@@ -111,15 +111,11 @@ test('blocks each signup step until required fields are completed', async () => 
 
   expect(screen.getByRole('heading', { name: '장애 정보' })).toBeInTheDocument();
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
-  expect(screen.getByRole('alert')).toHaveTextContent('장애 여부를 선택해 주세요.');
-
-  userEvent.click(screen.getByRole('button', { name: '있음' }));
-  userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
   expect(screen.getByRole('alert')).toHaveTextContent('장애 유형, 장애 정도, 장애인 등록 여부를 모두 선택해 주세요.');
 
   userEvent.click(screen.getByRole('button', { name: '지체' }));
   userEvent.click(screen.getByRole('button', { name: '심한 장애 (1~3급)' }));
-  userEvent.click(screen.getByRole('button', { name: '등록' }));
+  userEvent.click(screen.getByRole('button', { name: '등록됨' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
   expect(screen.getByRole('heading', { name: '자기소개' })).toBeInTheDocument();
@@ -176,13 +172,12 @@ test('normalizes keyboard birth date input before signup submit', async () => {
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
-  userEvent.click(screen.getByRole('button', { name: '있음' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
   expect(screen.getByRole('alert')).toHaveTextContent('장애 유형, 장애 정도, 장애인 등록 여부를 모두 선택해 주세요.');
 
   userEvent.click(screen.getByRole('button', { name: '지체' }));
   userEvent.click(screen.getByRole('button', { name: '심한 장애 (1~3급)' }));
-  userEvent.click(screen.getByRole('button', { name: '등록' }));
+  userEvent.click(screen.getByRole('button', { name: '등록됨' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
   userEvent.type(screen.getByPlaceholderText('간단하게 본인을 소개해 주세요. 채용 담당자에게 표시될 수 있어요.'), '사무 지원 경험이 있습니다.');
@@ -198,7 +193,19 @@ test('normalizes keyboard birth date input before signup submit', async () => {
   );
 });
 
-test('hides disability detail fields when disability is absent', async () => {
+test('pads one digit birth month and day after text input blur', () => {
+  renderPage();
+
+  const birthDateInput = screen.getByLabelText('생년월일');
+
+  userEvent.type(birthDateInput, '2003.9.15');
+  userEvent.tab();
+
+  expect(birthDateInput).toHaveValue('2003.09.15');
+  expect(screen.queryByText(/형식이 일치하지 않아요/)).not.toBeInTheDocument();
+});
+
+test('allows non-disability choices without hiding required accessibility fields', async () => {
   renderPage();
 
   userEvent.type(screen.getByLabelText('이름 *'), '홍길동');
@@ -215,11 +222,14 @@ test('hides disability detail fields when disability is absent', async () => {
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
-  userEvent.click(screen.getByRole('button', { name: '없음' }));
+  const noDisabilityButtons = screen.getAllByRole('button', { name: '해당 없음' });
+  userEvent.click(noDisabilityButtons[0]);
+  userEvent.click(noDisabilityButtons[1]);
+  userEvent.click(screen.getByRole('button', { name: '등록 안 됨 / 해당 없음' }));
 
-  expect(screen.queryByRole('group', { name: /장애 유형/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole('group', { name: /장애 정도/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole('group', { name: /장애인 등록 여부/ })).not.toBeInTheDocument();
+  expect(screen.getByRole('group', { name: /장애 유형/ })).toBeInTheDocument();
+  expect(screen.getByRole('group', { name: /장애 정도/ })).toBeInTheDocument();
+  expect(screen.getByRole('group', { name: /장애인 등록 여부/ })).toBeInTheDocument();
 
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
@@ -276,14 +286,13 @@ test('keeps required single-choice signup fields selected when clicked again', a
 
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
-  userEvent.click(screen.getByRole('button', { name: '있음' }));
   const severityButton = screen.getByRole('button', { name: '심한 장애 (1~3급)' });
   userEvent.click(severityButton);
   expect(severityButton).toHaveAttribute('aria-pressed', 'true');
   userEvent.click(severityButton);
   expect(severityButton).toHaveAttribute('aria-pressed', 'true');
 
-  const registeredButton = screen.getByRole('button', { name: '등록' });
+  const registeredButton = screen.getByRole('button', { name: '등록됨' });
   userEvent.click(registeredButton);
   expect(registeredButton).toHaveAttribute('aria-pressed', 'true');
   userEvent.click(registeredButton);
