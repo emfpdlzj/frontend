@@ -2533,6 +2533,7 @@ a:hover {
 
 .onboarding-field--address {
   grid-column: 2;
+  margin-top: -12px;
 }
 
 .onboarding-field,
@@ -3568,6 +3569,7 @@ a:hover {
 
   .onboarding-field--address {
     grid-column: auto;
+    margin-top: 0;
   }
 
   .onboarding-calendar-popover {

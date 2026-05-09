@@ -663,13 +663,14 @@ function StepContent({
             onBlur={() => showFormatValidation('birthDate')}
             error={errors.birthDate}
           />
-          <ChoiceField
+          <SelectField
             label="근무지역"
             required
-            className="onboarding-choice-group--region"
+            className="onboarding-field--region"
             options={options.regions}
             value={form.region}
             onChange={(value) => updateField('region', value)}
+            placeholder="근무지역 선택"
           />
           <TextField
             label="거주지 상세 주소"
@@ -1107,6 +1108,36 @@ function TextField({ label, required, placeholder, value, onChange, onBlur, hint
         </small>
       ) : null}
       {hint ? <small>{hint}</small> : null}
+    </label>
+  );
+}
+
+function SelectField({ label, required, options, value, onChange, placeholder, className = '' }) {
+  return (
+    <label className={`onboarding-field onboarding-select-field ${className}`.trim()}>
+      <span>
+        <FieldLabel label={label} required={required} />
+      </span>
+      <span className="onboarding-input-wrap onboarding-select-wrap">
+        <select value={value} required={required} onChange={(event) => onChange(event.target.value)}>
+          <option value="" disabled>
+            {placeholder}
+          </option>
+          {options.map((option) => {
+            const optionValue = typeof option === 'string' ? option : option.value;
+            const optionLabel = typeof option === 'string' ? option : option.label;
+
+            return (
+              <option key={optionValue} value={optionValue}>
+                {optionLabel}
+              </option>
+            );
+          })}
+        </select>
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="onboarding-select-icon">
+          <path d="M7.3 9.3a1 1 0 0 1 1.4 0l3.3 3.29 3.3-3.3a1 1 0 1 1 1.4 1.42l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 0-1.42Z" />
+        </svg>
+      </span>
     </label>
   );
 }

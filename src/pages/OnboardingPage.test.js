@@ -86,7 +86,7 @@ test('blocks each signup step until required fields are completed', async () => 
   userEvent.type(screen.getByLabelText('연락처 *'), '010-1234-5678');
   userEvent.type(screen.getByLabelText('이메일 *'), 'hong@example.com');
   userEvent.type(screen.getByLabelText('생년월일'), '1990.01.01');
-  userEvent.click(screen.getByRole('button', { name: '서울' }));
+  userEvent.selectOptions(screen.getByLabelText('근무지역 *'), '서울');
   expect(screen.getByLabelText(/거주지 상세 주소/)).toHaveValue('서울');
   expect(screen.getByPlaceholderText('서울 OO구 OO동')).toBeInTheDocument();
   fillAddress('서울시 영등포구 OO로 12');
@@ -153,7 +153,7 @@ test('blocks signup when birth date is missing', async () => {
   userEvent.click(screen.getByRole('button', { name: '남성' }));
   userEvent.type(screen.getByLabelText('연락처 *'), '010-1234-5678');
   userEvent.type(screen.getByLabelText('이메일 *'), 'hong@example.com');
-  userEvent.click(screen.getByRole('button', { name: '서울' }));
+  userEvent.selectOptions(screen.getByLabelText('근무지역 *'), '서울');
   fillAddress('서울시 영등포구 OO로 12');
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
@@ -170,7 +170,7 @@ test('normalizes keyboard birth date input before signup submit', async () => {
   userEvent.type(screen.getByLabelText('연락처 *'), '010-1234-5678');
   userEvent.type(screen.getByLabelText('이메일 *'), 'hong@example.com');
   userEvent.type(screen.getByLabelText('생년월일'), '2003.09.15');
-  userEvent.click(screen.getByRole('button', { name: '서울' }));
+  userEvent.selectOptions(screen.getByLabelText('근무지역 *'), '서울');
   fillAddress('서울시 영등포구 OO로 12');
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
@@ -221,7 +221,7 @@ test('allows non-disability choices without hiding required accessibility fields
   userEvent.type(screen.getByLabelText('연락처 *'), '010-1234-5678');
   userEvent.type(screen.getByLabelText('이메일 *'), 'hong@example.com');
   userEvent.type(screen.getByLabelText('생년월일'), '1990.01.01');
-  userEvent.click(screen.getByRole('button', { name: '서울' }));
+  userEvent.selectOptions(screen.getByLabelText('근무지역 *'), '서울');
   fillAddress('서울시 영등포구 OO로 12');
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
@@ -278,7 +278,7 @@ test('keeps required single-choice signup fields selected when clicked again', a
   userEvent.type(screen.getByLabelText('연락처 *'), '010-1234-5678');
   userEvent.type(screen.getByLabelText('이메일 *'), 'hong@example.com');
   userEvent.type(screen.getByLabelText('생년월일'), '1990.01.01');
-  userEvent.click(screen.getByRole('button', { name: '서울' }));
+  userEvent.selectOptions(screen.getByLabelText('근무지역 *'), '서울');
   fillAddress('서울시 영등포구 OO로 12');
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
