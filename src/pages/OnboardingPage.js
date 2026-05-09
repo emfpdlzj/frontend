@@ -26,13 +26,13 @@ const STEPS = [
 
 const educationOptions = ['고졸 이하', '초대졸', '대졸', '석사', '박사'];
 const MAX_JOB_SELECTIONS = 5;
-const disabilityTypes = ['지체', '시각', '청각', '발달', '뇌병변', '내부장애', '해당 없음', '확인 필요'];
-const disabilitySeverityOptions = ['심한 장애 (1~3급)', '심하지 않은 장애 (4~6급)', '해당 없음', '확인 필요'];
+const disabilityTypes = ['지체', '시각', '청각', '발달', '뇌병변', '내부장애', '확인 필요'];
+const disabilitySeverityOptions = ['심한 장애 (1~3급)', '심하지 않은 장애 (4~6급)', '확인 필요'];
 const disabilityRegisteredOptions = [
   { value: '등록', label: '등록됨' },
-  { value: '미등록', label: '등록 안 됨 / 해당 없음' }
+  { value: '미등록', label: '등록 안 됨' }
 ];
-const EXCLUSIVE_DISABILITY_TYPES = ['해당 없음', '확인 필요'];
+const EXCLUSIVE_DISABILITY_TYPES = ['확인 필요'];
 const MIN_WORKING_AGE = 15;
 const MIN_WORKING_AGE_MESSAGE = '근로기준법상 취업 가능한 노동 가능 연령은 원칙적으로 만 15세 이상입니다.';
 
@@ -249,7 +249,7 @@ const getStepValidationMessage = (step, form) => {
 
   if (step === 4) {
     if (!form.disabilityTypes.length || !form.disabilitySeverity || !form.registeredYn) {
-      return '장애 유형, 장애 정도, 장애인 등록 여부를 모두 선택해 주세요. 해당하지 않으면 "해당 없음"을 선택해 주세요.';
+      return '장애 유형, 장애 정도, 장애인 등록 여부를 모두 선택해 주세요. 아직 확인이 어렵다면 "확인 필요"를 선택해 주세요.';
     }
 
     return '';
@@ -732,7 +732,7 @@ function StepContent({
       <div className="onboarding-panel__content">
         <h2>장애 정보</h2>
         <div className="onboarding-info-box onboarding-info-box--neutral">
-          장애 정보는 추천 이유와 근무 지원사항 판단에 사용됩니다. 해당하지 않거나 아직 확인이 어렵다면 “해당 없음” 또는 “확인 필요”를 선택해 주세요.
+          장애 정보는 추천 이유와 근무 지원사항 판단에 사용됩니다. 아직 확인이 어렵다면 “확인 필요”를 선택해 주세요.
         </div>
         <MultiChoiceField
           label="장애 유형"
