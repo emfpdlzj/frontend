@@ -21,7 +21,7 @@ export async function fetchQuickJobRecommendations(accessToken, { aiEnabled = tr
   );
 }
 
-export async function fetchMapJobRecommendations(accessToken, { aiEnabled = true, profileId, signal } = {}) {
+export async function fetchMapJobRecommendations(accessToken, { aiEnabled = true, profileId, signal, timeoutMs } = {}) {
   const body = {
     aiEnabled
   };
@@ -35,7 +35,8 @@ export async function fetchMapJobRecommendations(accessToken, { aiEnabled = true
       method: 'POST',
       token: accessToken,
       body,
-      signal
+      signal,
+      timeoutMs
     })
   );
 }

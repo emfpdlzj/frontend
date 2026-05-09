@@ -16,15 +16,16 @@ function MatchSummary({ job, isAiEnabled }) {
   );
 }
 
-export function JobListPanel({ jobs, selectedJobId, isAiEnabled, viewState, onSelectJob }) {
+export function JobListPanel({ jobs, totalJobCount, selectedJobId, isAiEnabled, viewState, onSelectJob, onResetFilters }) {
   const isProfileBlocked = viewState === 'noProfile';
+  const displayCount = typeof totalJobCount === 'number' && totalJobCount >= jobs.length ? totalJobCount : jobs.length;
 
   return (
-    <section className="jobs-list-panel" aria-label="추천 공고 목록">
+    <section className="jobs-list-panel" aria-label="해당 공고 목록">
       <div className="jobs-list-panel__header">
         <div>
-          <h2>추천 공고 {jobs.length}건</h2>
-          <p>{isAiEnabled ? '기능2 API 응답의 job_fit_score를 공고별로 함께 표시합니다.' : 'AI OFF 상태로 Spring DB 최신 공고만 표시합니다.'}</p>
+          <h2>해당 공고 {displayCount}건</h2>
+          <p>{isAiEnabled ? '선택한 프로필 기준 직무 적합도를 공고별로 함께 표시합니다.' : '최신 공고를 먼저 표시합니다.'}</p>
         </div>
       </div>
 
@@ -33,10 +34,14 @@ export function JobListPanel({ jobs, selectedJobId, isAiEnabled, viewState, onSe
           <strong>{isProfileBlocked ? '프로필 선택이 필요합니다.' : '조건에 맞는 공고가 없습니다.'}</strong>
           <p>
             {isProfileBlocked
-              ? '로그인 후 프로필을 선택하면 기능2 퀵 맞춤 일자리 추천 API를 호출합니다.'
+              ? '로그인 후 프로필을 선택하면 맞춤 일자리 추천을 확인할 수 있습니다.'
               : '검색어나 상세 필터를 줄이면 더 많은 공고를 확인할 수 있습니다.'}
           </p>
-          {!isProfileBlocked ? <button type="button" className="secondary-button">필터 초기화</button> : null}
+          {!isProfileBlocked ? (
+            <button type="button" className="secondary-button" onClick={onResetFilters}>
+              필터 초기화
+            </button>
+          ) : null}
         </div>
       ) : (
         <div className="jobs-list-panel__list">
@@ -49,14 +54,16 @@ export function JobListPanel({ jobs, selectedJobId, isAiEnabled, viewState, onSe
                 type="button"
                 className={`jobs-card${isSelected ? ' is-selected' : ''}`}
                 aria-pressed={isSelected}
-                aria-label={`${job.title}, ${job.company}, ${job.dueLabel}, ${isSelected ? '선택된 공고' : '공고 선택'}`}
+                aria-label={[job.title, job.company, job.dueLabel, isSelected ? '선택된 공고' : '공고 선택'].filter(Boolean).join(', ')}
                 onClick={() => onSelectJob(job.id)}
               >
                 <div className="jobs-card__top">
                   <span className="jobs-card__company">{job.company}</span>
-                  <strong className="jobs-card__dday" aria-label={`마감까지 ${job.dueLabel.replace('D-', '')}일`}>
-                    {job.dueLabel}
-                  </strong>
+                  {job.dueLabel ? (
+                    <strong className="jobs-card__dday" aria-label={`마감까지 ${job.dueLabel.replace('D-', '')}일`}>
+                      {job.dueLabel}
+                    </strong>
+                  ) : null}
                 </div>
                 <div className="jobs-card__headline">
                   <strong className="jobs-card__title">{job.title}</strong>
@@ -78,7 +85,10 @@ export function JobListPanel({ jobs, selectedJobId, isAiEnabled, viewState, onSe
                   <div><dt>요구학력</dt><dd>{job.education}</dd></div>
                 </dl>
                 <MatchSummary job={job} isAiEnabled={isAiEnabled} />
-                <span className="jobs-card__source">외부공고 ID {job.externalId}</span>
+                <span className="jobs-card__source">
+                  <span>외부공고 ID</span>
+                  <strong>{job.externalId}</strong>
+                </span>
               </button>
             );
           })}

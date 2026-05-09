@@ -1,14 +1,39 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { mapApi } from '../api/mapApi';
 import { explainRecommendation, fetchMapJobRecommendations } from '../api/recommendApi';
 import { useAuth } from '../auth/AuthContext';
+import {
+  clearRecommendationCache,
+  getCachedRecommendation,
+  getRecommendationCacheKey,
+  setCachedRecommendation
+} from '../cache/recommendationCache';
 import { accessibilityMapMockData } from '../config/accessibilityMapMockData';
 import { useJobFilterOptions } from './useJobFilterOptions';
 import { useProfiles } from './useProfiles';
 
-const MAP_RECOMMEND_CACHE_TTL_MS = 5 * 60 * 1000;
+const MAP_RECOMMEND_REQUEST_TIMEOUT_MS = 3 * 60 * 1000;
 const FILTER_ALL_VALUE = '전체';
 const VALID_TABS = ['accessibility', 'job', 'company'];
+const REGION_ALIASES = {
+  서울: ['서울', '서울특별시'],
+  부산: ['부산', '부산광역시'],
+  대구: ['대구', '대구광역시'],
+  인천: ['인천', '인천광역시'],
+  광주: ['광주', '광주광역시'],
+  대전: ['대전', '대전광역시'],
+  울산: ['울산', '울산광역시'],
+  세종: ['세종', '세종특별자치시'],
+  경기: ['경기', '경기도'],
+  강원: ['강원', '강원도', '강원특별자치도'],
+  충북: ['충북', '충청북도'],
+  충남: ['충남', '충청남도'],
+  전북: ['전북', '전라북도', '전북특별자치도'],
+  전남: ['전남', '전라남도'],
+  경북: ['경북', '경상북도'],
+  경남: ['경남', '경상남도'],
+  제주: ['제주', '제주특별자치도']
+};
 
 const formatDate = (value) => {
   if (!value) {
@@ -26,7 +51,7 @@ const formatDate = (value) => {
 const getDday = (value) => {
   const raw = String(value || '').replace(/\D/g, '');
   if (raw.length !== 8) {
-    return '마감 확인';
+    return '';
   }
 
   const deadline = new Date(Number(raw.slice(0, 4)), Number(raw.slice(4, 6)) - 1, Number(raw.slice(6, 8)));
@@ -36,7 +61,7 @@ const getDday = (value) => {
 
   const diffDays = Math.ceil((deadline.getTime() - today.getTime()) / 86400000);
   if (Number.isNaN(diffDays)) {
-    return '마감 확인';
+    return '';
   }
 
   return diffDays < 0 ? '마감' : `D-${diffDays}`;
@@ -130,6 +155,33 @@ const getRegionLabel = (address) => {
   return firstToken || '지역 확인 필요';
 };
 
+const normalizeSearchText = (value) =>
+  String(value || '')
+    .toLowerCase()
+    .replace(/[()[\]{}·ㆍ,./_-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const getComparableTerms = (value) => {
+  const normalized = normalizeSearchText(value);
+  if (!normalized) {
+    return [];
+  }
+
+  return [
+    normalized,
+    ...normalized
+      .split(' ')
+      .map((term) => term.trim())
+      .filter((term) => term.length >= 2)
+  ];
+};
+
+const includesAnyTerm = (target, terms) => {
+  const normalizedTarget = normalizeSearchText(target);
+  return terms.some((term) => normalizedTarget.includes(term) || term.includes(normalizedTarget));
+};
+
 const getInitial = (value) => {
   const normalized = String(value || '확인').trim();
   return normalized.slice(0, 1) || '확';
@@ -153,6 +205,7 @@ const normalizeMapJob = (job, aiResults, aiEnabled) => {
   const salaryText = normalizeSalary(job?.salaryType, job?.salary);
   const deadlineDate = formatDate(job?.termDate);
   const dueLabel = getDday(job?.termDate);
+  const dueDateText = dueLabel ? `${deadlineDate} 마감` : '';
   const id = job?.externalId || `${company}-${title}-${job?.termDate || ''}`;
 
   return {
@@ -163,7 +216,7 @@ const normalizeMapJob = (job, aiResults, aiEnabled) => {
     title,
     badges: ['공공', grade, '접근성 지도'].filter(Boolean),
     dueLabel,
-    dueDateText: `${deadlineDate} 마감`,
+    dueDateText,
     dateRangeText: getDateRangeText(job),
     commuteMinutes: '확인 필요',
     payText: salaryText,
@@ -278,6 +331,7 @@ const buildSupportAgencyMarkers = (agencies) =>
 const createFilterGroup = (id, title, options, selectedValue) => ({
   id,
   title,
+  type: 'chips',
   chips: [FILTER_ALL_VALUE, ...options.map((option) => option.label).filter(Boolean)],
   selectedValue: selectedValue || FILTER_ALL_VALUE
 });
@@ -296,25 +350,92 @@ const uniqueOptions = (options) => {
 };
 
 const buildFilterGroups = (selectedFilters, optionState) => [
-  createFilterGroup('jobCategory', '희망 직무', uniqueOptions(optionState.jobOptions), selectedFilters.jobCategory),
-  createFilterGroup('region', '근무지역', uniqueOptions(optionState.regions), selectedFilters.region),
+  {
+    id: 'jobCategory',
+    title: '희망 직무',
+    type: 'jobCategoryCascade',
+    jobCategories: optionState.jobCategories,
+    selectedValue: selectedFilters.jobCategory || FILTER_ALL_VALUE
+  },
+  {
+    id: 'region',
+    title: '근무지역',
+    type: 'select',
+    options: [FILTER_ALL_VALUE, ...uniqueOptions(optionState.regions).map((option) => option.label).filter(Boolean)],
+    selectedValue: selectedFilters.region || FILTER_ALL_VALUE
+  },
   createFilterGroup('employmentType', '고용형태', uniqueOptions(optionState.employmentTypes), selectedFilters.employmentType),
   createFilterGroup('salaryType', '급여 방식', uniqueOptions(optionState.salaryTypes), selectedFilters.salaryType)
 ];
 
-const filterJobs = (jobs, selectedFilters) =>
+const getJobCategoryTerms = (jobCategories, selectedValue) => {
+  if (!selectedValue || selectedValue === FILTER_ALL_VALUE) {
+    return [];
+  }
+
+  for (const category of jobCategories) {
+    if (category.label === selectedValue) {
+      return [
+        category.label,
+        ...category.groups.flatMap((group) => [group.label, ...group.jobs])
+      ];
+    }
+
+    for (const group of category.groups) {
+      if (group.label === selectedValue) {
+        return [group.label, ...group.jobs];
+      }
+
+      if (group.jobs.includes(selectedValue)) {
+        return [selectedValue];
+      }
+    }
+  }
+
+  return [selectedValue];
+};
+
+const getRegionTerms = (selectedRegion) => {
+  if (!selectedRegion || selectedRegion === FILTER_ALL_VALUE) {
+    return [];
+  }
+
+  const terms = new Set([selectedRegion]);
+  Object.values(REGION_ALIASES).forEach((aliases) => {
+    if (aliases.includes(selectedRegion)) {
+      aliases.forEach((alias) => terms.add(alias));
+    }
+  });
+
+  return Array.from(terms);
+};
+
+export const filterAccessibilityMapJobs = (jobs, selectedFilters, jobCategories = []) =>
   jobs.filter((job) => {
-    const matchesJobCategory =
-      !selectedFilters.jobCategory ||
-      selectedFilters.jobCategory === FILTER_ALL_VALUE ||
-      job.title.includes(selectedFilters.jobCategory) ||
-      selectedFilters.jobCategory.includes(job.title);
+    const source = job.source || {};
+    const jobCategoryTerms = getJobCategoryTerms(jobCategories, selectedFilters.jobCategory);
+    const normalizedJobCategoryTerms = jobCategoryTerms.flatMap(getComparableTerms);
+    const jobText = [
+      job.title,
+      source.jobNm,
+      source.reqMajor,
+      source.reqLicens,
+      source.enterType
+    ].filter(Boolean).join(' ');
+    const regionTerms = getRegionTerms(selectedFilters.region).flatMap(getComparableTerms);
+    const regionText = [
+      job.region,
+      job.companyInfo?.address,
+      source.compAddr
+    ].filter(Boolean).join(' ');
+    const employmentTerms = getComparableTerms(selectedFilters.employmentType);
+    const salaryTerms = getComparableTerms(selectedFilters.salaryType);
 
     return (
-      matchesJobCategory &&
-      (!selectedFilters.employmentType || selectedFilters.employmentType === FILTER_ALL_VALUE || job.employmentType === selectedFilters.employmentType) &&
-      (!selectedFilters.region || selectedFilters.region === FILTER_ALL_VALUE || job.region === selectedFilters.region || job.companyInfo.address.includes(selectedFilters.region)) &&
-      (!selectedFilters.salaryType || selectedFilters.salaryType === FILTER_ALL_VALUE || job.salaryType === selectedFilters.salaryType)
+      (!normalizedJobCategoryTerms.length || includesAnyTerm(jobText, normalizedJobCategoryTerms)) &&
+      (!employmentTerms.length || selectedFilters.employmentType === FILTER_ALL_VALUE || includesAnyTerm(job.employmentType || source.empType, employmentTerms)) &&
+      (!regionTerms.length || includesAnyTerm(regionText, regionTerms)) &&
+      (!salaryTerms.length || selectedFilters.salaryType === FILTER_ALL_VALUE || includesAnyTerm(job.salaryType || source.salaryType, salaryTerms))
     );
   });
 
@@ -357,10 +478,10 @@ const buildExplainPayload = ({ job, profileId }) => {
   };
 };
 
-const buildRecommendationStateFromPayload = (payload) => {
+const buildRecommendationStateFromPayload = (payload, aiEnabled = Boolean(payload?.aiEnabled)) => {
   const aiResults = payload?.aiResponse?.result?.results || payload?.aiResponse?.results || [];
   const jobs = Array.isArray(payload?.jobs)
-    ? payload.jobs.map((job) => normalizeMapJob(job, aiResults, Boolean(payload?.aiEnabled)))
+    ? payload.jobs.map((job) => normalizeMapJob(job, aiResults, aiEnabled))
     : [];
 
   return {
@@ -375,14 +496,12 @@ export function useAccessibilityMap() {
   const { callWithAuth, isAuthenticated } = useAuth();
   const profilesState = useProfiles();
   const filterOptions = useJobFilterOptions();
-  const recommendationCacheRef = useRef(new Map());
   const [selectedTab, setSelectedTab] = useState('accessibility');
   const [selectedJobId, setSelectedJobId] = useState('');
   const [isAiEnabled, setIsAiEnabled] = useState(true);
   const [appliedAiEnabled, setAppliedAiEnabled] = useState(true);
   const [hasAppliedConditions, setHasAppliedConditions] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState({});
-  const [applyKey, setApplyKey] = useState(0);
   const [reloadKey, setReloadKey] = useState(0);
   const [recommendationState, setRecommendationState] = useState({
     status: 'idle',
@@ -415,24 +534,13 @@ export function useAccessibilityMap() {
   const selectedPersona = selectedProfileSummary?.personaKey || 'wheelchair';
   const allJobs = recommendationState.jobs;
   const filteredJobs = useMemo(
-    () => sortJobsByAccessibility(filterJobs(allJobs, selectedFilters)),
-    [allJobs, selectedFilters]
+    () => sortJobsByAccessibility(filterAccessibilityMapJobs(allJobs, selectedFilters, filterOptions.jobCategories)),
+    [allJobs, filterOptions.jobCategories, selectedFilters]
   );
   const filterGroups = useMemo(
     () => buildFilterGroups(selectedFilters, filterOptions),
     [filterOptions, selectedFilters]
   );
-
-  useEffect(() => {
-    setSelectedFilters({});
-    setHasAppliedConditions(false);
-    setRecommendationState({
-      status: 'idle',
-      error: '',
-      payload: null,
-      jobs: []
-    });
-  }, [selectedProfileId]);
 
   useEffect(() => {
     if (!hasAppliedConditions) {
@@ -477,13 +585,20 @@ export function useAccessibilityMap() {
       return undefined;
     }
 
+    let isCurrentRequest = true;
     const controller = new AbortController();
-    const cacheKey = `map:${appliedAiEnabled ? `ai-on:${selectedProfileId}` : 'ai-off'}`;
+    const cacheKey = getRecommendationCacheKey({
+      profileId: selectedProfileId,
+      aiEnabled: appliedAiEnabled,
+      scope: 'map'
+    });
 
     const loadRecommendations = async () => {
-      const cachedResult = recommendationCacheRef.current.get(cacheKey);
-      if (cachedResult && Date.now() - cachedResult.cachedAt < MAP_RECOMMEND_CACHE_TTL_MS) {
-        setRecommendationState(cachedResult.state);
+      const cachedPayload = getCachedRecommendation(cacheKey);
+      if (cachedPayload) {
+        if (isCurrentRequest) {
+          setRecommendationState(buildRecommendationStateFromPayload(cachedPayload, appliedAiEnabled));
+        }
         return;
       }
 
@@ -498,18 +613,24 @@ export function useAccessibilityMap() {
           fetchMapJobRecommendations(accessToken, {
             aiEnabled: appliedAiEnabled,
             profileId: appliedAiEnabled ? selectedProfileId : undefined,
-            signal: controller.signal
+            signal: controller.signal,
+            timeoutMs: MAP_RECOMMEND_REQUEST_TIMEOUT_MS
           })
         );
-        const nextState = buildRecommendationStateFromPayload(payload);
+        const nextState = buildRecommendationStateFromPayload(payload, appliedAiEnabled);
 
-        recommendationCacheRef.current.set(cacheKey, {
-          cachedAt: Date.now(),
-          state: nextState
-        });
+        if (!isCurrentRequest) {
+          return;
+        }
+
+        setCachedRecommendation(cacheKey, payload);
         setRecommendationState(nextState);
       } catch (error) {
         if (error.name === 'AbortError') {
+          return;
+        }
+
+        if (!isCurrentRequest) {
           return;
         }
 
@@ -525,11 +646,11 @@ export function useAccessibilityMap() {
     loadRecommendations();
 
     return () => {
+      isCurrentRequest = false;
       controller.abort();
     };
   }, [
     appliedAiEnabled,
-    applyKey,
     callWithAuth,
     hasAppliedConditions,
     isAuthenticated,
@@ -678,7 +799,7 @@ export function useAccessibilityMap() {
   }, [appliedAiEnabled, callWithAuth, recommendationState.status, selectedJob, selectedProfileId]);
 
   const reloadRecommendations = useCallback(() => {
-    recommendationCacheRef.current.clear();
+    clearRecommendationCache();
     setReloadKey((current) => current + 1);
   }, []);
 
@@ -686,7 +807,6 @@ export function useAccessibilityMap() {
     setSelectedFilters(filters || {});
     setAppliedAiEnabled(isAiEnabled);
     setHasAppliedConditions(true);
-    setApplyKey((current) => current + 1);
   }, [isAiEnabled]);
 
   const toggleAiScoring = useCallback(() => {

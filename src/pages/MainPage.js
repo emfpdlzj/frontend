@@ -2,8 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { profileApi } from '../api/profileApi';
 import { fetchQuickJobRecommendations } from '../api/recommendApi';
-import favouriteIcon from '../assets/home/favourite-icon.svg';
 import { useAuth } from '../auth/AuthContext';
+import {
+  getCachedRecommendation,
+  getRecommendationCacheKey,
+  setCachedRecommendation
+} from '../cache/recommendationCache';
 import { NAVER_MAP_CONFIG } from '../config/appConfig';
 import { ROUTE_PATHS } from '../config/routes';
 import { loadNaverMapScript } from '../utils/naverMapSdk';
@@ -62,7 +66,7 @@ function getDateNumber(value) {
 function getDday(value) {
   const raw = String(value ?? '').replace(/\D/g, '');
   if (raw.length !== 8) {
-    return '마감일 확인';
+    return '';
   }
 
   const deadline = new Date(Number(raw.slice(0, 4)), Number(raw.slice(4, 6)) - 1, Number(raw.slice(6, 8)));
@@ -71,7 +75,7 @@ function getDday(value) {
   const diff = Math.ceil((deadline - normalizedToday) / 86400000);
 
   if (Number.isNaN(diff)) {
-    return '마감일 확인';
+    return '';
   }
 
   if (diff < 0) {
@@ -96,10 +100,31 @@ function getFitMap(aiResponse) {
     results
       .map((item) => [
         item?.job?.external_id || item?.job?.externalId || item?.job?.externalId,
-        item?.job_fit_score ?? item?.jobFitScore ?? item?.score
+        item?.job_fit_score ??
+          item?.jobFitScore ??
+          item?.score_detail?.job_fit_score ??
+          item?.scoreDetail?.jobFitScore ??
+          item?.total_score ??
+          item?.totalScore ??
+          item?.score
       ])
       .filter(([externalId]) => externalId)
   );
+}
+
+function buildHomeRecommendationState(result, profile) {
+  const fitMap = getFitMap(result?.aiResponse);
+  const jobs = Array.isArray(result?.jobs)
+    ? result.jobs.map((job) => normalizeRecommendJob(job, fitMap))
+    : [];
+
+  return {
+    status: jobs.length ? 'success' : 'empty',
+    error: '',
+    profile,
+    jobs,
+    aiEnabled: Boolean(result?.aiEnabled ?? true)
+  };
 }
 
 function normalizeRecommendJob(job, fitMap) {
@@ -330,6 +355,14 @@ function useHomeRecommendations() {
           return;
         }
 
+        const cacheKey = getRecommendationCacheKey({ profileId });
+        const cachedPayload = getCachedRecommendation(cacheKey);
+
+        if (cachedPayload) {
+          setState(buildHomeRecommendationState(cachedPayload, defaultProfile));
+          return;
+        }
+
         const payload = await callWithAuth((accessToken) =>
           fetchQuickJobRecommendations(accessToken, {
             aiEnabled: true,
@@ -338,18 +371,9 @@ function useHomeRecommendations() {
           })
         );
         const result = unwrapApiResult(payload);
-        const fitMap = getFitMap(result?.aiResponse);
-        const jobs = Array.isArray(result?.jobs)
-          ? result.jobs.map((job) => normalizeRecommendJob(job, fitMap))
-          : [];
 
-        setState({
-          status: jobs.length ? 'success' : 'empty',
-          error: '',
-          profile: defaultProfile,
-          jobs,
-          aiEnabled: Boolean(result?.aiEnabled ?? true)
-        });
+        setCachedRecommendation(cacheKey, result);
+        setState(buildHomeRecommendationState(result, defaultProfile));
       } catch (error) {
         if (error.name === 'AbortError') {
           return;
@@ -533,9 +557,6 @@ export function MainPage() {
                     <div className="home-job-card__main">
                       <div className="home-job-card__top">
                         <span className="home-job-company">{job.company}</span>
-                        <button type="button" className="home-icon-button" aria-label={`${job.title} 저장하기`}>
-                          <img src={favouriteIcon} alt="" aria-hidden="true" />
-                        </button>
                       </div>
                       <h3>{job.title}</h3>
                       <p className="home-job-role">{job.role}</p>
@@ -553,10 +574,12 @@ export function MainPage() {
                           <dt>고용형태</dt>
                           <dd>{job.employmentType}</dd>
                         </div>
-                        <div>
-                          <dt>마감</dt>
-                          <dd>{job.dueLabel}</dd>
-                        </div>
+                        {job.dueLabel ? (
+                          <div>
+                            <dt>마감</dt>
+                            <dd>{job.dueLabel}</dd>
+                          </div>
+                        ) : null}
                       </dl>
 
                       <div className="home-job-tags" aria-label="공고 평가 정보">
@@ -577,7 +600,7 @@ export function MainPage() {
                     </div>
 
                     <div className="home-job-card__actions">
-                      <StatusBadge tone="deadline">{job.dueLabel}</StatusBadge>
+                      {job.dueLabel ? <StatusBadge tone="deadline">{job.dueLabel}</StatusBadge> : null}
                       <button type="button" className="home-apply-button">
                         지원하기
                       </button>
@@ -673,7 +696,7 @@ export function MainPage() {
                 <li key={job.id}>
                   <span>{job.company}</span>
                   <strong>{job.title}</strong>
-                  <em>{job.location} · {job.dueLabel}</em>
+                  <em>{[job.location, job.dueLabel].filter(Boolean).join(' · ')}</em>
                 </li>
               )) : (
                 <li>

@@ -1,35 +1,78 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchQuickJobRecommendations } from '../api/recommendApi';
 import { useAuth } from '../auth/AuthContext';
+import {
+  clearRecommendationCache,
+  getCachedRecommendation,
+  getRecommendationCacheKey,
+  setCachedRecommendation
+} from '../cache/recommendationCache';
 import { useProfiles } from './useProfiles';
 
-const DEFAULT_FILTERS = ['최신 공고', '기능2 API', 'Spring Backend'];
 const DEFAULT_SORT = 'latest';
-const QUICK_RECOMMEND_CACHE_TTL_MS = 5 * 60 * 1000;
-
-const SORT_LABELS = {
-  latest: '최신순',
-  deadline: '마감임박순',
-  match: '직무 적합도 높은순',
-  salary: '임금 높은순'
+const FILTER_ALL_VALUE = 'ALL';
+const INITIAL_FILTERS = {
+  keyword: '',
+  rolePrimary: '',
+  roleSecondary: '',
+  role: FILTER_ALL_VALUE,
+  region: FILTER_ALL_VALUE,
+  employment: FILTER_ALL_VALUE,
+  salary: FILTER_ALL_VALUE,
+  career: FILTER_ALL_VALUE,
+  education: FILTER_ALL_VALUE,
+  deadline: FILTER_ALL_VALUE,
+  standard: FILTER_ALL_VALUE,
+  disabled: FILTER_ALL_VALUE
 };
 
-const formatDate = (value) => {
-  if (!value) {
+const extractDateValues = (value) => {
+  const text = String(value || '');
+  const matches = [...text.matchAll(/(\d{4})\D?(\d{2})\D?(\d{2})/g)];
+
+  return matches
+    .map((match) => `${match[1]}${match[2]}${match[3]}`)
+    .filter((rawDate) => rawDate.length === 8);
+};
+
+const pickDateValue = (value, position = 'first') => {
+  const dates = extractDateValues(value);
+
+  if (!dates.length) {
+    return '';
+  }
+
+  return position === 'last' ? dates[dates.length - 1] : dates[0];
+};
+
+const formatRawDate = (rawDate) => {
+  if (!rawDate) {
     return '확인 필요';
   }
 
-  const raw = String(value).replace(/\D/g, '');
-  if (raw.length !== 8) {
-    return String(value);
-  }
-
-  return `${raw.slice(0, 4)}.${raw.slice(4, 6)}.${raw.slice(6, 8)}`;
+  return `${rawDate.slice(0, 4)}.${rawDate.slice(4, 6)}.${rawDate.slice(6, 8)}`;
 };
 
-const parseDateValue = (value) => {
-  const raw = String(value || '').replace(/\D/g, '');
-  return raw.length === 8 ? Number(raw) : 0;
+const formatDate = (value, position = 'first') => formatRawDate(pickDateValue(value, position));
+
+const formatRecruitmentPeriod = (startValue, endValue) => {
+  const startDate = pickDateValue(startValue, 'first') || pickDateValue(endValue, 'first');
+  const endDate = pickDateValue(endValue, 'last');
+
+  if (!startDate && !endDate) {
+    return '확인 필요';
+  }
+
+  if (!startDate || startDate === endDate) {
+    return formatRawDate(endDate || startDate);
+  }
+
+  return `${formatRawDate(startDate)} ~ ${formatRawDate(endDate)}`;
+};
+
+const parseDateValue = (value, position = 'first') => {
+  const rawDate = pickDateValue(value, position);
+  return rawDate ? Number(rawDate) : 0;
 };
 
 const parseSalaryValue = (salaryType, salary) => {
@@ -56,8 +99,8 @@ const sortJobsBy = (jobs, sortKey) => {
 
   sortedJobs.sort((left, right) => {
     if (sortKey === 'deadline') {
-      const leftDeadline = parseDateValue(left.source.termDate) || Number.MAX_SAFE_INTEGER;
-      const rightDeadline = parseDateValue(right.source.termDate) || Number.MAX_SAFE_INTEGER;
+      const leftDeadline = parseDateValue(left.source.termDate, 'last') || Number.MAX_SAFE_INTEGER;
+      const rightDeadline = parseDateValue(right.source.termDate, 'last') || Number.MAX_SAFE_INTEGER;
       return leftDeadline - rightDeadline;
     }
 
@@ -75,10 +118,181 @@ const sortJobsBy = (jobs, sortKey) => {
   return sortedJobs;
 };
 
+const normalizeSearchText = (value) => String(value || '').replace(/\s+/g, '').toLowerCase();
+
+const includesText = (value, keyword) => normalizeSearchText(value).includes(normalizeSearchText(keyword));
+
+const isAllFilter = (value) => !value || value === FILTER_ALL_VALUE;
+
+const hasAnyText = (values, keyword) => values.some((value) => includesText(value, keyword));
+
+const getJobSearchValues = (job) => [
+  job.title,
+  job.occupation,
+  job.company,
+  job.location,
+  job.externalId,
+  job.source?.jobNm,
+  job.source?.busplaName,
+  job.source?.compAddr,
+  job.source?.reqMajor,
+  job.source?.reqLicens
+];
+
+const matchesRoleFilter = (job, filters) => {
+  const roleTerms = [filters.role, filters.roleSecondary, filters.rolePrimary]
+    .filter((value) => !isAllFilter(value))
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  if (!roleTerms.length) {
+    return true;
+  }
+
+  const jobSearchValues = getJobSearchValues(job);
+  return roleTerms.some((term) => hasAnyText(jobSearchValues, term));
+};
+
+const FILTER_ALIASES = {
+  '학력 무관': ['학력 무관', '학력무관', '무관'],
+  무관: ['무관', '관계없음', '경력무관', '학력무관'],
+  신입: ['신입', '신입가능'],
+  경력: ['경력'],
+  고졸: ['고졸', '고등학교'],
+  전문대졸: ['전문대졸', '전문대', '초대졸'],
+  '대졸 이상': ['대졸 이상', '대졸', '대학교', '학사']
+};
+
+const getFilterTerms = (filterValue) => {
+  if (isAllFilter(filterValue)) {
+    return [];
+  }
+
+  const value = String(filterValue).trim();
+  return [...new Set([value, ...(FILTER_ALIASES[value] || [])])];
+};
+
+const matchesTextFilter = (values, filterValue) => {
+  const terms = getFilterTerms(filterValue);
+  return !terms.length || terms.some((term) => hasAnyText(values, term));
+};
+
+const hasAffirmativeText = (...values) => {
+  const text = values.map((value) => String(value || '')).join(' ');
+
+  if (!text.trim()) {
+    return false;
+  }
+
+  if (/미해당|해당없|아님|false|n\b|no\b/i.test(text)) {
+    return false;
+  }
+
+  return /해당|우대|장애인|표준사업장|인증|true|y\b|yes\b/i.test(text);
+};
+
+const REGION_ALIASES = {
+  서울특별시: ['서울특별시', '서울'],
+  부산광역시: ['부산광역시', '부산'],
+  대구광역시: ['대구광역시', '대구'],
+  인천광역시: ['인천광역시', '인천'],
+  광주광역시: ['광주광역시', '광주'],
+  대전광역시: ['대전광역시', '대전'],
+  울산광역시: ['울산광역시', '울산'],
+  세종특별자치시: ['세종특별자치시', '세종'],
+  경기도: ['경기도', '경기'],
+  강원특별자치도: ['강원특별자치도', '강원도', '강원'],
+  충청북도: ['충청북도', '충북'],
+  충청남도: ['충청남도', '충남'],
+  전북특별자치도: ['전북특별자치도', '전라북도', '전북'],
+  전라남도: ['전라남도', '전남'],
+  경상북도: ['경상북도', '경북'],
+  경상남도: ['경상남도', '경남'],
+  제주특별자치도: ['제주특별자치도', '제주도', '제주']
+};
+
+const normalizeRegionText = (value) => String(value || '').replace(/\s+/g, '').toLowerCase();
+
+const getRegionTerms = (value) => {
+  const selectedRegion = String(value || '').trim();
+  const matchedAliases = Object.values(REGION_ALIASES).find((aliases) => aliases.includes(selectedRegion));
+  return [...new Set([selectedRegion, ...(matchedAliases || [])])]
+    .map(normalizeRegionText)
+    .filter(Boolean);
+};
+
+const matchesRegionFilter = (job, regionFilter) => {
+  if (isAllFilter(regionFilter)) {
+    return true;
+  }
+
+  const regionTerms = getRegionTerms(regionFilter);
+  const jobRegionText = normalizeRegionText(`${job.location || ''} ${job.source?.compAddr || ''}`);
+
+  return regionTerms.some((term) => jobRegionText.includes(term));
+};
+
+const getDeadlineDays = (dueLabel) => {
+  const match = String(dueLabel || '').match(/^D-(\d+)$/);
+  return match ? Number(match[1]) : null;
+};
+
+const filterJobsBy = (jobs, filters) => {
+  const keyword = String(filters.keyword || '').trim().toLowerCase();
+
+  return jobs.filter((job) => {
+    if (keyword && !hasAnyText(getJobSearchValues(job), keyword)) {
+      return false;
+    }
+
+    if (!matchesRoleFilter(job, filters)) {
+      return false;
+    }
+
+    if (!matchesRegionFilter(job, filters.region)) {
+      return false;
+    }
+
+    if (!matchesTextFilter([job.employmentType, job.source?.empType], filters.employment)) {
+      return false;
+    }
+
+    if (!matchesTextFilter([job.source?.salaryType, job.salary], filters.salary)) {
+      return false;
+    }
+
+    if (!matchesTextFilter([job.experience, job.source?.reqCareer, job.source?.enterType], filters.career)) {
+      return false;
+    }
+
+    if (!matchesTextFilter([job.education, job.source?.reqEduc], filters.education)) {
+      return false;
+    }
+
+    if (!isAllFilter(filters.deadline)) {
+      const days = getDeadlineDays(job.dueLabel);
+      const maxDays = filters.deadline === '마감 3일 이내' ? 3 : 7;
+      if (typeof days !== 'number' || days > maxDays) {
+        return false;
+      }
+    }
+
+    if (filters.standard === '표준사업장' && !job.isStandardWorkplace) {
+      return false;
+    }
+
+    if (filters.disabled === '우대 공고' && !job.prefersDisabled) {
+      return false;
+    }
+
+    return true;
+  });
+};
+
 const getDday = (value) => {
-  const raw = String(value || '').replace(/\D/g, '');
+  const raw = pickDateValue(value, 'last');
   if (raw.length !== 8) {
-    return '마감 확인';
+    return '';
   }
 
   const deadline = new Date(Number(raw.slice(0, 4)), Number(raw.slice(4, 6)) - 1, Number(raw.slice(6, 8)));
@@ -89,7 +303,7 @@ const getDday = (value) => {
   const diffDays = Math.ceil((deadline.getTime() - today.getTime()) / 86400000);
 
   if (Number.isNaN(diffDays)) {
-    return '마감 확인';
+    return '';
   }
 
   if (diffDays < 0) {
@@ -123,12 +337,21 @@ const findAiScore = (aiResults, job) => {
       aiJob.jobTitle === job?.jobNm
     );
   });
+  const scoreDetail = matched?.score_detail || matched?.scoreDetail || {};
 
   return typeof matched?.job_fit_score === 'number'
     ? matched.job_fit_score
     : typeof matched?.jobFitScore === 'number'
       ? matched.jobFitScore
-      : null;
+      : typeof scoreDetail?.job_fit_score === 'number'
+        ? scoreDetail.job_fit_score
+        : typeof scoreDetail?.jobFitScore === 'number'
+          ? scoreDetail.jobFitScore
+          : typeof matched?.total_score === 'number'
+            ? matched.total_score
+            : typeof matched?.totalScore === 'number'
+              ? matched.totalScore
+              : null;
 };
 
 const normalizeSalary = (salaryType, salary) => {
@@ -146,7 +369,9 @@ const normalizeSalary = (salaryType, salary) => {
 const normalizeJob = (job, aiResults, aiEnabled) => {
   const score = aiEnabled ? findAiScore(aiResults, job) : null;
   const grade = getGrade(score);
-  const deadlineDate = formatDate(job?.termDate);
+  const deadlineDate = formatDate(job?.termDate, 'last');
+  const registeredDate = formatDate(job?.regDt || job?.offerregDt, 'first');
+  const recruitmentPeriod = formatRecruitmentPeriod(job?.offerregDt || job?.regDt, job?.termDate);
   const dueLabel = getDday(job?.termDate);
   const title = job?.jobNm || '공고명 확인 필요';
   const company = job?.busplaName || '기업명 확인 필요';
@@ -157,6 +382,22 @@ const normalizeJob = (job, aiResults, aiEnabled) => {
   const education = job?.reqEduc || '확인 필요';
   const major = job?.reqMajor || '확인 필요';
   const certificates = job?.reqLicens || '확인 필요';
+  const isStandardWorkplace = hasAffirmativeText(
+    job?.isStandardWorkplace,
+    job?.standardWorkplace,
+    job?.standardYn,
+    job?.compTypeNm,
+    job?.compCert
+  );
+  const prefersDisabled = hasAffirmativeText(
+    job?.prefersDisabled,
+    job?.disabledPreferred,
+    job?.disabilityPreferred,
+    job?.disabPreferYn,
+    job?.enterType,
+    job?.etcItm,
+    job?.jobNm
+  );
   const hasScore = typeof score === 'number';
 
   return {
@@ -190,11 +431,13 @@ const normalizeJob = (job, aiResults, aiEnabled) => {
     education,
     major,
     certificates,
+    registeredDate,
+    recruitmentPeriod,
     deadlineDate,
     dueLabel,
     isDeadlineSoon: dueLabel.startsWith('D-') && Number(dueLabel.replace('D-', '')) <= 7,
-    isStandardWorkplace: false,
-    prefersDisabled: false,
+    isStandardWorkplace,
+    prefersDisabled,
     agency: '확인 필요',
     contact: '확인 필요',
     match: {
@@ -281,8 +524,17 @@ const normalizeProfiles = (profiles, selectedProfile) =>
     };
   });
 
-const getCacheKey = ({ aiEnabled, profileId }) =>
-  `quick:${aiEnabled ? 'ai-on' : 'ai-off'}:${aiEnabled ? profileId || 'default' : 'latest'}`;
+const toCountNumber = (value) => {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) && numberValue >= 0 ? numberValue : null;
+};
+
+const getTotalJobCount = (payload, jobsLength) =>
+  toCountNumber(payload?.totalCount) ??
+  toCountNumber(payload?.totalElements) ??
+  toCountNumber(payload?.total) ??
+  toCountNumber(payload?.count) ??
+  jobsLength;
 
 const buildRecommendationStateFromPayload = (payload) => {
   const aiResults = payload?.aiResponse?.result?.results || payload?.aiResponse?.results || [];
@@ -295,6 +547,7 @@ const buildRecommendationStateFromPayload = (payload) => {
     error: '',
     payload,
     jobs,
+    totalJobCount: getTotalJobCount(payload, jobs.length),
     updatedAtText: new Intl.DateTimeFormat('ko-KR', {
       year: 'numeric',
       month: '2-digit',
@@ -308,10 +561,10 @@ const buildRecommendationStateFromPayload = (payload) => {
 export function useQuickJobsMock() {
   const { callWithAuth, isAuthenticated } = useAuth();
   const profilesState = useProfiles();
-  const recommendationCacheRef = useRef(new Map());
   const [selectedTab, setSelectedTab] = useState('job');
   const [selectedJobId, setSelectedJobId] = useState('');
   const [sortKey, setSortKey] = useState(DEFAULT_SORT);
+  const [filterValues, setFilterValues] = useState(INITIAL_FILTERS);
   const [isAiEnabled, setIsAiEnabled] = useState(true);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [recommendationState, setRecommendationState] = useState({
@@ -319,6 +572,7 @@ export function useQuickJobsMock() {
     error: '',
     payload: null,
     jobs: [],
+    totalJobCount: 0,
     updatedAtText: '확인 전'
   });
   const [reloadKey, setReloadKey] = useState(0);
@@ -348,7 +602,8 @@ export function useQuickJobsMock() {
         ...prev,
         status: 'disabled',
         error: '퀵 맞춤 일자리 추천을 보려면 로그인이 필요합니다.',
-        jobs: []
+        jobs: [],
+        totalJobCount: 0
       }));
       return undefined;
     }
@@ -363,7 +618,8 @@ export function useQuickJobsMock() {
         ...prev,
         status: 'error',
         error: profilesState.error || '프로필 목록을 불러오지 못했습니다.',
-        jobs: []
+        jobs: [],
+        totalJobCount: 0
       }));
       return undefined;
     }
@@ -373,36 +629,36 @@ export function useQuickJobsMock() {
         ...prev,
         status: 'noProfile',
         error: '',
-        jobs: []
+        jobs: [],
+        totalJobCount: 0
       }));
       return undefined;
     }
 
-    if (isAiEnabled && !selectedProfileId) {
+    if (!selectedProfileId) {
       setRecommendationState((prev) => ({
         ...prev,
         status: 'noProfile',
         error: '',
-        jobs: []
+        jobs: [],
+        totalJobCount: 0
       }));
       return undefined;
     }
 
     const controller = new AbortController();
     const requestParams = {
-      aiEnabled: isAiEnabled,
-      profileId: isAiEnabled ? selectedProfileId : undefined
+      aiEnabled: true,
+      profileId: selectedProfileId
     };
-    const cacheKey = getCacheKey(requestParams);
+    const cacheKey = getRecommendationCacheKey(requestParams);
 
     const loadRecommendations = async () => {
-      const cachedResult = recommendationCacheRef.current.get(cacheKey);
+      const cachedPayload = getCachedRecommendation(cacheKey);
 
-      if (cachedResult && Date.now() - cachedResult.cachedAt < QUICK_RECOMMEND_CACHE_TTL_MS) {
-        setRecommendationState({
-          ...cachedResult.state,
-          status: cachedResult.state.jobs.length ? 'success' : 'empty'
-        });
+      if (cachedPayload) {
+        const cachedState = buildRecommendationStateFromPayload(cachedPayload);
+        setRecommendationState(cachedState);
         return;
       }
 
@@ -421,10 +677,7 @@ export function useQuickJobsMock() {
         );
         const nextState = buildRecommendationStateFromPayload(payload);
 
-        recommendationCacheRef.current.set(cacheKey, {
-          cachedAt: Date.now(),
-          state: nextState
-        });
+        setCachedRecommendation(cacheKey, payload);
         setRecommendationState(nextState);
       } catch (error) {
         if (error.name === 'AbortError') {
@@ -435,7 +688,8 @@ export function useQuickJobsMock() {
           ...prev,
           status: 'error',
           error: error.message || '퀵 맞춤 일자리 추천을 불러오지 못했습니다.',
-          jobs: []
+          jobs: [],
+          totalJobCount: 0
         }));
       }
     };
@@ -447,7 +701,6 @@ export function useQuickJobsMock() {
     };
   }, [
     callWithAuth,
-    isAiEnabled,
     isAuthenticated,
     profilesState.detailStatus,
     profilesState.error,
@@ -457,27 +710,35 @@ export function useQuickJobsMock() {
     selectedProfileId
   ]);
 
+  const filteredJobs = useMemo(
+    () => filterJobsBy(recommendationState.jobs, filterValues),
+    [recommendationState.jobs, filterValues]
+  );
+  const sortedJobs = useMemo(
+    () => sortJobsBy(filteredJobs, sortKey),
+    [filteredJobs, sortKey]
+  );
+  const hasActiveFilters = useMemo(
+    () => Object.entries(filterValues).some(([key, value]) => value !== INITIAL_FILTERS[key]),
+    [filterValues]
+  );
+
   useEffect(() => {
-    if (!recommendationState.jobs.length) {
+    if (!sortedJobs.length) {
       setSelectedJobId('');
       return;
     }
 
     setSelectedJobId((current) =>
-      recommendationState.jobs.some((job) => job.id === current) ? current : recommendationState.jobs[0].id
+      sortedJobs.some((job) => job.id === current) ? current : sortedJobs[0].id
     );
-  }, [recommendationState.jobs]);
+  }, [sortedJobs]);
 
   const selectedJob = useMemo(
     () => {
-      const sortedJobs = sortJobsBy(recommendationState.jobs, sortKey);
       return sortedJobs.find((job) => job.id === selectedJobId) ?? sortedJobs[0] ?? null;
     },
-    [recommendationState.jobs, selectedJobId, sortKey]
-  );
-  const sortedJobs = useMemo(
-    () => sortJobsBy(recommendationState.jobs, sortKey),
-    [recommendationState.jobs, sortKey]
+    [selectedJobId, sortedJobs]
   );
 
   const profileStatus = useMemo(() => {
@@ -503,8 +764,29 @@ export function useQuickJobsMock() {
     });
   };
 
+  const handleChangeFilter = useCallback((filterKey, value) => {
+    setFilterValues((current) => {
+      if (filterKey && typeof filterKey === 'object') {
+        return {
+          ...current,
+          ...filterKey
+        };
+      }
+
+      return {
+        ...current,
+        [filterKey]: value
+      };
+    });
+  }, []);
+
+  const handleResetFilters = useCallback(() => {
+    setFilterValues(INITIAL_FILTERS);
+    setSortKey(DEFAULT_SORT);
+  }, []);
+
   const reloadRecommendations = useCallback(() => {
-    recommendationCacheRef.current.clear();
+    clearRecommendationCache();
     setReloadKey((current) => current + 1);
   }, []);
 
@@ -516,18 +798,11 @@ export function useQuickJobsMock() {
         : recommendationState.status;
 
   return {
-    apiContract: {
-      endpoint: 'POST /api/v1/recommend/quick',
-      request: {
-        aiEnabled: isAiEnabled,
-        profileId: isAiEnabled && selectedProfileId ? Number(selectedProfileId) : undefined
-      },
-      cacheTtlMinutes: Math.round(QUICK_RECOMMEND_CACHE_TTL_MS / 60000)
-    },
     updatedAtText: recommendationState.updatedAtText,
     profiles,
-    selectedFilters: isAiEnabled ? [...DEFAULT_FILTERS, 'AI 적합도', SORT_LABELS[sortKey]] : [...DEFAULT_FILTERS, 'AI OFF', SORT_LABELS[sortKey]],
+    filterValues,
     jobs: sortedJobs,
+    totalJobCount: hasActiveFilters ? sortedJobs.length : recommendationState.totalJobCount,
     selectedJob,
     selectedJobId,
     selectedProfile: selectedProfileSummary,
@@ -546,6 +821,8 @@ export function useQuickJobsMock() {
     setSortKey,
     reloadRecommendations,
     setIsAdvancedOpen,
+    onChangeFilter: handleChangeFilter,
+    onResetFilters: handleResetFilters,
     onToggleAi: handleToggleAi,
     onToggleChecklist: handleToggleChecklist
   };

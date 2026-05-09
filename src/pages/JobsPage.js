@@ -35,10 +35,10 @@ function ProfileBanner({ profileStatus }) {
 
 export function JobsPage() {
   const {
-    apiContract,
     profiles,
-    selectedFilters,
+    filterValues,
     jobs,
+    totalJobCount,
     selectedJob,
     selectedJobId,
     selectedProfileId,
@@ -56,6 +56,8 @@ export function JobsPage() {
     setSortKey,
     reloadRecommendations,
     setIsAdvancedOpen,
+    onChangeFilter,
+    onResetFilters,
     onToggleAi,
     onToggleChecklist
   } = useQuickJobsMock();
@@ -125,21 +127,24 @@ export function JobsPage() {
 
       <div className="jobs-workspace">
         <JobFilterBar
-          selectedFilters={selectedFilters}
           isAdvancedOpen={isAdvancedOpen}
-          apiContract={apiContract}
+          filterValues={filterValues}
           optionState={filterOptions}
           sortKey={sortKey}
+          onChangeFilter={onChangeFilter}
           onChangeSort={setSortKey}
+          onResetFilters={onResetFilters}
           onToggleAdvanced={() => setIsAdvancedOpen((current) => !current)}
         />
         <div className="jobs-page__content">
           <JobListPanel
             jobs={jobs}
+            totalJobCount={totalJobCount}
             selectedJobId={selectedJobId}
             isAiEnabled={isAiEnabled && viewState !== 'analysisError'}
             viewState={viewState}
             onSelectJob={setSelectedJobId}
+            onResetFilters={onResetFilters}
           />
           <JobDetailPanel
             job={selectedJob}
