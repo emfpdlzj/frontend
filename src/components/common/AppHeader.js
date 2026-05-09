@@ -76,7 +76,7 @@ export function AppHeader() {
             onClick={() => setIsLoginModalOpen(true)}
             disabled={isInitializing}
           >
-            로그인
+            회원가입/로그인
           </button>
         )}
       </div>

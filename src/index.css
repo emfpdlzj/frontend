@@ -89,10 +89,29 @@ a:hover {
 }
 
 .app-footer__brand {
+  appearance: none;
   display: inline-flex;
   align-items: center;
   gap: 14px;
   width: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.app-footer__brand:hover {
+  opacity: 0.78;
+  transform: translateY(-1px);
+}
+
+.app-footer__brand:focus-visible {
+  outline: 3px solid rgba(13, 99, 243, 0.24);
+  outline-offset: 5px;
+  border-radius: 8px;
 }
 
 .app-footer__logo {
@@ -127,12 +146,31 @@ a:hover {
 }
 
 .app-footer__social-item {
+  appearance: none;
   width: 40px;
   height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.app-footer__social-item:hover {
+  opacity: 0.78;
+  transform: translateY(-1px);
+}
+
+.app-footer__social-item:focus-visible {
+  outline: 3px solid rgba(13, 99, 243, 0.24);
+  outline-offset: 3px;
 }
 
 .app-footer__social-item img {
@@ -157,6 +195,26 @@ a:hover {
   font-size: 14px;
   font-weight: 500;
   line-height: 1.6;
+}
+
+.app-footer__policy {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.app-footer__policy:hover {
+  color: #0b2f5b;
+}
+
+.app-footer__policy:focus-visible {
+  outline: 3px solid rgba(13, 99, 243, 0.24);
+  outline-offset: 3px;
 }
 
 .app-footer__copyright {
@@ -297,7 +355,7 @@ a:hover {
   background: transparent;
   color: #111827;
   font: inherit;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 500;
 }
 
@@ -345,17 +403,19 @@ a:hover {
 
 .app-header__auth-button {
   appearance: none;
-  min-width: 92px;
-  min-height: 42px;
+  min-width: 146px;
+  min-height: 50px;
+  padding: 0 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 16px;
   font: inherit;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 0.95rem;
+  font-weight: 500;
   line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     border-color 160ms ease,
@@ -373,16 +433,16 @@ a:hover {
 }
 
 .app-header__auth-button--login {
-  border: 1px solid #bfd7ff;
-  background: #eaf2ff;
-  color: #0d63f3;
+  border: 1px solid #dde3eb;
+  background: #fff;
+  color: #0059ff;
   box-shadow: none;
 }
 
 .app-header__auth-button--login:hover {
-  border-color: #8bbcff;
-  background: #dceaff;
-  color: #0a4ec4;
+  border-color: #c7d3e6;
+  background: #f8fbff;
+  color: #0050e6;
 }
 
 .app-header__auth-button--login[aria-disabled='true'] {
@@ -424,42 +484,63 @@ a:hover {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(15, 23, 42, 0.38);
-  backdrop-filter: blur(2px);
+  background: rgba(17, 24, 39, 0.36);
 }
 
 .login-modal {
-  width: min(720px, 100%);
+  width: min(420px, 100%);
   max-height: calc(100vh - 48px);
   max-height: calc(100dvh - 48px);
   position: relative;
   overflow-y: auto;
   border: 1px solid #e5e7eb;
-  border-radius: 28px;
-  background: #fff;
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.16);
 }
 
 .login-modal__close {
   appearance: none;
   position: absolute;
-  top: 26px;
-  right: 34px;
-  min-width: 64px;
-  min-height: 44px;
+  top: 18px;
+  right: 18px;
+  width: 32px;
+  height: 32px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 50%;
   background: transparent;
-  color: #56637c;
+  color: #667085;
   font: inherit;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 0;
   cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.login-modal__close::before,
+.login-modal__close::after {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: 9px;
+  width: 14px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.login-modal__close::before {
+  transform: rotate(45deg);
+}
+
+.login-modal__close::after {
+  transform: rotate(-45deg);
 }
 
 .login-modal__close:hover {
-  background: #f3f6fa;
-  color: #10213d;
+  background: #f3f4f6;
+  color: #172033;
 }
 
 .login-modal__close:focus-visible {
@@ -470,16 +551,40 @@ a:hover {
 .login-modal__body {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 82px 40px 42px;
+  align-items: stretch;
+  gap: 15px;
+  padding: 38px 32px 26px;
   text-align: center;
 }
 
-.login-modal__body h2 {
+.login-modal__brand-mark {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 4px;
+  display: block;
+}
+
+.login-modal__logo {
+  width: 54px;
+  height: 54px;
+  display: block;
+  object-fit: contain;
+  filter: saturate(1.06) contrast(1.04);
+}
+
+.login-modal__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 2px;
+}
+
+.login-modal__title {
   margin: 0;
   color: #111827;
-  font-size: 44px;
-  font-weight: 800;
+  font-size: 30px;
+  font-weight: 750;
+  line-height: 1.15;
   letter-spacing: 0;
 }
 
@@ -487,24 +592,44 @@ a:hover {
   margin: 0;
 }
 
-.login-modal__body > p:first-of-type {
-  color: #6b7280;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.login-modal__logo {
-  width: min(260px, 70%);
-  max-height: 104px;
-  align-self: center;
-  object-fit: contain;
+.login-modal__heading p {
+  color: #374151;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.45;
 }
 
 .login-modal__notice {
-  color: #6b7280;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.7;
+  color: #667085;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+.login-modal__signup-note {
+  margin-top: -2px;
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.login-modal__notice a {
+  color: #0b65d8;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.login-modal__notice a:hover {
+  color: #0649a8;
+}
+
+.login-modal__notice a:focus-visible {
+  outline: 3px solid rgba(13, 99, 243, 0.24);
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 .page-shell {
@@ -542,6 +667,36 @@ a:hover {
 .page-header-actions {
   display: flex;
   align-items: center;
+}
+
+.policy-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  color: #2f3742;
+  line-height: 1.7;
+}
+
+.policy-page section {
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.policy-page section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.policy-page h2 {
+  margin: 0 0 10px;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.policy-page p {
+  margin: 0;
+  font-size: 16px;
 }
 
 .not-found-page {
@@ -754,24 +909,38 @@ a:hover {
 .social-login-buttons {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  margin-top: 2px;
 }
 
 .social-button {
   width: 100%;
-  min-height: 58px;
+  min-height: 48px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 13px 16px;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0 14px;
+  border-radius: 8px;
   text-align: center;
-  font-size: 18px;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.social-button span {
+  flex: 1;
+  text-align: center;
+  transform: translateX(-12px);
 }
 
 .social-button.kakao {
   background: #fee500;
-  color: #1f1f1f;
+  color: #171717;
+}
+
+.social-button.kakao:hover {
+  background: #f7dc00;
 }
 
 .social-button.naver {
@@ -779,9 +948,18 @@ a:hover {
   color: #fff;
 }
 
+.social-button.naver:hover {
+  background: #02bb55;
+}
+
+.social-button:active {
+  transform: none;
+  opacity: 0.9;
+}
+
 .social-button__logo {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   flex: 0 0 auto;
   object-fit: contain;
 }
@@ -2105,6 +2283,10 @@ a:hover {
   border: 0;
 }
 
+.onboarding-choice-group--education {
+  gap: 22px;
+}
+
 .onboarding-field > span:first-child,
 .onboarding-choice-group legend {
   margin: 0;
@@ -2113,6 +2295,14 @@ a:hover {
   font-size: 18px;
   font-weight: 800;
   line-height: 1.35;
+}
+
+.onboarding-choice-group legend {
+  margin-bottom: 16px;
+}
+
+.onboarding-choice-group--education legend {
+  margin-bottom: 22px;
 }
 
 .onboarding-choice-group legend span {
@@ -2164,10 +2354,57 @@ a:hover {
 .onboarding-field input:focus,
 .onboarding-field textarea:focus,
 .onboarding-chip:focus-visible,
+.onboarding-job-picker button:focus-visible,
+.onboarding-date-picker-button:focus-visible,
 .onboarding-button:focus-visible {
   outline: 3px solid rgba(47, 111, 242, 0.22);
   outline-offset: 2px;
   border-color: #2f6ff2;
+}
+
+.onboarding-input-wrap--with-button input {
+  padding-right: 54px;
+}
+
+.onboarding-date-picker-button {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #3d444d;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.onboarding-date-picker-button:hover {
+  background: #f3f6fa;
+  color: #111418;
+}
+
+.onboarding-date-picker-button .onboarding-input-icon {
+  position: static;
+  transform: none;
+  fill: currentColor;
+}
+
+.onboarding-native-date-input {
+  position: absolute;
+  right: 9px;
+  bottom: 0;
+  width: 40px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .onboarding-input-icon {
@@ -2186,6 +2423,11 @@ a:hover {
   color: #333942;
   font-size: 14px;
   line-height: 1.5;
+}
+
+.onboarding-field .onboarding-field-error {
+  color: var(--danger);
+  font-weight: 700;
 }
 
 .onboarding-chip-row {
@@ -2210,6 +2452,193 @@ a:hover {
   border-color: #2f6ff2;
   background: #eef5ff;
   color: #0d63f3;
+}
+
+.onboarding-job-picker {
+  margin-bottom: 24px;
+}
+
+.onboarding-job-picker__box {
+  padding: 16px;
+  border-radius: 22px;
+  background: #f3f7fd;
+}
+
+.onboarding-job-picker__columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 16px;
+  min-height: 330px;
+}
+
+.onboarding-job-picker__column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(28, 68, 127, 0.08);
+}
+
+.onboarding-job-picker__column-head {
+  margin: 0;
+  padding: 20px 20px 12px;
+}
+
+.onboarding-job-picker__column-head h3 {
+  margin: 0 0 5px;
+  color: #121821;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.onboarding-job-picker__column-head p {
+  margin: 0;
+  color: #617086;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.onboarding-job-picker__list {
+  flex: 1;
+  min-height: 0;
+  height: 258px;
+  overflow-y: auto;
+  padding: 8px 12px 16px;
+  scrollbar-width: thin;
+  scrollbar-color: #c7d8f2 transparent;
+}
+
+.onboarding-job-picker__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.onboarding-job-picker__list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.onboarding-job-picker__list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #c7d8f2;
+}
+
+.onboarding-job-picker__option {
+  position: relative;
+  width: 100%;
+  min-height: 50px;
+  padding: 12px 14px 12px 16px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: #263241;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.onboarding-job-picker__option + .onboarding-job-picker__option {
+  margin-top: 8px;
+}
+
+.onboarding-job-picker__option:hover {
+  background: #f6f9ff;
+}
+
+.onboarding-job-picker__option.is-active,
+.onboarding-job-picker__option--check.is-selected {
+  border-color: #d9e8ff;
+  background: #eef5ff;
+  color: #145ad7;
+  font-weight: 800;
+  box-shadow: inset 4px 0 0 #2f6ff2;
+}
+
+.onboarding-job-picker__option--check {
+  justify-content: flex-start;
+}
+
+.onboarding-job-picker__option--check.is-selected::after {
+  content: '✓';
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #2f6ff2;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.onboarding-job-picker__selected-paths {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: -2px 0 16px;
+}
+
+.onboarding-job-picker__selected-paths button {
+  min-height: 42px;
+  padding: 8px 12px 8px 15px;
+  border: 1px solid #cbe0ff;
+  border-radius: 999px;
+  background: #f2f7ff;
+  color: #1556c7;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.onboarding-job-picker__selected-paths button:hover {
+  background: #e8f2ff;
+}
+
+.onboarding-job-picker__selected-paths span:last-child {
+  color: #5680bd;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.onboarding-job-picker__empty,
+.onboarding-job-picker__helper,
+.onboarding-job-picker__limit {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.onboarding-job-picker__empty {
+  margin: -4px 0 16px;
+  color: #516073;
+}
+
+.onboarding-job-picker__helper {
+  margin-top: 10px;
+  color: #516073;
+}
+
+.onboarding-job-picker__limit {
+  margin-top: 8px;
+  color: #d3411d;
+  font-weight: 800;
 }
 
 .onboarding-info-box {
@@ -2419,9 +2848,11 @@ a:hover {
   }
 
   .app-header__auth-button {
-    min-width: 78px;
-    min-height: 40px;
-    font-size: 14px;
+    min-width: 118px;
+    min-height: 42px;
+    padding: 0 14px;
+    border-radius: 14px;
+    font-size: 16px;
   }
 
   .app-footer__inner {
@@ -2465,35 +2896,50 @@ a:hover {
 
   .login-modal-backdrop {
     align-items: flex-end;
-    padding: 16px;
+    padding: 10px;
   }
 
   .login-modal {
-    border-radius: 22px;
+    width: 100%;
+    border-radius: 16px;
   }
 
   .login-modal__close {
-    top: 18px;
-    right: 20px;
-    font-size: 18px;
+    top: 12px;
+    right: 12px;
   }
 
   .login-modal__body {
-    gap: 16px;
-    padding: 72px 22px 30px;
+    gap: 12px;
+    padding: 30px 18px 22px;
   }
 
-  .login-modal__body h2 {
-    font-size: 36px;
-  }
-
-  .login-modal__body > p:first-of-type {
-    font-size: 17px;
+  .login-modal__brand-mark {
+    width: 48px;
+    height: 48px;
   }
 
   .login-modal__logo {
-    width: min(220px, 76%);
-    max-height: 88px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .login-modal__title {
+    font-size: 28px;
+  }
+
+  .login-modal__heading p {
+    font-size: 16px;
+  }
+
+  .social-button {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .login-modal__signup-note,
+  .login-modal__notice {
+    font-size: 14px;
   }
 
   .onboarding-main {
@@ -2524,6 +2970,19 @@ a:hover {
 
   .onboarding-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .onboarding-job-picker__columns {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-job-picker__column {
+    min-height: 0;
+  }
+
+  .onboarding-job-picker__list {
+    height: auto;
+    max-height: 220px;
   }
 
   .onboarding-actions,

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import logoBig from '../../assets/logo_big.png';
 import { SocialLoginButtons } from './SocialLoginButtons';
 import { StatusMessage } from '../common/StatusMessage';
@@ -48,15 +49,30 @@ export function LoginModal({ onClose }) {
         </button>
 
         <div className="login-modal__body">
-          <h2 id="login-modal-title">로그인</h2>
-          <img className="login-modal__logo" src={logoBig} alt="BridgeWork" />
-          <p id="login-modal-description">최초 로그인 시 자동으로 회원가입이 진행됩니다.</p>
+          <div className="login-modal__brand-mark" aria-hidden="true">
+            <img className="login-modal__logo" src={logoBig} alt="" />
+          </div>
+          <div className="login-modal__heading">
+            <h2 id="login-modal-title" className="login-modal__title">BridgeWork</h2>
+            <p id="login-modal-description">
+              장애 유형과 접근성을 고려한 맞춤 일자리 추천 서비스
+            </p>
+          </div>
 
           <SocialLoginButtons onError={setError} />
           <StatusMessage kind="error">{error}</StatusMessage>
 
+          <p className="login-modal__signup-note">처음 이용해도 별도 가입 절차 없이 바로 시작할 수 있어요.</p>
           <p className="login-modal__notice">
-            회원가입을 진행하면 이용약관 및 개인정보 처리방침에 동의하게 됩니다.
+            회원가입을 진행하면{' '}
+            <Link to="/terms" onClick={onClose}>
+              이용약관
+            </Link>{' '}
+            및{' '}
+            <Link to="/privacy" onClick={onClose}>
+              개인정보 처리방침
+            </Link>
+            에 동의하게 됩니다.
           </p>
         </div>
       </section>

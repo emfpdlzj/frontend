@@ -3,5 +3,9 @@ export function StatusMessage({ kind = 'info', children }) {
     return null;
   }
 
-  return <p className={`status-message status-${kind}`}>{children}</p>;
+  return (
+    <p className={`status-message status-${kind}`} role={kind === 'error' ? 'alert' : 'status'}>
+      {children}
+    </p>
+  );
 }

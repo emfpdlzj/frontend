@@ -5,6 +5,8 @@ import { SignupPage } from '../pages/SignupPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { AccessibilityMapPage } from '../pages/AccessibilityMapPage';
 import { ProfilePage } from '../pages/ProfilePage';
+import { TermsPage } from '../pages/TermsPage';
+import { PrivacyPage } from '../pages/PrivacyPage';
 
 export function AppRouter() {
   return (
@@ -15,6 +17,8 @@ export function AppRouter() {
       <Route path="/auth/:provider/callback" element={<OAuthCallbackPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
