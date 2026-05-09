@@ -1,8 +1,40 @@
+import { useMemo, useState } from 'react';
+
 const STATUS_CLASS_BY_BADGE = {
   공공: 'public',
   A등급: 'grade',
   표준사업장: 'workplace'
 };
+
+function moveItem(items, sourceId, targetId) {
+  const sourceIndex = items.indexOf(sourceId);
+  const targetIndex = items.indexOf(targetId);
+
+  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+    return items;
+  }
+
+  const nextItems = [...items];
+  const [movedItem] = nextItems.splice(sourceIndex, 1);
+  nextItems.splice(targetIndex, 0, movedItem);
+
+  return nextItems;
+}
+
+function moveItemByOffset(items, sourceId, offset) {
+  const sourceIndex = items.indexOf(sourceId);
+  const targetIndex = sourceIndex + offset;
+
+  if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= items.length) {
+    return items;
+  }
+
+  const nextItems = [...items];
+  const [movedItem] = nextItems.splice(sourceIndex, 1);
+  nextItems.splice(targetIndex, 0, movedItem);
+
+  return nextItems;
+}
 
 export function TrafficFilterPanel({
   filterGroups,
@@ -12,7 +44,73 @@ export function TrafficFilterPanel({
   viewState,
   onSelectJob
 }) {
+  const [filterOrder, setFilterOrder] = useState(() => [
+    ...filterGroups.map(([title]) => title),
+    'persona-filter'
+  ]);
+  const [draggingFilterId, setDraggingFilterId] = useState(null);
   const resultCount = viewState === 'empty' ? 0 : jobs.length;
+  const filterItems = useMemo(
+    () => [
+      ...filterGroups.map(([title, chips]) => ({
+        id: title,
+        title,
+        chips,
+        dashed: false
+      })),
+      {
+        id: 'persona-filter',
+        title: persona.filterLabel,
+        chips: persona.filterChips,
+        dashed: true
+      }
+    ],
+    [filterGroups, persona.filterChips, persona.filterLabel]
+  );
+  const orderedFilterItems = useMemo(() => {
+    const itemById = new Map(filterItems.map((item) => [item.id, item]));
+    const orderedIds = filterOrder.filter((id) => itemById.has(id));
+
+    filterItems.forEach((item) => {
+      if (!orderedIds.includes(item.id)) {
+        orderedIds.push(item.id);
+      }
+    });
+
+    return orderedIds.map((id) => itemById.get(id));
+  }, [filterItems, filterOrder]);
+
+  const handleDragStart = (event, filterId) => {
+    setDraggingFilterId(filterId);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', filterId);
+  };
+
+  const handleDragOver = (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (event, targetFilterId) => {
+    event.preventDefault();
+    const sourceFilterId = event.dataTransfer.getData('text/plain') || draggingFilterId;
+
+    setFilterOrder((currentOrder) => moveItem(currentOrder, sourceFilterId, targetFilterId));
+    setDraggingFilterId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingFilterId(null);
+  };
+
+  const handleDragHandleKeyDown = (event, filterId) => {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+      return;
+    }
+
+    event.preventDefault();
+    setFilterOrder((currentOrder) => moveItemByOffset(currentOrder, filterId, event.key === 'ArrowUp' ? -1 : 1));
+  };
 
   return (
     <aside className="accessibility-map__filter-panel" aria-label="교통 필터">
@@ -27,25 +125,44 @@ export function TrafficFilterPanel({
       </header>
 
       <div className="accessibility-map__filter-list">
-        {filterGroups.map(([title, chips, priority]) => (
-          <section key={title} className="accessibility-map__filter-group">
+        {orderedFilterItems.map((filterItem, filterIndex) => (
+          <section
+            key={filterItem.id}
+            className={`accessibility-map__filter-group${
+              draggingFilterId === filterItem.id ? ' is-dragging' : ''
+            }`}
+            onDragOver={handleDragOver}
+            onDrop={(event) => handleDrop(event, filterItem.id)}
+          >
             <div className="accessibility-map__filter-title-row">
-              <span className="accessibility-map__filter-priority">{priority}</span>
+              <span className="accessibility-map__filter-priority">{filterIndex + 1}</span>
               <div>
-                <h3>{title}</h3>
+                <h3>{filterItem.title}</h3>
                 <div className="accessibility-map__chip-row">
-                  {chips.map((chip, chipIndex) => (
+                  {filterItem.chips.map((chip, chipIndex) => (
                     <button
                       key={chip}
                       type="button"
-                      className={`accessibility-map__chip${chipIndex === 1 ? ' is-selected' : ''}`}
+                      className={`accessibility-map__chip${
+                        !filterItem.dashed && chipIndex === 1 ? ' is-selected' : ''
+                      }${
+                        filterItem.dashed ? ' accessibility-map__chip-dashed' : ''
+                      }`}
                     >
                       {chip}
                     </button>
                   ))}
                 </div>
               </div>
-              <button type="button" className="accessibility-map__drag-handle" aria-label={`${title} 우선순위 조정`}>
+              <button
+                type="button"
+                className="accessibility-map__drag-handle"
+                aria-label={`${filterItem.title} 우선순위 조정. 드래그하거나 위아래 방향키로 이동`}
+                draggable="true"
+                onDragStart={(event) => handleDragStart(event, filterItem.id)}
+                onDragEnd={handleDragEnd}
+                onKeyDown={(event) => handleDragHandleKeyDown(event, filterItem.id)}
+              >
                 <span />
                 <span />
                 <span />
@@ -53,27 +170,6 @@ export function TrafficFilterPanel({
             </div>
           </section>
         ))}
-
-        <section className="accessibility-map__filter-group">
-          <div className="accessibility-map__filter-title-row">
-            <span className="accessibility-map__filter-priority">4</span>
-            <div>
-              <h3>{persona.filterLabel}</h3>
-              <div className="accessibility-map__chip-row">
-                {persona.filterChips.map((chip) => (
-                  <button key={chip} type="button" className="accessibility-map__chip accessibility-map__chip-dashed">
-                    {chip}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <button type="button" className="accessibility-map__drag-handle" aria-label={`${persona.filterLabel} 우선순위 조정`}>
-              <span />
-              <span />
-              <span />
-            </button>
-          </div>
-        </section>
       </div>
 
       <div className="accessibility-map__results-header">

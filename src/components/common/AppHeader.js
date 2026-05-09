@@ -10,7 +10,7 @@ import { ROUTE_PATHS } from '../../config/routes';
 
 const BRIDGEWORK_HOME_URL = 'https://www.bridgework.cloud/';
 
-export function AppHeader() {
+export function AppHeader({ hideLoginButton = false }) {
   const navigate = useNavigate();
   const { isAuthenticated, isInitializing, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -70,7 +70,7 @@ export function AppHeader() {
           >
             {isLoggingOut ? '로그아웃 중' : '로그아웃'}
           </button>
-        ) : (
+        ) : hideLoginButton ? null : (
           <button
             className="app-header__auth-button app-header__auth-button--login"
             type="button"

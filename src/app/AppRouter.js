@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { MainPage } from '../pages/MainPage';
 import { LoginPage } from '../pages/LoginPage';
 import { OAuthCallbackPage } from '../pages/OAuthCallbackPage';
 import { SignupPage } from '../pages/SignupPage';
@@ -12,7 +13,7 @@ import { AUTH_PROVIDER_ROUTES, LEGACY_ROUTE_PATHS, ROUTE_PATHS } from '../config
 export function AppRouter() {
   return (
     <Routes>
-      <Route path={ROUTE_PATHS.root} element={<Navigate to={ROUTE_PATHS.login} replace />} />
+      <Route path={ROUTE_PATHS.root} element={<MainPage />} />
       <Route path={ROUTE_PATHS.login} element={<LoginPage />} />
       <Route path={ROUTE_PATHS.accessibilityMap} element={<AccessibilityMapPage />} />
       <Route

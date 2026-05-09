@@ -8,10 +8,11 @@ import { ROUTE_PATHS } from './config/routes';
 function App() {
   const location = useLocation();
   const isMapPage = location.pathname === ROUTE_PATHS.accessibilityMap;
+  const isRootPage = location.pathname === ROUTE_PATHS.root;
 
   return (
     <div className="app-frame">
-      <AppHeader />
+      <AppHeader hideLoginButton={isRootPage} />
       <div className="app-frame__body">
         <AppTabNavigation />
         <div className="app-frame__content">

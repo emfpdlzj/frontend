@@ -13,6 +13,7 @@ import { useSignupOptions } from '../hooks/useSignupOptions';
 const genderOptions = [
   { value: 'MALE', label: '남성' },
   { value: 'FEMALE', label: '여성' },
+  { value: 'OTHER', label: '기타' },
   { value: 'NOT_DISCLOSED', label: '선택 안 함' }
 ];
 

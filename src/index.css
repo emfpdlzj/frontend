@@ -63,6 +63,33 @@ a:hover {
   min-height: calc(100dvh - var(--app-header-height));
 }
 
+.main-page {
+  min-height: calc(100vh - var(--app-header-height));
+  min-height: calc(100dvh - var(--app-header-height));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 48px 24px;
+  text-align: center;
+  background: linear-gradient(180deg, #f7fbff 0%, #eef5ff 100%);
+}
+
+.main-page__icon {
+  width: min(180px, 48vw);
+  height: auto;
+  display: block;
+}
+
+.main-page h1 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .app-footer {
   background: #f4f5f6;
   border-top: 1px solid #eef0f3;
@@ -1126,7 +1153,7 @@ a:hover {
 
 .accessibility-map__layout {
   display: grid;
-  grid-template-columns: 360px minmax(520px, 1fr) 420px;
+  grid-template-columns: 440px minmax(520px, 1fr) 420px;
   height: var(--accessibility-map-height);
   min-height: 0;
   align-items: stretch;
@@ -1178,6 +1205,14 @@ a:hover {
 
 .accessibility-map__filter-group {
   padding: 8px 4px;
+  border-radius: 16px;
+  transition: background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.accessibility-map__filter-group.is-dragging {
+  background: #fff;
+  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.14);
+  transform: scale(1.01);
 }
 
 .accessibility-map__filter-title-row {
@@ -1234,13 +1269,26 @@ a:hover {
 .accessibility-map__drag-handle {
   display: inline-flex;
   flex-direction: column;
+  justify-content: center;
   gap: 4px;
-  width: 24px;
+  width: 32px;
+  min-height: 32px;
   margin-top: 32px;
   border: 0;
   background: transparent;
   padding: 0;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+}
+
+.accessibility-map__drag-handle:active {
+  cursor: grabbing;
+}
+
+.accessibility-map__drag-handle:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.25);
+  outline-offset: 4px;
+  border-radius: 8px;
 }
 
 .accessibility-map__drag-handle span {
@@ -2070,11 +2118,11 @@ a:hover {
 
 @media (max-width: 1600px) {
   .accessibility-map__layout {
-    grid-template-columns: 320px minmax(420px, 1fr) 360px;
+    grid-template-columns: 424px minmax(420px, 1fr) 360px;
   }
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1180px) {
   .accessibility-map {
     height: auto;
     min-height: var(--accessibility-map-height);
