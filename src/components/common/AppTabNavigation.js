@@ -8,6 +8,7 @@ import profileIcon from '../../assets/tab/profile_icon.png';
 import settingIcon from '../../assets/tab/setting_icon.png';
 import { useAuth } from '../../auth/AuthContext';
 import { ROUTE_PATHS } from '../../config/routes';
+import { LoginModal } from '../auth/LoginModal';
 
 const primaryTabs = [
   { id: 'home', label: '홈', icon: homeIcon, to: ROUTE_PATHS.root },
@@ -21,7 +22,7 @@ const secondaryTabs = [
   { id: 'settings', label: '설정', icon: settingIcon, to: ROUTE_PATHS.settings }
 ];
 
-function UserMenuTab({ item }) {
+function UserMenuTab({ item, onRequireLogin }) {
   const navigate = useNavigate();
   const { isAuthenticated, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -56,6 +57,15 @@ function UserMenuTab({ item }) {
 
     updateMenuPosition();
     setIsMenuOpen(true);
+  };
+
+  const handleTriggerClick = () => {
+    if (!isAuthenticated) {
+      onRequireLogin?.();
+      return;
+    }
+
+    openMenu();
   };
 
   const scheduleCloseMenu = () => {
@@ -145,7 +155,7 @@ function UserMenuTab({ item }) {
         aria-expanded={isMenuOpen}
         aria-haspopup="menu"
         title={item.label}
-        onClick={openMenu}
+        onClick={handleTriggerClick}
       >
         <img src={item.icon} alt="" aria-hidden="true" />
       </button>
@@ -174,14 +184,30 @@ function UserMenuTab({ item }) {
   );
 }
 
-function TabLink({ item }) {
+function TabLink({ item, onRequireLogin }) {
+  const { isAuthenticated } = useAuth();
+
   if (item.type === 'user-menu') {
-    return <UserMenuTab item={item} />;
+    return <UserMenuTab item={item} onRequireLogin={onRequireLogin} />;
   }
 
   if (!item.to) {
     return (
       <button type="button" className="app-tab-nav__link" aria-label={item.label} title={item.label}>
+        <img src={item.icon} alt="" aria-hidden="true" />
+      </button>
+    );
+  }
+
+  if (!isAuthenticated && item.to !== ROUTE_PATHS.root) {
+    return (
+      <button
+        type="button"
+        className="app-tab-nav__link"
+        aria-label={`${item.label} 로그인 필요`}
+        title={item.label}
+        onClick={onRequireLogin}
+      >
         <img src={item.icon} alt="" aria-hidden="true" />
       </button>
     );
@@ -200,18 +226,23 @@ function TabLink({ item }) {
 }
 
 export function AppTabNavigation() {
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
   return (
-    <nav className="app-tab-nav" aria-label="주요 메뉴">
-      <div className="app-tab-nav__group">
-        {primaryTabs.map((item) => (
-          <TabLink key={item.id} item={item} />
-        ))}
-      </div>
-      <div className="app-tab-nav__group app-tab-nav__group--bottom">
-        {secondaryTabs.map((item) => (
-          <TabLink key={item.id} item={item} />
-        ))}
-      </div>
-    </nav>
+    <>
+      <nav className="app-tab-nav" aria-label="주요 메뉴">
+        <div className="app-tab-nav__group">
+          {primaryTabs.map((item) => (
+            <TabLink key={item.id} item={item} onRequireLogin={() => setIsLoginModalOpen(true)} />
+          ))}
+        </div>
+        <div className="app-tab-nav__group app-tab-nav__group--bottom">
+          {secondaryTabs.map((item) => (
+            <TabLink key={item.id} item={item} onRequireLogin={() => setIsLoginModalOpen(true)} />
+          ))}
+        </div>
+      </nav>
+      {isLoginModalOpen ? <LoginModal onClose={() => setIsLoginModalOpen(false)} /> : null}
+    </>
   );
 }
