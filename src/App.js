@@ -10,8 +10,6 @@ import { ROUTE_PATHS } from './config/routes';
 function App() {
   const location = useLocation();
   const isMapPage = location.pathname === ROUTE_PATHS.accessibilityMap;
-  const isJobsPage = location.pathname === ROUTE_PATHS.jobs;
-  const isWorkspacePage = isMapPage || isJobsPage;
 
   useEffect(() => {
     applyAccessibilityPreferences(readAccessibilityPreferences());
@@ -26,7 +24,7 @@ function App() {
           <div className="app-frame__main">
             <AppRouter />
           </div>
-          {isWorkspacePage ? null : <AppFooter />}
+          {isMapPage ? null : <AppFooter />}
         </div>
       </div>
     </div>

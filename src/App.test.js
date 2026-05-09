@@ -8,11 +8,12 @@ jest.mock('./auth/AuthContext', () => ({
 
 const { useAuth } = require('./auth/AuthContext');
 
-const renderApp = (initialPath) => {
+const renderApp = (initialPath, authOverrides = {}) => {
   useAuth.mockReturnValue({
     isAuthenticated: false,
     isInitializing: false,
-    logout: jest.fn()
+    logout: jest.fn(),
+    ...authOverrides
   });
 
   return render(
@@ -30,4 +31,11 @@ test.each(['/', '/profile', '/my/profile'])('renders the login button in the sha
   renderApp(path);
 
   expect(screen.getByRole('button', { name: '회원가입/로그인' })).toBeInTheDocument();
+});
+
+test('renders the shared footer on the jobs page', () => {
+  renderApp('/jobs', { isAuthenticated: true });
+
+  expect(screen.getByRole('link', { name: '이용약관' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '개인정보처리방침' })).toBeInTheDocument();
 });
