@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import checkCircleIcon from '../assets/signup/check_circle.png';
 import stepBeforeIcon from '../assets/signup/item-before.png';
@@ -12,11 +12,69 @@ const STEPS = [
   { id: 2, title: '직무·경력' },
   { id: 3, title: '근무 조건' },
   { id: 4, title: '장애 정보' },
-  { id: 5, title: '자기소개 (선택)' }
+  { id: 5, title: '자기소개' }
 ];
 
 const educationOptions = ['고졸 이하', '초대졸', '대졸', '석사', '박사'];
-const jobOptions = ['사무보조', '행정', '고객상담', '데이터 입력', '회계 보조', 'IT 지원', '디자인', '물류'];
+const MAX_JOB_SELECTIONS = 5;
+const jobCategories = [
+  {
+    label: '기획·전략',
+    groups: [
+      { label: '기획', jobs: ['서비스 기획', '사업기획', '전략기획', '문서 작성'] },
+      { label: '운영지원', jobs: ['사무보조', '운영보조', '자료 정리', '일정 관리'] }
+    ]
+  },
+  {
+    label: '법무·사무·총무',
+    groups: [
+      { label: '사무·총무', jobs: ['사무보조', '행정', '총무', '문서관리'] },
+      { label: '비서·안내', jobs: ['접수', '안내', '비서', '사무지원'] }
+    ]
+  },
+  {
+    label: '회계·세무',
+    groups: [
+      { label: '회계', jobs: ['회계 보조', '전표 입력', '정산 보조', '경리'] },
+      { label: '세무', jobs: ['세무 보조', '자료 입력', '급여 관리', '매입매출 관리'] }
+    ]
+  },
+  {
+    label: 'AI·개발·데이터',
+    groups: [
+      { label: '데이터', jobs: ['데이터 입력', '데이터 라벨링', '데이터 검수', '자료 수집'] },
+      { label: 'IT 지원', jobs: ['IT 지원', '헬프데스크', 'QA 보조', '시스템 운영 보조'] }
+    ]
+  },
+  {
+    label: '디자인',
+    groups: [
+      { label: '디자인', jobs: ['디자인', '웹디자인', '편집디자인', '콘텐츠 디자인'] },
+      { label: '콘텐츠', jobs: ['이미지 편집', '상세페이지 제작', '영상 보조', 'SNS 콘텐츠'] }
+    ]
+  },
+  {
+    label: '물류·무역',
+    groups: [
+      { label: '물류', jobs: ['물류', '입출고 관리', '재고 관리', '포장·분류'] },
+      { label: '무역사무', jobs: ['무역사무 보조', '수출입 서류', '배송 관리', '발주 관리'] }
+    ]
+  },
+  {
+    label: '고객상담·TM',
+    groups: [
+      { label: '고객상담', jobs: ['고객상담', 'CS', '인바운드 상담', '채팅 상담'] },
+      { label: 'TM', jobs: ['전화상담', '예약 안내', '고객관리', '민원 응대'] }
+    ]
+  },
+  {
+    label: '공공·복지',
+    groups: [
+      { label: '공공행정', jobs: ['행정', '민원 안내', '공공기관 사무보조', '자료 정리'] },
+      { label: '복지', jobs: ['복지 행정', '상담 보조', '프로그램 운영 보조', '기관 안내'] }
+    ]
+  }
+];
 const employmentOptions = ['정규직', '계약직', '무기계약직', '시간제', '일용직', '인턴', '파견/용역', '재택/원격'];
 const disabilityTypes = ['지체', '시각', '청각', '발달', '뇌병변', '내부장애'];
 
@@ -46,12 +104,108 @@ const normalizeBirthDate = (value) => {
   return '';
 };
 
+const toBirthDateDisplay = (value) => value.replaceAll('-', '.');
+
 const toResidenceRegion = (address) => {
   const parts = address.trim().split(/\s+/).filter(Boolean);
   return parts.slice(0, 2).join(' ') || address.trim();
 };
 
 const toBooleanFromChoice = (value, trueValue) => value === trueValue;
+
+const hasText = (value) => Boolean(value.trim());
+
+const formatMismatchMessage = (example) => `형식이 일치하지 않아요. "${example}"의 형태로 입력해주세요.`;
+
+const fieldFormats = {
+  name: {
+    example: '홍길동',
+    isValid: (value) => /^[가-힣a-zA-Z\s]{2,30}$/.test(value.trim())
+  },
+  phone: {
+    example: '010-1234-5678',
+    isValid: (value) => /^01[016789]-\d{3,4}-\d{4}$/.test(value.trim())
+  },
+  email: {
+    example: 'me@bridgework.kr',
+    isValid: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+  },
+  birthDate: {
+    example: 'YYYY.MM.DD',
+    isValid: (value) => Boolean(normalizeBirthDate(value))
+  }
+};
+
+const formatValidationFields = Object.keys(fieldFormats);
+
+const getFieldFormatMessage = (field, value) => {
+  const format = fieldFormats[field];
+
+  if (!format || !hasText(value) || format.isValid(value)) {
+    return '';
+  }
+
+  return formatMismatchMessage(format.example);
+};
+
+const getStepValidationMessage = (step, form) => {
+  if (step === 1) {
+    if (!hasText(form.name) || !form.gender || !hasText(form.phone) || !hasText(form.email) || !hasText(form.address)) {
+      return '이름, 성별, 연락처, 이메일, 거주지 상세 주소를 입력해 주세요.';
+    }
+
+    const formatValidationMessage =
+      getFieldFormatMessage('name', form.name) ||
+      getFieldFormatMessage('phone', form.phone) ||
+      getFieldFormatMessage('email', form.email) ||
+      getFieldFormatMessage('birthDate', form.birthDate);
+
+    if (formatValidationMessage) {
+      return formatValidationMessage;
+    }
+
+    return '';
+  }
+
+  if (step === 2) {
+    if (!form.education || !form.jobs.length) {
+      return '최종 학력과 지원 직무를 선택해 주세요.';
+    }
+
+    return '';
+  }
+
+  if (step === 3) {
+    if (!form.employmentTypes.length) {
+      return '가능한 고용형태를 하나 이상 선택해 주세요.';
+    }
+
+    return '';
+  }
+
+  if (step === 4) {
+    if (!form.disabilityYn) {
+      return '장애 여부를 선택해 주세요.';
+    }
+
+    if (form.disabilityYn === '있음' && (!form.disabilityTypes.length || !form.disabilitySeverity || !form.registeredYn)) {
+      return '장애 유형, 장애 정도, 장애인 등록 여부를 함께 선택해 주세요.';
+    }
+
+    return '';
+  }
+
+  if (step === 5 && !hasText(form.introduction)) {
+    return '자기소개를 입력해 주세요.';
+  }
+
+  return '';
+};
+
+const getSignupValidationMessage = (form) => {
+  const invalidStep = STEPS.find((step) => getStepValidationMessage(step.id, form));
+  return invalidStep ? getStepValidationMessage(invalidStep.id, form) : '';
+};
 
 const toSignupProfile = (form) => {
   const trimmedName = form.name.trim();
@@ -120,38 +274,45 @@ export function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isComplete, setIsComplete] = useState(false);
   const [form, setForm] = useState(() => toInitialForm(pendingSignup));
+  const [formatValidationForm, setFormatValidationForm] = useState(form);
+  const [formatValidationVisible, setFormatValidationVisible] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
   const progressWidth = useMemo(() => `${(currentStep / STEPS.length) * 100}%`, [currentStep]);
-  const validationMessage = useMemo(() => {
-    if (!form.name.trim() || !form.phone.trim() || !form.email.trim() || !form.address.trim()) {
-      return '이름, 연락처, 이메일, 거주지 상세 주소를 입력해 주세요.';
-    }
+  const validationMessage = useMemo(() => getSignupValidationMessage(form), [form]);
 
-    if (!normalizeBirthDate(form.birthDate)) {
-      return '생년월일은 YYYY-MM-DD 또는 YYYY.MM.DD 형식으로 입력해 주세요.';
-    }
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setFormatValidationForm(form);
+    }, 1000);
 
-    if (!form.gender || !form.education || !form.jobs.length || !form.employmentTypes.length) {
-      return '성별, 최종 학력, 지원 직무, 가능한 고용형태를 선택해 주세요.';
-    }
-
-    if (form.disabilityYn === '있음' && (!form.disabilityTypes.length || !form.disabilitySeverity || !form.registeredYn)) {
-      return '장애 정보를 입력한 경우 장애 유형, 정도, 등록 여부를 함께 선택해 주세요.';
-    }
-
-    return '';
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [form]);
 
   const updateField = (field, value) => {
+    setSubmitError('');
     setForm((prev) => ({
       ...prev,
       [field]: value
     }));
   };
 
+  const showFormatValidation = (field) => {
+    setFormatValidationVisible((prev) => ({
+      ...prev,
+      [field]: true
+    }));
+    setFormatValidationForm((prev) => ({
+      ...prev,
+      [field]: form[field]
+    }));
+  };
+
   const toggleArrayValue = (field, value) => {
+    setSubmitError('');
     setForm((prev) => {
       const values = prev[field];
       const nextValues = values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
@@ -169,6 +330,24 @@ export function OnboardingPage() {
 
   const goNext = async () => {
     setSubmitError('');
+    const stepValidationMessage = getStepValidationMessage(currentStep, form);
+
+    if (stepValidationMessage) {
+      if (currentStep === 1) {
+        setFormatValidationVisible((prev) =>
+          formatValidationFields.reduce(
+            (next, field) => ({
+              ...next,
+              [field]: true
+            }),
+            prev
+          )
+        );
+        setFormatValidationForm(form);
+      }
+      setSubmitError(stepValidationMessage);
+      return;
+    }
 
     if (currentStep === STEPS.length) {
       if (validationMessage) {
@@ -211,7 +390,7 @@ export function OnboardingPage() {
               <strong>{currentStep}단계</strong> / {STEPS.length}단계
             </p>
             <h1 id="onboarding-title">기본 정보 입력</h1>
-            <p>추천을 시작하기 위해 꼭 필요한 정보만 먼저 입력해요. 자세한 접근성 조건은 다음 단계에서 설정합니다.</p>
+            <p>처음이신가요?  브릿지워크를 시작하기 위해 꼭 필요한 정보만 먼저 입력해요. 기본 프로필 생성 후 자세한 내용을 입력해 나가요.</p>
           </div>
 
           <div className="onboarding-progress" aria-label={`전체 ${STEPS.length}단계 중 ${currentStep}단계`}>
@@ -224,7 +403,10 @@ export function OnboardingPage() {
               <StepContent
                 currentStep={currentStep}
                 form={form}
+                formatValidationForm={formatValidationForm}
+                formatValidationVisible={formatValidationVisible}
                 updateField={updateField}
+                showFormatValidation={showFormatValidation}
                 toggleArrayValue={toggleArrayValue}
               />
 
@@ -285,13 +467,36 @@ function StepRail({ currentStep }) {
   );
 }
 
-function StepContent({ currentStep, form, updateField, toggleArrayValue }) {
+function StepContent({
+  currentStep,
+  form,
+  formatValidationForm,
+  formatValidationVisible,
+  updateField,
+  showFormatValidation,
+  toggleArrayValue
+}) {
   if (currentStep === 1) {
+    const errors = {
+      name: formatValidationVisible.name ? getFieldFormatMessage('name', formatValidationForm.name) : '',
+      phone: formatValidationVisible.phone ? getFieldFormatMessage('phone', formatValidationForm.phone) : '',
+      email: formatValidationVisible.email ? getFieldFormatMessage('email', formatValidationForm.email) : '',
+      birthDate: formatValidationVisible.birthDate ? getFieldFormatMessage('birthDate', formatValidationForm.birthDate) : ''
+    };
+
     return (
       <div className="onboarding-panel__content">
         <h2>기본 정보</h2>
         <div className="onboarding-form-grid">
-          <TextField label="이름" required placeholder="홍길동" value={form.name} onChange={(value) => updateField('name', value)} />
+          <TextField
+            label="이름"
+            required
+            placeholder="홍길동"
+            value={form.name}
+            onChange={(value) => updateField('name', value)}
+            onBlur={() => showFormatValidation('name')}
+            error={errors.name}
+          />
           <ChoiceField
             label="성별"
             required
@@ -299,15 +504,32 @@ function StepContent({ currentStep, form, updateField, toggleArrayValue }) {
             value={form.gender}
             onChange={(value) => updateField('gender', value)}
           />
-          <TextField label="연락처" required placeholder="010-1234-5678" value={form.phone} onChange={(value) => updateField('phone', value)} />
-          <TextField label="이메일" required placeholder="me@bridgework.kr" value={form.email} onChange={(value) => updateField('email', value)} />
           <TextField
+            label="연락처"
+            required
+            placeholder="010-1234-5678"
+            value={form.phone}
+            onChange={(value) => updateField('phone', value)}
+            onBlur={() => showFormatValidation('phone')}
+            error={errors.phone}
+          />
+          <TextField
+            label="이메일"
+            required
+            placeholder="me@bridgework.kr"
+            value={form.email}
+            onChange={(value) => updateField('email', value)}
+            onBlur={() => showFormatValidation('email')}
+            error={errors.email}
+          />
+          <BirthDateField
             label="생년월일"
             required
             placeholder="YYYY.MM.DD"
             value={form.birthDate}
             onChange={(value) => updateField('birthDate', value)}
-            icon="calendar"
+            onBlur={() => showFormatValidation('birthDate')}
+            error={errors.birthDate}
           />
           <TextField
             label="거주지 상세 주소"
@@ -329,6 +551,7 @@ function StepContent({ currentStep, form, updateField, toggleArrayValue }) {
         <ChoiceField
           label="최종 학력"
           required
+          className="onboarding-choice-group--education"
           options={educationOptions}
           value={form.education}
           onChange={(value) => updateField('education', value)}
@@ -340,13 +563,12 @@ function StepContent({ currentStep, form, updateField, toggleArrayValue }) {
           onChange={(value) => updateField('career', value)}
           hint="없으면 비워두셔도 됩니다"
         />
-        <MultiChoiceField
+        <JobCategoryField
           label="지원 직무"
           required
-          options={jobOptions}
+          categories={jobCategories}
           values={form.jobs}
           onToggle={(value) => toggleArrayValue('jobs', value)}
-          compact
         />
       </div>
     );
@@ -406,7 +628,7 @@ function StepContent({ currentStep, form, updateField, toggleArrayValue }) {
     <div className="onboarding-panel__content">
       <h2>자기소개</h2>
       <label className="onboarding-field onboarding-field--full">
-        <span>자기소개</span>
+        <span>자기소개 <em>*</em></span>
         <textarea
           value={form.introduction}
           onChange={(event) => updateField('introduction', event.target.value)}
@@ -418,28 +640,89 @@ function StepContent({ currentStep, form, updateField, toggleArrayValue }) {
   );
 }
 
-function TextField({ label, required, placeholder, value, onChange, hint, icon }) {
+function BirthDateField({ label, required, placeholder, value, onChange, onBlur, error }) {
+  const pickerRef = useRef(null);
+  const pickerValue = normalizeBirthDate(value);
+
+  const openDatePicker = () => {
+    if (!pickerRef.current) {
+      return;
+    }
+
+    if (typeof pickerRef.current.showPicker === 'function') {
+      pickerRef.current.showPicker();
+      return;
+    }
+
+    pickerRef.current.click();
+  };
+
+  return (
+    <div className="onboarding-field">
+      <span>
+        {label} {required ? <em>*</em> : null}
+      </span>
+      <span className="onboarding-input-wrap onboarding-input-wrap--with-button">
+        <input
+          value={value}
+          placeholder={placeholder}
+          inputMode="numeric"
+          autoComplete="bday"
+          aria-label={label}
+          onChange={(event) => onChange(event.target.value)}
+          onBlur={onBlur}
+        />
+        <button type="button" className="onboarding-date-picker-button" onClick={openDatePicker} aria-label="캘린더에서 생년월일 선택">
+          <svg aria-hidden="true" viewBox="0 0 24 24" className="onboarding-input-icon">
+            <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v12A2.5 2.5 0 0 1 19.5 21h-15A2.5 2.5 0 0 1 2 18.5v-12A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 8h-15v8.5a.5.5 0 0 0 .5.5h14a.5.5 0 0 0 .5-.5V10ZM5 6a.5.5 0 0 0-.5.5V8h15V6.5A.5.5 0 0 0 19 6H5Z" />
+          </svg>
+        </button>
+        <input
+          ref={pickerRef}
+          className="onboarding-native-date-input"
+          type="date"
+          value={pickerValue}
+          tabIndex={-1}
+          aria-hidden="true"
+          onChange={(event) => onChange(toBirthDateDisplay(event.target.value))}
+        />
+      </span>
+      {error ? (
+        <small className="onboarding-field-error" role="alert">
+          {error}
+        </small>
+      ) : null}
+    </div>
+  );
+}
+
+function TextField({ label, required, placeholder, value, onChange, onBlur, hint, icon, error }) {
   return (
     <label className="onboarding-field">
       <span>
         {label} {required ? <em>*</em> : null}
       </span>
       <span className="onboarding-input-wrap">
-        <input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
+        <input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} onBlur={onBlur} />
         {icon === 'calendar' ? (
           <svg aria-hidden="true" viewBox="0 0 24 24" className="onboarding-input-icon">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v12A2.5 2.5 0 0 1 19.5 21h-15A2.5 2.5 0 0 1 2 18.5v-12A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 8h-15v8.5a.5.5 0 0 0 .5.5h14a.5.5 0 0 0 .5-.5V10ZM5 6a.5.5 0 0 0-.5.5V8h15V6.5A.5.5 0 0 0 19 6H5Z" />
           </svg>
         ) : null}
       </span>
+      {error ? (
+        <small className="onboarding-field-error" role="alert">
+          {error}
+        </small>
+      ) : null}
       {hint ? <small>{hint}</small> : null}
     </label>
   );
 }
 
-function ChoiceField({ label, required, options, value, onChange }) {
+function ChoiceField({ label, required, options, value, onChange, className = '' }) {
   return (
-    <fieldset className="onboarding-choice-group">
+    <fieldset className={`onboarding-choice-group ${className}`.trim()}>
       <legend>
         {label} {required ? <em>*</em> : null}
       </legend>
@@ -481,6 +764,127 @@ function MultiChoiceField({ label, required, helper, options, values, onToggle, 
         ))}
       </div>
     </fieldset>
+  );
+}
+
+function JobCategoryField({ label, required, categories, values, onToggle }) {
+  const [activePrimary, setActivePrimary] = useState(categories[0]?.label || '');
+  const primary = categories.find((category) => category.label === activePrimary) || categories[0];
+  const [activeSecondary, setActiveSecondary] = useState(primary?.groups[0]?.label || '');
+  const secondary = primary?.groups.find((group) => group.label === activeSecondary) || primary?.groups[0];
+  const [limitMessage, setLimitMessage] = useState('');
+  const selectedPaths = useMemo(() => {
+    const paths = new Map();
+
+    categories.forEach((category) => {
+      category.groups.forEach((group) => {
+        group.jobs.forEach((job) => {
+          if (!paths.has(job)) {
+            paths.set(job, `${category.label} > ${group.label} > ${job}`);
+          }
+        });
+      });
+    });
+
+    return paths;
+  }, [categories]);
+
+  const selectPrimary = (category) => {
+    setActivePrimary(category.label);
+    setActiveSecondary(category.groups[0]?.label || '');
+  };
+
+  const toggleJob = (job) => {
+    if (!values.includes(job) && values.length >= MAX_JOB_SELECTIONS) {
+      setLimitMessage(`지원 직무는 최대 ${MAX_JOB_SELECTIONS}개까지 선택할 수 있어요.`);
+      return;
+    }
+
+    setLimitMessage('');
+    onToggle(job);
+  };
+
+  return (
+    <fieldset className="onboarding-choice-group onboarding-job-picker" aria-describedby={limitMessage ? 'job-picker-limit-message' : undefined}>
+      <legend>
+        {label} {required ? <em>*</em> : null}
+      </legend>
+      {values.length ? (
+        <div className="onboarding-job-picker__selected-paths" aria-label="선택 완료된 지원 직무 경로">
+          {values.map((job) => (
+            <button key={job} type="button" onClick={() => toggleJob(job)} aria-label={`${job} 선택 해제`}>
+              <span>{selectedPaths.get(job) || job}</span>
+              <span aria-hidden="true">×</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="onboarding-job-picker__empty">관심 있는 분야부터 실제 수행 업무까지 차례로 선택해 주세요.</p>
+      )}
+      <div className="onboarding-job-picker__box">
+        <div className="onboarding-job-picker__columns">
+          <JobPickerColumn title="1차 선택" description="분야 선택">
+            {categories.map((category) => (
+              <button
+                key={category.label}
+                type="button"
+                className={`onboarding-job-picker__option ${primary?.label === category.label ? 'is-active' : ''}`}
+                onClick={() => selectPrimary(category)}
+              >
+                <span>{category.label}</span>
+                <span aria-hidden="true">›</span>
+              </button>
+            ))}
+          </JobPickerColumn>
+
+          <JobPickerColumn title="2차 선택" description="세부 직군 선택">
+            {primary?.groups.map((group) => (
+              <button
+                key={group.label}
+                type="button"
+                className={`onboarding-job-picker__option ${secondary?.label === group.label ? 'is-active' : ''}`}
+                onClick={() => setActiveSecondary(group.label)}
+              >
+                <span>{group.label}</span>
+                <span aria-hidden="true">›</span>
+              </button>
+            ))}
+          </JobPickerColumn>
+
+          <JobPickerColumn title="3차 선택" description="실제 수행 업무 선택">
+            {secondary?.jobs.map((job) => (
+              <button
+                key={job}
+                type="button"
+                className={`onboarding-job-picker__option onboarding-job-picker__option--check ${values.includes(job) ? 'is-selected' : ''}`}
+                onClick={() => toggleJob(job)}
+                aria-pressed={values.includes(job)}
+              >
+                <span>{job}</span>
+              </button>
+            ))}
+          </JobPickerColumn>
+        </div>
+      </div>
+      <p className="onboarding-job-picker__helper">최대 {MAX_JOB_SELECTIONS}개까지 선택할 수 있습니다.</p>
+      {limitMessage ? (
+        <p id="job-picker-limit-message" className="onboarding-job-picker__limit" role="alert">
+          {limitMessage}
+        </p>
+      ) : null}
+    </fieldset>
+  );
+}
+
+function JobPickerColumn({ title, description, children }) {
+  return (
+    <section className="onboarding-job-picker__column" aria-label={title}>
+      <div className="onboarding-job-picker__column-head">
+        <h3>{title}</h3>
+        <p>{description}</p>
+      </div>
+      <div className="onboarding-job-picker__list">{children}</div>
+    </section>
   );
 }
 

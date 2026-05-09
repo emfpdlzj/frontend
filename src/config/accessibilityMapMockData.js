@@ -1,5 +1,5 @@
 export const accessibilityMapMockData = {
-  searchPlaceholder: '출발지: [지하철역/주소 입력]',
+  searchPlaceholder: '주소: [지하철역/주소 입력]',
   jobs: [
     {
       id: 'job-1',
