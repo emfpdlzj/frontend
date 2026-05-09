@@ -87,7 +87,7 @@ test('blocks each signup step until required fields are completed', async () => 
   userEvent.type(screen.getByLabelText('이메일 *'), 'hong@example.com');
   userEvent.type(screen.getByLabelText('생년월일'), '1990.01.01');
   userEvent.selectOptions(screen.getByLabelText('근무지역 *'), '서울');
-  expect(screen.getByLabelText(/거주지 상세 주소/)).toHaveValue('서울');
+  expect(screen.getByLabelText(/거주지 상세 주소/)).toHaveValue('');
   expect(screen.getByPlaceholderText('서울 OO구 OO동')).toBeInTheDocument();
   fillAddress('서울시 영등포구 OO로 12');
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));

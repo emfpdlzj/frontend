@@ -370,12 +370,9 @@ export function OnboardingPage() {
     setSubmitError('');
     setForm((prev) => {
       if (field === 'region') {
-        const shouldSyncAddress = !prev.address.trim() || prev.address.trim() === prev.region;
-
         return {
           ...prev,
-          region: value,
-          address: shouldSyncAddress ? value : prev.address
+          region: value
         };
       }
 
