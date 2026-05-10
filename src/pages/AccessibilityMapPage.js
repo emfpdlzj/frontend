@@ -9,6 +9,21 @@ function isWithinSouthKoreaBounds(latitude, longitude) {
   return latitude >= 33 && latitude <= 39.5 && longitude >= 124 && longitude <= 132;
 }
 
+function MapLoadingModal({ isOpen }) {
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <div className="home-loading-modal" role="status" aria-live="polite" aria-label="지도 추천 결과를 준비하고 있습니다.">
+      <div className="home-loading-modal__panel">
+        <strong>지도 추천 결과를 준비하고 있습니다.</strong>
+        <p>요청이 완료될 때까지 이 화면을 다시 열어도 진행 상태가 이어집니다.</p>
+      </div>
+    </div>
+  );
+}
+
 export function AccessibilityMapPage() {
   const {
     jobs,
@@ -76,9 +91,11 @@ export function AccessibilityMapPage() {
         zoom: 16
       }
     : mapViewport;
+  const isLoadingModalOpen = viewState === 'loading' || viewState === 'calculating';
 
   return (
     <main className="accessibility-map">
+      <MapLoadingModal isOpen={isLoadingModalOpen} />
       <div className="accessibility-map__layout">
         <TrafficFilterPanel
           filterGroups={filterGroups}

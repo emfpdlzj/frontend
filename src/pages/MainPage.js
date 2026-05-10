@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { profileApi } from '../api/profileApi';
-import { fetchQuickJobRecommendations } from '../api/recommendApi';
+import { fetchQuickJobRecommendations, fetchRecommendTaskStatus } from '../api/recommendApi';
 import { useAuth } from '../auth/AuthContext';
 import {
   getCachedRecommendation,
@@ -11,10 +11,12 @@ import {
 import { NAVER_MAP_CONFIG } from '../config/appConfig';
 import { ROUTE_PATHS } from '../config/routes';
 import { useLocale } from '../i18n/LocaleContext';
+import { getProfileScoringSignature } from '../utils/profileScoringSignature';
 import { loadNaverMapScript } from '../utils/naverMapSdk';
 
 const NAVER_MAP_SCRIPT_ID = 'bridgework-naver-map-sdk';
 const NAVER_MAP_READY_CALLBACK = '__bridgeworkNaverMapReady__';
+const RECOMMEND_TASK_POLL_INTERVAL_MS = 2500;
 
 const shortcuts = [
   { id: 'quick', icon: '↗', label: '퀵 맞춤 추천', href: '#recommended-jobs-title' },
@@ -305,6 +307,30 @@ function getProfileSummary(profile) {
   return targetJob;
 }
 
+const delay = (ms) =>
+  new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+
+async function waitForRecommendTask(callWithAuth, requestId, signal) {
+  let lastPayload = null;
+
+  while (!signal?.aborted) {
+    const payload = await callWithAuth((accessToken) =>
+      fetchRecommendTaskStatus(accessToken, requestId, { signal })
+    );
+    lastPayload = payload;
+
+    if (payload?.status === 'COMPLETED' || payload?.status === 'FAILED') {
+      return payload;
+    }
+
+    await delay(RECOMMEND_TASK_POLL_INTERVAL_MS);
+  }
+
+  return lastPayload;
+}
+
 function useHomeRecommendations() {
   const { callWithAuth, isAuthenticated, isInitializing } = useAuth();
   const [state, setState] = useState({
@@ -344,6 +370,7 @@ function useHomeRecommendations() {
         const profiles = await callWithAuth((accessToken) => profileApi.getProfiles(accessToken, controller.signal));
         const defaultProfile = profiles.find((profile) => profile?.isDefault) ?? profiles[0] ?? null;
         const profileId = getProfileId(defaultProfile);
+        const profileSignature = getProfileScoringSignature(defaultProfile);
 
         if (!profileId) {
           setState({
@@ -356,7 +383,7 @@ function useHomeRecommendations() {
           return;
         }
 
-        const cacheKey = getRecommendationCacheKey({ profileId });
+        const cacheKey = getRecommendationCacheKey({ profileId, profileSignature });
         const cachedPayload = getCachedRecommendation(cacheKey);
 
         if (cachedPayload) {
@@ -364,17 +391,58 @@ function useHomeRecommendations() {
           return;
         }
 
-        const payload = await callWithAuth((accessToken) =>
+        const taskPayload = await callWithAuth((accessToken) =>
           fetchQuickJobRecommendations(accessToken, {
             aiEnabled: true,
             profileId,
             signal: controller.signal
           })
         );
-        const result = unwrapApiResult(payload);
+        const taskResult = unwrapApiResult(taskPayload);
 
-        setCachedRecommendation(cacheKey, result);
-        setState(buildHomeRecommendationState(result, defaultProfile));
+        if (taskResult?.status === 'FAILED') {
+          setState((prev) => ({
+            ...prev,
+            status: 'error',
+            error: taskResult.errorMessage || '추천 공고를 불러오지 못했습니다.'
+          }));
+          return;
+        }
+
+        if (taskResult?.status === 'COMPLETED' && taskResult?.result) {
+          setCachedRecommendation(cacheKey, taskResult.result);
+          setState(buildHomeRecommendationState(taskResult.result, defaultProfile));
+          return;
+        }
+
+        if (!taskResult?.requestId) {
+          setState((prev) => ({
+            ...prev,
+            status: 'error',
+            error: '추천 요청 상태를 확인할 수 없습니다.'
+          }));
+          return;
+        }
+
+        setState((prev) => ({
+          ...prev,
+          status: 'loading',
+          error: ''
+        }));
+
+        const completedTask = await waitForRecommendTask(callWithAuth, taskResult.requestId, controller.signal);
+        if (!completedTask || completedTask.status === 'FAILED') {
+          setState((prev) => ({
+            ...prev,
+            status: 'error',
+            error: completedTask?.errorMessage || '추천 공고를 불러오지 못했습니다.'
+          }));
+          return;
+        }
+
+        const completedResult = completedTask.result;
+        setCachedRecommendation(cacheKey, completedResult);
+        setState(buildHomeRecommendationState(completedResult, defaultProfile));
       } catch (error) {
         if (error.name === 'AbortError') {
           return;
@@ -471,6 +539,21 @@ function HomeFeedback({ status, error, variant = 'block' }) {
   return null;
 }
 
+function HomeLoadingModal({ isOpen }) {
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <div className="home-loading-modal" role="status" aria-live="polite" aria-label="추천 결과를 준비하고 있습니다.">
+      <div className="home-loading-modal__panel">
+        <strong>추천 결과를 준비하고 있습니다.</strong>
+        <p>페이지를 이동했다가 다시 들어와도 완료될 때까지 자동으로 이어집니다.</p>
+      </div>
+    </div>
+  );
+}
+
 export function MainPage() {
   const { localizePath } = useLocale();
   const { status, error, profile, jobs, aiEnabled } = useHomeRecommendations();
@@ -481,6 +564,7 @@ export function MainPage() {
   const recentJobs = visibleJobs.slice(0, 3);
   const topJob = visibleJobs[0];
   const canShowJobs = status === 'success' || status === 'refetching';
+  const isModalLoading = status === 'loading' || status === 'refetching';
 
   const summaryItems = useMemo(
     () => [
@@ -510,6 +594,7 @@ export function MainPage() {
 
   return (
     <main className="main-page" aria-labelledby="main-page-title">
+      <HomeLoadingModal isOpen={isModalLoading} />
       <div className="main-page__inner">
         <section className="home-overview" aria-labelledby="main-page-title">
           <div className="home-overview__heading">

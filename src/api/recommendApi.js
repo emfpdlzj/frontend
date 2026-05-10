@@ -41,6 +41,20 @@ export async function fetchMapJobRecommendations(accessToken, { aiEnabled = true
   );
 }
 
+export async function fetchRecommendTaskStatus(accessToken, requestId, { signal } = {}) {
+  if (!requestId) {
+    throw new Error('추천 요청 ID가 필요합니다.');
+  }
+
+  return unwrapApiResult(
+    await httpRequest(`/recommend/tasks/${requestId}`, {
+      method: 'GET',
+      token: accessToken,
+      signal
+    })
+  );
+}
+
 export async function explainRecommendation(accessToken, payload, { signal } = {}) {
   return unwrapApiResult(
     await httpRequest('/recommend/explain', {

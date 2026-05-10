@@ -165,6 +165,7 @@ function UserMenuTab({ item, onRequireLogin }) {
         onClick={handleTriggerClick}
       >
         <TabIcon item={item} label={label} />
+        <span className="app-tab-nav__label">{label}</span>
       </button>
 
       {isMenuOpen ? (
@@ -204,6 +205,7 @@ function TabLink({ item, onRequireLogin }) {
     return (
       <button type="button" className="app-tab-nav__link" aria-label={label} title={label}>
         <TabIcon item={item} label={label} />
+        <span className="app-tab-nav__label">{label}</span>
       </button>
     );
   }
@@ -218,6 +220,7 @@ function TabLink({ item, onRequireLogin }) {
         onClick={onRequireLogin}
       >
         <TabIcon item={item} label={label} />
+        <span className="app-tab-nav__label">{label}</span>
       </button>
     );
   }
@@ -230,17 +233,30 @@ function TabLink({ item, onRequireLogin }) {
       title={label}
     >
       <TabIcon item={item} label={label} />
+      <span className="app-tab-nav__label">{label}</span>
     </NavLink>
   );
 }
 
 export function AppTabNavigation() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const { t } = useLocale();
 
   return (
     <>
-      <nav className="app-tab-nav" aria-label={t('nav.mainMenu')}>
+      <nav
+        className={`app-tab-nav${isExpanded ? ' is-expanded' : ''}`}
+        aria-label={t('nav.mainMenu')}
+        onMouseEnter={() => setIsExpanded(true)}
+        onMouseLeave={() => setIsExpanded(false)}
+        onFocusCapture={() => setIsExpanded(true)}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            setIsExpanded(false);
+          }
+        }}
+      >
         <div className="app-tab-nav__group">
           {primaryTabs.map((item) => (
             <TabLink key={item.id} item={item} onRequireLogin={() => setIsLoginModalOpen(true)} />
