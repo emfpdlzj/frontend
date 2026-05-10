@@ -46,6 +46,9 @@ export function JobsPage() {
     sortKey,
     viewState,
     errorMessage,
+    explanation,
+    explanationViewState,
+    explanationErrorMessage,
     profileStatus,
     isAiEnabled,
     isAdvancedOpen,
@@ -111,6 +114,10 @@ export function JobsPage() {
         <div className="jobs-feedback" role="status">최신 공고를 불러오는 중입니다.</div>
       ) : null}
 
+      {viewState === 'calculating' ? (
+        <div className="jobs-feedback" role="status">선택한 프로필 기준으로 직무 적합도를 다시 계산하는 중입니다.</div>
+      ) : null}
+
       {viewState === 'error' ? (
         <div className="jobs-feedback is-error" role="alert">
           <strong>{errorMessage || '공고 목록을 불러오지 못했습니다.'}</strong>
@@ -150,6 +157,9 @@ export function JobsPage() {
             job={selectedJob}
             selectedTab={selectedTab}
             isAiEnabled={isAiEnabled && viewState !== 'analysisError'}
+            explanation={explanation}
+            explanationViewState={explanationViewState}
+            explanationErrorMessage={explanationErrorMessage}
             checklist={checklist}
             onChangeTab={setSelectedTab}
             onToggleChecklist={onToggleChecklist}

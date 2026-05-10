@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchQuickJobRecommendations } from '../api/recommendApi';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { explainRecommendation, fetchQuickJobRecommendations } from '../api/recommendApi';
 import { useAuth } from '../auth/AuthContext';
 import {
   clearRecommendationCache,
+  getRecommendationExplanationCacheKey,
   getCachedRecommendation,
   getRecommendationCacheKey,
   setCachedRecommendation
 } from '../cache/recommendationCache';
+import { getProfileScoringSignature } from '../utils/profileScoringSignature';
 import { useProfiles } from './useProfiles';
 
 const DEFAULT_SORT = 'latest';
@@ -468,6 +470,77 @@ const normalizeJob = (job, aiResults, aiEnabled) => {
   };
 };
 
+const buildExplainPayload = ({ job, profileId }) => {
+  const source = job?.source || {};
+  const toIntegerOrNull = (value) => {
+    if (typeof value === 'number') {
+      return Number.isInteger(value) ? value : null;
+    }
+
+    if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
+      const numberValue = Number(value.trim());
+      return Number.isSafeInteger(numberValue) ? numberValue : null;
+    }
+
+    return null;
+  };
+  const getFirstInteger = (...values) => {
+    for (const value of values) {
+      const numberValue = toIntegerOrNull(value);
+      if (numberValue !== null) {
+        return numberValue;
+      }
+    }
+
+    return null;
+  };
+  const jobPostId = getFirstInteger(
+    source.jobPostId,
+    source.job_post_id,
+    source.jobPostID,
+    source.jobId,
+    source.job_id,
+    source.recruitmentId,
+    source.recruitment_id,
+    source.postId,
+    source.post_id,
+    source.id,
+    source.sourceId,
+    source.source_id,
+    job.id
+  );
+  const sourceId = getFirstInteger(source.sourceId, source.source_id, source.id, jobPostId);
+
+  return {
+    profileId: Number(profileId),
+    job: {
+      jobPostId,
+      companyName: job.company,
+      jobTitle: job.title,
+      workAddress: source.compAddr || job.location,
+      workLat: source.geoLatitude ?? null,
+      workLng: source.geoLongitude ?? null,
+      employmentType: source.empType || job.employmentType,
+      enterType: source.enterType || '확인 필요',
+      salaryType: source.salaryType || '확인 필요',
+      salary: source.salary || '확인 필요',
+      termDate: source.termDate || '',
+      requiredCareer: source.reqCareer || '확인 필요',
+      requiredEducation: source.reqEduc || '확인 필요',
+      requiredMajor: source.reqMajor || '확인 필요',
+      requiredLicenses: source.reqLicens || '확인 필요',
+      registeredAt: source.regDt || source.offerregDt || '',
+      sourceTable: source.sourceTable || 'pd_kepad_recruitment',
+      sourceId,
+      externalId: source.externalId ?? source.external_id ?? job.externalId ?? String(jobPostId || '')
+    },
+    jobFitScore: typeof job.match?.score === 'number' ? job.match.score : undefined,
+    reasons: job.match?.positive || job.match?.reasons || [],
+    riskFactors: job.match?.caution || [],
+    evidenceItems: []
+  };
+};
+
 const getProfileId = (profile) => String(profile?.profileId ?? profile?.id ?? '');
 
 const getProfileLabel = (profile) => profile?.fullName || profile?.name || `프로필 ${getProfileId(profile)}`;
@@ -575,6 +648,12 @@ export function useQuickJobsMock() {
     totalJobCount: 0,
     updatedAtText: '확인 전'
   });
+  const [explanationState, setExplanationState] = useState({
+    status: 'idle',
+    error: '',
+    jobId: '',
+    data: null
+  });
   const [reloadKey, setReloadKey] = useState(0);
   const [checklist, setChecklist] = useState({
     profile: true,
@@ -584,9 +663,14 @@ export function useQuickJobsMock() {
     introduction: false,
     requirements: false
   });
+  const activeRecommendationCacheKeyRef = useRef('');
 
   const selectedProfileId = profilesState.selectedProfileId;
   const selectedProfile = profilesState.selectedProfile;
+  const selectedProfileScoringSignature = useMemo(
+    () => getProfileScoringSignature(selectedProfile),
+    [selectedProfile]
+  );
   const profiles = useMemo(
     () => normalizeProfiles(profilesState.profiles, selectedProfile),
     [profilesState.profiles, selectedProfile]
@@ -608,8 +692,19 @@ export function useQuickJobsMock() {
       return undefined;
     }
 
-    if (profilesState.status === 'loading' || profilesState.status === 'idle' || profilesState.detailStatus === 'loading') {
-      setRecommendationState((prev) => ({ ...prev, status: 'loading', error: '' }));
+    if (
+      profilesState.status === 'loading' ||
+      profilesState.status === 'idle' ||
+      profilesState.detailStatus === 'loading' ||
+      (selectedProfileId && profilesState.detailStatus === 'idle')
+    ) {
+      setRecommendationState((prev) => ({
+        ...prev,
+        status: prev.jobs.length ? 'calculating' : 'loading',
+        error: '',
+        jobs: [],
+        totalJobCount: 0
+      }));
       return undefined;
     }
 
@@ -649,23 +744,28 @@ export function useQuickJobsMock() {
     const controller = new AbortController();
     const requestParams = {
       aiEnabled: true,
-      profileId: selectedProfileId
+      profileId: selectedProfileId,
+      profileSignature: selectedProfileScoringSignature
     };
     const cacheKey = getRecommendationCacheKey(requestParams);
+    const isScoringInputChanged = Boolean(activeRecommendationCacheKeyRef.current && activeRecommendationCacheKeyRef.current !== cacheKey);
 
     const loadRecommendations = async () => {
       const cachedPayload = getCachedRecommendation(cacheKey);
 
       if (cachedPayload) {
         const cachedState = buildRecommendationStateFromPayload(cachedPayload);
+        activeRecommendationCacheKeyRef.current = cacheKey;
         setRecommendationState(cachedState);
         return;
       }
 
       setRecommendationState((prev) => ({
         ...prev,
-        status: prev.jobs.length ? 'refetching' : 'loading',
-        error: ''
+        status: isScoringInputChanged ? 'calculating' : prev.jobs.length ? 'refetching' : 'loading',
+        error: '',
+        jobs: isScoringInputChanged ? [] : prev.jobs,
+        totalJobCount: isScoringInputChanged ? 0 : prev.totalJobCount
       }));
 
       try {
@@ -678,6 +778,7 @@ export function useQuickJobsMock() {
         const nextState = buildRecommendationStateFromPayload(payload);
 
         setCachedRecommendation(cacheKey, payload);
+        activeRecommendationCacheKeyRef.current = cacheKey;
         setRecommendationState(nextState);
       } catch (error) {
         if (error.name === 'AbortError') {
@@ -707,7 +808,8 @@ export function useQuickJobsMock() {
     profilesState.profiles.length,
     profilesState.status,
     reloadKey,
-    selectedProfileId
+    selectedProfileId,
+    selectedProfileScoringSignature
   ]);
 
   const filteredJobs = useMemo(
@@ -740,6 +842,105 @@ export function useQuickJobsMock() {
     },
     [selectedJobId, sortedJobs]
   );
+
+  const viewState =
+    recommendationState.status === 'refetching'
+      ? 'success'
+      : recommendationState.status === 'disabled'
+        ? 'noProfile'
+        : recommendationState.status;
+
+  useEffect(() => {
+    const canLoadExplanation =
+      isAiEnabled &&
+      viewState === 'success' &&
+      selectedJob &&
+      selectedProfileId &&
+      typeof selectedJob.match?.score === 'number';
+
+    if (!canLoadExplanation) {
+      setExplanationState({
+        status: 'idle',
+        error: '',
+        jobId: '',
+        data: null
+      });
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const cacheKey = getRecommendationExplanationCacheKey({
+      profileId: selectedProfileId,
+      externalId: selectedJob.externalId,
+      jobId: selectedJob.id,
+      score: selectedJob.match.score,
+      profileSignature: selectedProfileScoringSignature
+    });
+    const cachedExplanation = getCachedRecommendation(cacheKey);
+
+    if (cachedExplanation) {
+      setExplanationState({
+        status: 'success',
+        error: '',
+        jobId: selectedJob.id,
+        data: cachedExplanation
+      });
+      return undefined;
+    }
+
+    const loadExplanation = async () => {
+      const explainPayload = buildExplainPayload({ job: selectedJob, profileId: selectedProfileId });
+      if (!explainPayload.job.jobPostId) {
+        setExplanationState({
+          status: 'error',
+          error: '추천 설명을 요청할 공고 내부 ID가 없어 설명을 불러올 수 없습니다.',
+          jobId: selectedJob.id,
+          data: null
+        });
+        return;
+      }
+
+      setExplanationState((prev) => ({
+        ...prev,
+        status: prev.jobId === selectedJob.id && prev.data ? 'refetching' : 'loading',
+        error: '',
+        jobId: selectedJob.id
+      }));
+
+      try {
+        const data = await callWithAuth((accessToken) =>
+          explainRecommendation(accessToken, explainPayload, {
+            signal: controller.signal
+          })
+        );
+
+        setCachedRecommendation(cacheKey, data);
+        setExplanationState({
+          status: 'success',
+          error: '',
+          jobId: selectedJob.id,
+          data
+        });
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          return;
+        }
+
+        setExplanationState({
+          status: 'error',
+          error: error.message || '추천 설명을 불러오지 못했습니다.',
+          jobId: selectedJob.id,
+          data: null
+        });
+      }
+    };
+
+    loadExplanation();
+
+    return () => {
+      controller.abort();
+    };
+  }, [callWithAuth, isAiEnabled, selectedJob, selectedProfileId, selectedProfileScoringSignature, viewState]);
 
   const profileStatus = useMemo(() => {
     if (!isAuthenticated || recommendationState.status === 'noProfile' || !selectedProfileSummary) {
@@ -790,13 +991,6 @@ export function useQuickJobsMock() {
     setReloadKey((current) => current + 1);
   }, []);
 
-  const viewState =
-    recommendationState.status === 'refetching'
-      ? 'success'
-      : recommendationState.status === 'disabled'
-        ? 'noProfile'
-        : recommendationState.status;
-
   return {
     updatedAtText: recommendationState.updatedAtText,
     profiles,
@@ -811,6 +1005,9 @@ export function useQuickJobsMock() {
     sortKey,
     viewState,
     errorMessage: recommendationState.error,
+    explanation: explanationState.data,
+    explanationViewState: explanationState.status === 'refetching' ? 'success' : explanationState.status,
+    explanationErrorMessage: explanationState.error,
     profileStatus,
     isAiEnabled,
     isAdvancedOpen,

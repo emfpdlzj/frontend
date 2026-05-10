@@ -6,11 +6,15 @@ import { StatusMessage } from '../components/common/StatusMessage';
 import { useAuth } from '../auth/AuthContext';
 import { oauthUtils } from '../utils/oauth';
 import { ROUTE_PATHS } from '../config/routes';
+import { useLocale } from '../i18n/LocaleContext';
 
 export function OAuthCallbackPage({ provider }) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { localizePath } = useLocale();
   const { isAuthenticated, isInitializing, loginWithSocialCode } = useAuth();
+  const hasCallbackResult =
+    searchParams.has('code') || searchParams.has('error') || searchParams.has('error_description');
   const [status, setStatus] = useState('소셜 로그인 검증 중...');
   const [error, setError] = useState('');
 
@@ -34,8 +38,8 @@ export function OAuthCallbackPage({ provider }) {
       return;
     }
 
-    if (provider === 'NAVER' && !oauthUtils.verifyNaverState(state)) {
-      setError('네이버 state 검증에 실패했습니다. 다시 로그인해 주세요.');
+    if (!oauthUtils.verifyState(provider, state)) {
+      setError('소셜 로그인 state 검증에 실패했습니다. 다시 로그인해 주세요.');
       return;
     }
 
@@ -55,11 +59,14 @@ export function OAuthCallbackPage({ provider }) {
         );
 
         if (result.signupRequired) {
-          navigate(ROUTE_PATHS.signup, { replace: true });
+          navigate(localizePath(ROUTE_PATHS.signup), { replace: true });
           return;
         }
 
-        navigate(oauthUtils.consumeReturnTo(), { replace: true });
+        navigate(localizePath(oauthUtils.consumeReturnTo()), {
+          replace: true,
+          state: result.withdrawalCanceled ? { withdrawalRestored: true } : null
+        });
       } catch (authError) {
         setError(authError.message || '소셜 로그인 처리에 실패했습니다.');
       }
@@ -70,10 +77,10 @@ export function OAuthCallbackPage({ provider }) {
     return () => {
       controller.abort();
     };
-  }, [loginWithSocialCode, navigate, provider, searchParams]);
+  }, [localizePath, loginWithSocialCode, navigate, provider, searchParams]);
 
-  if (!isInitializing && isAuthenticated) {
-    return <Navigate to={oauthUtils.consumeReturnTo()} replace />;
+  if (!isInitializing && isAuthenticated && !hasCallbackResult) {
+    return <Navigate to={localizePath(oauthUtils.consumeReturnTo())} replace />;
   }
 
   return (

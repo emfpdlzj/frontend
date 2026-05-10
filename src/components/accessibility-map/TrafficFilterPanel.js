@@ -21,6 +21,8 @@ const getFilterValueSnapshot = (filterGroups) =>
   );
 
 const FILTER_ALL_VALUE = '전체';
+const INITIAL_VISIBLE_MAP_JOB_COUNT = 80;
+const VISIBLE_MAP_JOB_INCREMENT = 80;
 
 function moveItem(items, sourceId, targetId) {
   const sourceIndex = items.indexOf(sourceId);
@@ -71,11 +73,19 @@ export function TrafficFilterPanel({
   ]);
   const [draftFilterValues, setDraftFilterValues] = useState(() => getFilterValueSnapshot(filterGroups));
   const [draggingFilterId, setDraggingFilterId] = useState(null);
-  const resultCount = viewState === 'empty' ? 0 : jobs.length;
+  const [visibleJobCount, setVisibleJobCount] = useState(INITIAL_VISIBLE_MAP_JOB_COUNT);
+  const isRecommendationBusy = viewState === 'loading' || viewState === 'calculating';
+  const resultCount = viewState === 'empty' || isRecommendationBusy ? 0 : jobs.length;
+  const visibleJobs = useMemo(() => jobs.slice(0, visibleJobCount), [jobs, visibleJobCount]);
+  const hasMoreJobs = visibleJobs.length < jobs.length;
 
   useEffect(() => {
     setDraftFilterValues(getFilterValueSnapshot(filterGroups));
   }, [filterGroups]);
+
+  useEffect(() => {
+    setVisibleJobCount(INITIAL_VISIBLE_MAP_JOB_COUNT);
+  }, [jobs]);
 
   const filterItems = useMemo(
     () => [
@@ -165,7 +175,7 @@ export function TrafficFilterPanel({
       <header className="accessibility-map__filter-header">
         <h2>교통 필터</h2>
         <p>
-          <img className="accessibility-map__info-icon" src={infoIcon} alt="" aria-hidden="true" />
+          <img className="accessibility-map__info-icon" src={infoIcon} alt="안내 아이콘" />
           드래그하여 검색 우선순위를 설정해보세요.
         </p>
       </header>
@@ -230,7 +240,13 @@ export function TrafficFilterPanel({
                     onChange={(value) => handleSelectDraftFilter(filterItem.id, value)}
                   />
                 ) : (
-                  <div className="accessibility-map__chip-row">
+                  <div
+                    className={`accessibility-map__chip-row${
+                      filterItem.id === 'employmentType' || filterItem.id === 'salaryType'
+                        ? ' accessibility-map__chip-row--expanded'
+                        : ''
+                    }`}
+                  >
                     {filterItem.chips.map((chip) => (
                       <button
                         key={chip}
@@ -259,7 +275,7 @@ export function TrafficFilterPanel({
                 onDragEnd={handleDragEnd}
                 onKeyDown={(event) => handleDragHandleKeyDown(event, filterItem.id)}
               >
-                <img src={dragDropIcon} alt="" aria-hidden="true" />
+                <img src={dragDropIcon} alt="드래그 핸들 아이콘" />
               </button>
             </div>
           </section>
@@ -270,8 +286,13 @@ export function TrafficFilterPanel({
         <button type="button" className="secondary-button accessibility-map__filter-reset-button" onClick={handleResetFilters}>
           초기화
         </button>
-        <button type="button" className="primary-button accessibility-map__filter-apply-button" onClick={handleApplyFilters}>
-          조건 적용
+        <button
+          type="button"
+          className="primary-button accessibility-map__filter-apply-button"
+          onClick={handleApplyFilters}
+          disabled={isRecommendationBusy}
+        >
+          {isRecommendationBusy ? '계산 중' : '조건 적용'}
         </button>
       </div>
 
@@ -279,12 +300,20 @@ export function TrafficFilterPanel({
         <h3>검색 결과 {resultCount}개{totalJobCount > resultCount ? ` / 전체 ${totalJobCount}개` : ''}</h3>
         <button type="button" className="accessibility-map__sort-button" disabled>
           {appliedAiEnabled ? '접근성 점수 높은순' : '최신순'}
-          <img src={triangleDownBlue} alt="" aria-hidden="true" />
+          <img src={triangleDownBlue} alt="정렬 옵션 펼치기 아이콘" />
         </button>
       </div>
 
       <div className="accessibility-map__results-body">
-        {viewState === 'idle' ? (
+        {viewState === 'loading' ? (
+          <div className="accessibility-map__empty-panel" role="status">
+            지역 접근성 지도 추천을 불러오는 중입니다.
+          </div>
+        ) : viewState === 'calculating' ? (
+          <div className="accessibility-map__empty-panel" role="status">
+            선택한 프로필 기준으로 접근성 점수를 다시 계산하고 있습니다.
+          </div>
+        ) : viewState === 'idle' ? (
           <div className="accessibility-map__empty-panel" role="status">
             조건 적용을 누르면 회사 공고가 지도와 목록에 표시됩니다.
           </div>
@@ -296,11 +325,12 @@ export function TrafficFilterPanel({
           </div>
         ) : (
           <div className="accessibility-map__job-list" aria-label="공고 목록">
-            {jobs.map((job) => (
+            {visibleJobs.map((job) => (
               <button
                 key={job.id}
                 type="button"
                 className={`accessibility-map__job-card${selectedJobId === job.id ? ' is-selected' : ''}`}
+                aria-pressed={selectedJobId === job.id}
                 onClick={() => onSelectJob(job.id)}
               >
                 <div className="accessibility-map__job-card-top">
@@ -327,6 +357,15 @@ export function TrafficFilterPanel({
                 <div className="accessibility-map__job-pay">임금 <strong>{job.payText}</strong></div>
               </button>
             ))}
+            {hasMoreJobs ? (
+              <button
+                type="button"
+                className="secondary-button accessibility-map__more-button"
+                onClick={() => setVisibleJobCount((current) => current + VISIBLE_MAP_JOB_INCREMENT)}
+              >
+                공고 {Math.min(VISIBLE_MAP_JOB_INCREMENT, jobs.length - visibleJobs.length)}개 더 보기
+              </button>
+            ) : null}
           </div>
         )}
       </div>

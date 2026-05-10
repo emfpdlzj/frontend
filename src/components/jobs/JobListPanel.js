@@ -1,3 +1,8 @@
+import { useMemo, useState } from 'react';
+
+const INITIAL_VISIBLE_JOB_COUNT = 80;
+const VISIBLE_JOB_INCREMENT = 80;
+
 function MatchSummary({ job, isAiEnabled }) {
   if (!isAiEnabled) {
     return <div className="jobs-card__match is-off">AI 적합도 꺼짐</div>;
@@ -17,8 +22,12 @@ function MatchSummary({ job, isAiEnabled }) {
 }
 
 export function JobListPanel({ jobs, totalJobCount, selectedJobId, isAiEnabled, viewState, onSelectJob, onResetFilters }) {
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_JOB_COUNT);
   const isProfileBlocked = viewState === 'noProfile';
+  const isCalculating = viewState === 'calculating';
   const displayCount = typeof totalJobCount === 'number' && totalJobCount >= jobs.length ? totalJobCount : jobs.length;
+  const visibleJobs = useMemo(() => jobs.slice(0, visibleCount), [jobs, visibleCount]);
+  const hasMoreJobs = visibleJobs.length < jobs.length;
 
   return (
     <section className="jobs-list-panel" aria-label="해당 공고 목록">
@@ -31,13 +40,21 @@ export function JobListPanel({ jobs, totalJobCount, selectedJobId, isAiEnabled, 
 
       {jobs.length === 0 ? (
         <div className="jobs-empty" role="status">
-          <strong>{isProfileBlocked ? '프로필 선택이 필요합니다.' : '조건에 맞는 공고가 없습니다.'}</strong>
+          <strong>
+            {isCalculating
+              ? '직무 적합도를 다시 계산하고 있습니다.'
+              : isProfileBlocked
+                ? '프로필 선택이 필요합니다.'
+                : '조건에 맞는 공고가 없습니다.'}
+          </strong>
           <p>
-            {isProfileBlocked
-              ? '로그인 후 프로필을 선택하면 맞춤 일자리 추천을 확인할 수 있습니다.'
-              : '검색어나 상세 필터를 줄이면 더 많은 공고를 확인할 수 있습니다.'}
+            {isCalculating
+              ? '자기소개와 프로필 입력값을 반영해 새 추천 결과를 준비하고 있습니다.'
+              : isProfileBlocked
+                ? '로그인 후 프로필을 선택하면 맞춤 일자리 추천을 확인할 수 있습니다.'
+                : '검색어나 상세 필터를 줄이면 더 많은 공고를 확인할 수 있습니다.'}
           </p>
-          {!isProfileBlocked ? (
+          {!isProfileBlocked && !isCalculating ? (
             <button type="button" className="secondary-button" onClick={onResetFilters}>
               필터 초기화
             </button>
@@ -45,7 +62,7 @@ export function JobListPanel({ jobs, totalJobCount, selectedJobId, isAiEnabled, 
         </div>
       ) : (
         <div className="jobs-list-panel__list">
-          {jobs.map((job) => {
+          {visibleJobs.map((job) => {
             const isSelected = selectedJobId === job.id;
 
             return (
@@ -92,6 +109,15 @@ export function JobListPanel({ jobs, totalJobCount, selectedJobId, isAiEnabled, 
               </button>
             );
           })}
+          {hasMoreJobs ? (
+            <button
+              type="button"
+              className="secondary-button jobs-list-panel__more-button"
+              onClick={() => setVisibleCount((current) => current + VISIBLE_JOB_INCREMENT)}
+            >
+              공고 {Math.min(VISIBLE_JOB_INCREMENT, jobs.length - visibleJobs.length)}건 더 보기
+            </button>
+          ) : null}
         </div>
       )}
     </section>

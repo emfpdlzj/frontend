@@ -1,5 +1,14 @@
 import { httpRequest } from './httpClient';
 
+const withoutSocialAccountEmail = (payload) => {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return payload;
+  }
+
+  const { email, ...signupPayload } = payload;
+  return signupPayload;
+};
+
 export const authApi = {
   socialLogin(payload, signal) {
     return httpRequest('/auth/social/login', {
@@ -14,17 +23,18 @@ export const authApi = {
     return httpRequest('/auth/social/signup/complete', {
       method: 'POST',
       token: null,
-      body: payload,
+      body: withoutSocialAccountEmail(payload),
       signal
     });
   },
 
-  refreshToken(refreshToken, signal) {
+  refreshToken(refreshToken, signal, options = {}) {
     return httpRequest('/auth/token/refresh', {
       method: 'POST',
       token: null,
       body: { refreshToken },
-      signal
+      signal,
+      expectedErrorStatuses: options.expectedErrorStatuses
     });
   },
 
@@ -32,7 +42,24 @@ export const authApi = {
     return httpRequest('/auth/logout', {
       method: 'POST',
       token: accessToken,
-      body: { refreshToken },
+      body: refreshToken ? { refreshToken } : undefined,
+      signal
+    });
+  },
+
+  withdraw(accessToken, signal) {
+    return httpRequest('/auth/withdraw', {
+      method: 'DELETE',
+      token: accessToken,
+      signal
+    });
+  },
+
+  cancelWithdraw(withdrawalCancelToken, signal) {
+    return httpRequest('/auth/withdraw/cancel', {
+      method: 'POST',
+      token: null,
+      body: { withdrawalCancelToken },
       signal
     });
   },

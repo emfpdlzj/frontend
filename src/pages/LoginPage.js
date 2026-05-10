@@ -5,15 +5,17 @@ import { PageShell } from '../components/common/PageShell';
 import { StatusMessage } from '../components/common/StatusMessage';
 import { useAuth } from '../auth/AuthContext';
 import { ROUTE_PATHS } from '../config/routes';
+import { useLocale } from '../i18n/LocaleContext';
 
 export function LoginPage() {
   const { currentUser, isAuthenticated, isInitializing } = useAuth();
+  const { localizePath } = useLocale();
   const [error, setError] = useState('');
 
   if (!isInitializing && isAuthenticated) {
     return (
       <Navigate
-        to={currentUser?.signupCompleted === false ? ROUTE_PATHS.signup : ROUTE_PATHS.accessibilityMap}
+        to={localizePath(currentUser?.signupCompleted === false ? ROUTE_PATHS.signup : ROUTE_PATHS.accessibilityMap)}
         replace
       />
     );

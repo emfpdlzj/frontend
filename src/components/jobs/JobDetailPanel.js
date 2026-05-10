@@ -31,6 +31,17 @@ function NoticeBox({ children }) {
   return <div className="jobs-detail__notice">{children}</div>;
 }
 
+function normalizeExplanation(explanation) {
+  const result = explanation?.aiResponse?.result || {};
+
+  return {
+    shortSummary: explanation?.shortSummary || result.short_summary || '',
+    recommendationReasons: explanation?.recommendationReasons || result.recommendation_reasons || [],
+    cautionPoints: explanation?.cautionPoints || result.caution_points || [],
+    checklist: explanation?.checklist || result.checklist || []
+  };
+}
+
 function JobBadgeRow({ job }) {
   return (
     <div className="jobs-detail__badges" aria-label="공고 특성">
@@ -45,6 +56,9 @@ export function JobDetailPanel({
   job,
   selectedTab,
   isAiEnabled,
+  explanation,
+  explanationViewState,
+  explanationErrorMessage,
   checklist,
   onChangeTab,
   onToggleChecklist
@@ -84,6 +98,12 @@ export function JobDetailPanel({
     ['표준사업장 여부', job.companyInfo.standardWorkplace],
     ['인증 상태', job.companyInfo.certification],
     ['담당기관', job.companyInfo.agency]
+  ];
+  const llmExplanation = normalizeExplanation(explanation);
+  const llmExplanationItems = [
+    ...llmExplanation.recommendationReasons.map((text) => ['추천 이유', text]),
+    ...llmExplanation.cautionPoints.map((text) => ['주의점', text]),
+    ...llmExplanation.checklist.map((text) => ['체크리스트', text])
   ];
 
   return (
@@ -175,6 +195,35 @@ export function JobDetailPanel({
               <h3>지원 전 빠른 판단</h3>
               <p>{job.match.reasons[0]}</p>
               <p>{job.match.caution[0]}</p>
+            </section>
+            <section className="jobs-detail__section" aria-label="AI 추천 설명">
+              <h3>AI 추천 설명</h3>
+              {explanationViewState === 'loading' ? (
+                <NoticeBox>추천 설명을 불러오는 중입니다.</NoticeBox>
+              ) : null}
+              {explanationViewState === 'error' ? (
+                <NoticeBox>{explanationErrorMessage || '추천 설명을 불러오지 못했습니다.'}</NoticeBox>
+              ) : null}
+              {explanationViewState === 'success' ? (
+                llmExplanationItems.length ? (
+                  <div className="jobs-detail__explanation-card">
+                    <strong>{llmExplanation.shortSummary || '추천 설명을 확인했습니다.'}</strong>
+                    <ul className="jobs-detail__status-list">
+                      {llmExplanationItems.map(([label, text], index) => (
+                        <li key={`${label}-${text}-${index}`}>
+                          <span>{label}</span>
+                          <p>{text}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <NoticeBox>추천 설명 세부 항목이 없습니다. 공고 정보와 적합도 점수를 함께 확인해주세요.</NoticeBox>
+                )
+              ) : null}
+              {explanationViewState === 'idle' ? (
+                <NoticeBox>직무 적합도 점수가 확인되면 AI 추천 설명을 함께 표시합니다.</NoticeBox>
+              ) : null}
             </section>
             <DefinitionGrid
               items={[

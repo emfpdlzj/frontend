@@ -11,6 +11,7 @@ import { authApi } from '../api/authApi';
 import { ApiError } from '../api/httpClient';
 import { authStorage } from './authStorage';
 import { createLogger } from '../utils/logger';
+import { clearRecommendationCache } from '../cache/recommendationCache';
 
 const AuthContext = createContext(null);
 const logger = createLogger('auth');
@@ -25,6 +26,11 @@ const extractTokenPair = (payload) => {
 const readAuthField = (payload, camelKey, snakeKey) => {
   const unwrapped = unwrapApiPayload(payload);
   return unwrapped?.[camelKey] ?? unwrapped?.[snakeKey];
+};
+
+const isPendingDeletionAccount = (payload) => {
+  const status = String(readAuthField(payload, 'accountStatus', 'account_status') || '').toUpperCase();
+  return status === 'PENDING_DELETION';
 };
 
 const normalizeTokenPair = (tokenPair) => {
@@ -44,6 +50,8 @@ const normalizeTokenPair = (tokenPair) => {
   return normalized;
 };
 
+const isAnonymousBootstrapFailure = (error) => error?.status === 400 || error?.status === 401;
+
 export function AuthProvider({ children }) {
   const [tokens, setTokens] = useState(() => authStorage.readTokens());
   const [pendingSignup, setPendingSignupState] = useState(() => authStorage.readSignupSession());
@@ -61,6 +69,7 @@ export function AuthProvider({ children }) {
   const saveTokens = useCallback((tokenPair) => {
     const normalized = normalizeTokenPair(extractTokenPair(tokenPair));
     authStorage.writeTokens(normalized);
+    tokensRef.current = normalized;
     setTokens(normalized);
     return normalized;
   }, []);
@@ -68,8 +77,8 @@ export function AuthProvider({ children }) {
   const clearSession = useCallback(() => {
     sessionVersionRef.current += 1;
     refreshingRef.current = null;
-    authStorage.clearTokens();
-    authStorage.clearSignupSession();
+    authStorage.clearUserScopedStorage();
+    clearRecommendationCache();
     setTokens(null);
     setPendingSignupState(null);
     setCurrentUser(null);
@@ -95,15 +104,14 @@ export function AuthProvider({ children }) {
   const isStaleSessionResult = useCallback((error) => error?.errorCode === 'STALE_SESSION_RESULT', []);
 
   const refreshTokens = useCallback(async () => {
+    if (refreshingRef.current) {
+      return refreshingRef.current;
+    }
+
     const refreshToken = tokensRef.current?.refreshToken;
 
     if (!refreshToken) {
-      clearSession();
-      throw new ApiError('리프레시 토큰이 없습니다.', 401, 'MISSING_REFRESH_TOKEN');
-    }
-
-    if (refreshingRef.current) {
-      return refreshingRef.current;
+      throw new ApiError('토큰 갱신 정보가 없습니다. 다시 로그인해 주세요.', 401, 'MISSING_REFRESH_TOKEN');
     }
 
     const refreshSessionVersion = sessionVersionRef.current;
@@ -180,6 +188,22 @@ export function AuthProvider({ children }) {
         return { ...result, signupRequired: true };
       }
 
+      const withdrawalCancelToken = readAuthField(result, 'withdrawalCancelToken', 'withdrawal_cancel_token');
+
+      if (isPendingDeletionAccount(result) || withdrawalCancelToken) {
+        if (!withdrawalCancelToken) {
+          throw new ApiError('탈퇴 신청 취소 토큰이 없습니다. 고객센터에 문의해 주세요.', 409, 'MISSING_WITHDRAWAL_CANCEL_TOKEN', result);
+        }
+
+        const cancelResponse = await authApi.cancelWithdraw(withdrawalCancelToken, signal);
+        const tokenPair = normalizeTokenPair(extractTokenPair(cancelResponse));
+        await fetchMe(tokenPair.accessToken, signal);
+        setPendingSignup(null);
+        authStorage.writeAuthProvider(payload.provider || result.provider);
+        saveTokens(tokenPair);
+        return { ...result, withdrawalCanceled: true, tokenPair };
+      }
+
       const tokenPair = normalizeTokenPair(extractTokenPair(result));
       await fetchMe(tokenPair.accessToken, signal);
       setPendingSignup(null);
@@ -208,7 +232,7 @@ export function AuthProvider({ children }) {
     const refreshToken = tokensRef.current?.refreshToken;
 
     try {
-      if (accessToken && refreshToken) {
+      if (accessToken) {
         await authApi.logout(accessToken, refreshToken);
       }
     } catch (error) {
@@ -226,19 +250,37 @@ export function AuthProvider({ children }) {
     const controller = new AbortController();
 
     const bootstrap = async () => {
-      if (!tokensRef.current?.accessToken) {
-        setIsInitializing(false);
-        return;
-      }
+      const hadAccessToken = Boolean(tokensRef.current?.accessToken);
 
       try {
+        if (!hadAccessToken && tokensRef.current?.refreshToken) {
+          const tokenPair = await authApi.refreshToken(tokensRef.current.refreshToken, controller.signal, {
+            expectedErrorStatuses: [400, 401]
+          });
+          saveTokens(tokenPair);
+        }
+
+        if (!tokensRef.current?.accessToken) {
+          setCurrentUser(null);
+          return;
+        }
+
         await callWithAuth((accessToken, signal) => authApi.getMe(accessToken, signal), controller.signal)
           .then((me) => setCurrentUser(me));
       } catch (error) {
-        logger.warn('Session bootstrap failed. Clearing session.', {
-          status: error?.status,
-          errorCode: error?.errorCode
-        });
+        if (!hadAccessToken && isAnonymousBootstrapFailure(error)) {
+          authStorage.clearTokens();
+          setTokens(null);
+          setCurrentUser(null);
+          return;
+        }
+
+        if (tokensRef.current?.accessToken || error?.status !== 401) {
+          logger.warn('Session bootstrap failed. Clearing session.', {
+            status: error?.status,
+            errorCode: error?.errorCode
+          });
+        }
         clearSession();
       } finally {
         setIsInitializing(false);

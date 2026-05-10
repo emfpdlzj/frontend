@@ -101,7 +101,7 @@ a:hover {
 .home-section-kicker {
   margin: 0 0 5px;
   color: #2f7df6;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 800;
   letter-spacing: 0;
 }
@@ -217,7 +217,7 @@ a:hover {
 .home-summary-item p {
   margin: 5px 0 0;
   color: #6b7280;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.45;
 }
@@ -269,7 +269,7 @@ a:hover {
 
 .home-section-count {
   color: #0b5fd3;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -283,7 +283,7 @@ a:hover {
 .home-text-link {
   flex: 0 0 auto;
   color: #0b5fd3;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -298,7 +298,7 @@ a:hover {
   border-radius: 8px;
   background: #ffffff;
   color: #0b5fd3;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -349,7 +349,7 @@ a:hover {
   border-radius: 8px;
   background: #ffffff;
   color: #0b5fd3;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -378,7 +378,7 @@ a:hover {
 .home-preview-card span {
   display: block;
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.4;
 }
@@ -394,7 +394,7 @@ a:hover {
 .home-preview-card p {
   margin: 7px 0 14px;
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.5;
 }
@@ -437,7 +437,7 @@ a:hover {
   min-width: 0;
   overflow: hidden;
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.4;
   text-overflow: ellipsis;
@@ -456,7 +456,7 @@ a:hover {
 .home-job-role {
   margin: 6px 0 0;
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.45;
 }
@@ -475,7 +475,7 @@ a:hover {
 .home-job-meta dt {
   display: block;
   color: #6b7280;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -487,7 +487,7 @@ a:hover {
   display: block;
   margin: 3px 0 0;
   color: #1f2937;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.45;
 }
@@ -510,7 +510,7 @@ a:hover {
   min-height: 26px;
   border-radius: 999px;
   padding: 4px 9px;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.2;
 }
@@ -556,7 +556,7 @@ a:hover {
 
 .home-access-summary strong {
   color: #374151;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.55;
 }
@@ -574,7 +574,7 @@ a:hover {
   position: relative;
   padding-left: 14px;
   color: #4b5563;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.55;
 }
@@ -592,7 +592,7 @@ a:hover {
 
 .home-access-summary span {
   color: #6b7280;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.55;
   white-space: nowrap;
@@ -602,7 +602,7 @@ a:hover {
   position: relative;
   padding-left: 18px;
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.45;
 }
@@ -682,14 +682,14 @@ a:hover {
   border-radius: 50%;
   background: #eaf2ff;
   color: #0b5fd3;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 900;
 }
 
 .home-shortcut strong {
   min-width: 0;
   color: #111827;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.3;
 }
@@ -709,7 +709,7 @@ a:hover {
   justify-content: center;
   padding: 18px;
   color: #4b5563;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.5;
   text-align: center;
@@ -732,7 +732,7 @@ a:hover {
   align-items: center;
   gap: 6px;
   color: #4b5563;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -758,7 +758,7 @@ a:hover {
 .home-safe-note {
   margin: 10px 0;
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.5;
 }
@@ -778,7 +778,7 @@ a:hover {
   position: relative;
   padding-left: 17px;
   color: #374151;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.55;
 }
@@ -818,7 +818,7 @@ a:hover {
 .home-activity-list span,
 .home-activity-list em {
   color: #6b7280;
-  font-size: 14px;
+  font-size: 16px;
   font-style: normal;
   font-weight: 600;
   line-height: 1.4;
@@ -848,7 +848,7 @@ a:hover {
   margin: 0;
   padding-left: 15px;
   color: #4b5563;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.5;
 }
@@ -889,7 +889,7 @@ a:hover {
   min-height: 67px;
   margin: 8px 0 12px;
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.45;
 }
@@ -901,7 +901,7 @@ a:hover {
   border-radius: 8px;
   background: #ffffff;
   color: #0b5fd3;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -1136,7 +1136,7 @@ a:hover {
   flex-wrap: wrap;
   gap: 14px;
   color: #1f2933;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.6;
 }
@@ -1164,7 +1164,7 @@ a:hover {
 .app-footer__copyright {
   margin: 0;
   color: #5b6470;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.6;
   text-align: right;
@@ -1397,7 +1397,27 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: 10px;
   margin-left: auto;
+}
+
+.app-header__locale-select {
+  min-width: 72px;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid #dde3eb;
+  border-radius: 12px;
+  background: #fff;
+  color: #1f2937;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app-header__locale-select:focus-visible {
+  outline: 3px solid rgba(13, 99, 243, 0.24);
+  outline-offset: 3px;
 }
 
 .app-header__auth-button {
@@ -1411,7 +1431,7 @@ a:hover {
   border: 1px solid transparent;
   border-radius: 16px;
   font: inherit;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
@@ -1600,7 +1620,7 @@ a:hover {
 
 .login-modal__notice {
   color: #667085;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.55;
 }
@@ -1608,7 +1628,7 @@ a:hover {
 .login-modal__signup-note {
   margin-top: -2px;
   color: #4b5563;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.4;
 }
@@ -1629,6 +1649,17 @@ a:hover {
   outline: 3px solid rgba(13, 99, 243, 0.24);
   outline-offset: 3px;
   border-radius: 4px;
+}
+
+.withdrawal-restored-modal__body {
+  gap: 17px;
+}
+
+.withdrawal-restored-modal__notice {
+  color: #1f3d2b;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 .page-shell {
@@ -1826,13 +1857,13 @@ a:hover {
   align-items: center;
   gap: 8px;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 .field-label em {
   font-style: normal;
   color: var(--primary);
-  font-size: 0.8rem;
+  font-size: 1rem;
   background: #dce8ff;
   padding: 2px 7px;
   border-radius: 999px;
@@ -1840,7 +1871,7 @@ a:hover {
 
 .field-hint {
   color: var(--text-sub);
-  font-size: 0.82rem;
+  font-size: 1rem;
 }
 
 .text-input,
@@ -2326,10 +2357,6 @@ a:hover {
   background: #f8fbff;
 }
 
-.jobs-card.is-selected {
-  box-shadow: inset 4px 0 0 #2f7df6;
-}
-
 .jobs-card__top,
 .jobs-card__title-row,
 .jobs-detail__header-top,
@@ -2355,7 +2382,7 @@ a:hover {
   border-radius: 999px;
   background: #eaf2ff;
   color: #0b4e9f;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -2376,7 +2403,7 @@ a:hover {
 .jobs-card__title-row em {
   font-style: normal;
   color: #0a4ec4;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 900;
 }
 
@@ -2401,7 +2428,7 @@ a:hover {
 .jobs-card__meta dt,
 .jobs-detail__definition-grid dt {
   color: #6b7280;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -2616,6 +2643,43 @@ a:hover {
   color: #0b4e9f;
 }
 
+.jobs-detail__explanation-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #fbfdff;
+}
+
+.jobs-detail__explanation-card > strong {
+  color: #111827;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.45;
+}
+
+.jobs-detail__explanation-card .jobs-detail__status-list li {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.jobs-detail__explanation-card .jobs-detail__status-list span {
+  flex: 0 0 86px;
+  color: #0b4e9f;
+  font-weight: 900;
+}
+
+.jobs-detail__explanation-card .jobs-detail__status-list p {
+  min-width: 0;
+  margin: 0;
+  color: #374151;
+  font-weight: 700;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 .jobs-checklist {
   display: flex;
   flex-direction: column;
@@ -2653,7 +2717,7 @@ a:hover {
 .jobs-detail__footer p {
   margin: 0;
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.45;
 }
 
@@ -2702,7 +2766,7 @@ a:hover {
 .jobs-page__updated {
   margin-top: 4px;
   color: #6b7280;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -2767,14 +2831,14 @@ a:hover {
 
 .jobs-profile-card__summary dt {
   color: #6b7280;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 800;
 }
 
 .jobs-profile-card__summary dd {
   margin: 0;
   color: #111827;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 900;
   white-space: nowrap;
 }
@@ -2789,7 +2853,7 @@ a:hover {
 }
 
 .jobs-ai-toggle p {
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .jobs-filter {
@@ -2811,7 +2875,7 @@ a:hover {
 
 .jobs-filter__field span {
   color: #4b5563;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -2821,14 +2885,14 @@ a:hover {
   padding: 0 11px;
   border-color: #d7dee9;
   border-radius: 7px;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .jobs-filter__detail-button,
 .jobs-filter__reset-button {
   min-height: 40px;
   border-color: #d7dee9;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .jobs-filter__detail-button {
@@ -2898,7 +2962,6 @@ a:hover {
 .jobs-card.is-selected {
   border-color: #9ec5ff;
   background: #f6faff;
-  box-shadow: inset 4px 0 0 #2f7df6;
 }
 
 .jobs-card__top {
@@ -2940,7 +3003,7 @@ a:hover {
   border-radius: 999px;
   background: #eaf2ff;
   color: #0a4ec4;
-  font-size: 13px;
+  font-size: 16px;
   font-style: normal;
   font-weight: 900;
 }
@@ -2956,7 +3019,7 @@ a:hover {
   border-color: #dbeafe;
   background: #f5f9ff;
   color: #174ea6;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .jobs-card__quick-meta {
@@ -2979,7 +3042,7 @@ a:hover {
 .jobs-card__quick-meta dt,
 .jobs-card__sub-meta dt {
   color: #7b8494;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -3017,7 +3080,7 @@ a:hover {
   border-radius: 999px;
   background: #fff;
   color: #0b4e9f;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 900;
 }
 
@@ -3028,7 +3091,7 @@ a:hover {
 .jobs-card__match p {
   margin: 0;
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.4;
 }
@@ -3081,7 +3144,7 @@ a:hover {
   min-height: 40px;
   border-radius: 8px;
   padding: 0 13px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 900;
 }
 
@@ -3101,7 +3164,7 @@ a:hover {
   border-radius: 999px;
   background: #f5f9ff;
   color: #174ea6;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 900;
 }
 
@@ -3122,7 +3185,7 @@ a:hover {
 .jobs-detail__summary span {
   display: block;
   color: #7b8494;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -3194,12 +3257,14 @@ a:hover {
 }
 
 .jobs-detail__definition-grid dt {
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .jobs-detail__definition-grid dd {
   font-size: 16px;
   font-weight: 850;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .jobs-detail__score-card {
@@ -3315,7 +3380,7 @@ a:hover {
 .jobs-filter__header p {
   margin: 0;
   color: #5b6472;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.45;
 }
@@ -3341,7 +3406,7 @@ a:hover {
   margin: 0 0 2px;
   padding: 0;
   color: #4b5563;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -3355,7 +3420,7 @@ a:hover {
 
 .jobs-filter__cascade label span {
   color: #4b5563;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -3369,7 +3434,7 @@ a:hover {
   background: #fff;
   color: #111827;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .jobs-filter__cascade select:disabled {
@@ -3394,7 +3459,7 @@ a:hover {
   border-radius: 8px;
   background: #f5f9ff;
   color: #174ea6;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.45;
 }
@@ -3424,7 +3489,7 @@ a:hover {
 .jobs-card__source {
   display: block;
   color: #7b8494;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.45;
 }
@@ -3549,8 +3614,11 @@ a:hover {
 
 .settings-page__menu-link:focus-visible,
 .settings-button:focus-visible,
+.settings-inline-text-button:focus-visible,
+.settings-consent-card:focus-visible,
 .settings-policy-featured:focus-visible,
 .settings-policy-row:focus-visible,
+.settings-danger-policy-link:focus-visible,
 .settings-support-card:focus-visible,
 .policy-detail-page a:focus-visible,
 .settings-toggle input:focus-visible + span,
@@ -3651,7 +3719,7 @@ a:hover {
 
 .settings-field small {
   color: #5f6b7a;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.45;
 }
@@ -3704,6 +3772,24 @@ a:hover {
 
 .settings-button--secondary:hover {
   background: #f3f8ff;
+}
+
+.settings-inline-text-button {
+  appearance: none;
+  min-height: 32px;
+  margin-left: 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #0b63ce;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.settings-inline-text-button:hover {
+  text-decoration: underline;
 }
 
 .settings-button--danger {
@@ -3779,7 +3865,7 @@ a:hover {
   padding: 5px 10px;
   border: 1px solid transparent;
   border-radius: 999px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.2;
   white-space: nowrap;
@@ -3927,7 +4013,7 @@ a:hover {
 
 .settings-toggle__description {
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.45;
 }
@@ -4033,7 +4119,7 @@ a:hover {
 
 .settings-policy-row small {
   color: #5f6b7a;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 
@@ -4093,6 +4179,7 @@ a:hover {
   color: inherit;
   font: inherit;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -4103,7 +4190,7 @@ a:hover {
 
 .settings-support-card span {
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.5;
 }
@@ -4143,7 +4230,7 @@ a:hover {
 
 .settings-service-list dt {
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -4161,7 +4248,7 @@ a:hover {
   align-items: start;
   gap: 18px;
   padding: 18px;
-  background: #fffafa;
+  background: #fff;
 }
 
 .settings-danger-card ul {
@@ -4190,7 +4277,7 @@ a:hover {
   margin: 12px 0 0;
   padding-left: 20px;
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.7;
 }
@@ -4254,11 +4341,18 @@ a:hover {
   cursor: pointer;
 }
 
+.settings-dialog__notice-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
 .settings-dialog__notice {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  margin-top: 16px;
+  min-height: 118px;
   padding: 14px;
   border: 1px solid #efd28f;
   border-radius: 10px;
@@ -4288,6 +4382,17 @@ a:hover {
   height: 20px;
   margin-top: 3px;
   flex: 0 0 auto;
+}
+
+.settings-dialog__error {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .settings-dialog__actions {
@@ -4464,7 +4569,8 @@ a:hover {
   min-height: 0;
   padding: 15px 20px 18px;
   border-right: 1px solid #c8d0da;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .accessibility-map__filter-header {
@@ -4483,7 +4589,7 @@ a:hover {
   align-items: center;
   gap: 6px;
   margin: 0 0 10px;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   color: #17376c;
 }
@@ -4518,14 +4624,14 @@ a:hover {
 
 .accessibility-map__ai-toggle strong {
   color: #111827;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
 }
 
 .accessibility-map__ai-toggle div span {
   margin-top: 3px;
   color: #4b5563;
-  font-size: 12px;
+  font-size: 16px;
   line-height: 1.35;
 }
 
@@ -4542,7 +4648,7 @@ a:hover {
   background: #fff;
   color: #475569;
   font: inherit;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -4568,7 +4674,7 @@ a:hover {
   flex: 0 0 auto;
   margin: -4px 0 10px;
   color: #4b5563;
-  font-size: 12px;
+  font-size: 16px;
   line-height: 1.35;
 }
 
@@ -4584,7 +4690,7 @@ a:hover {
   border-radius: 8px;
   background: #eef5ff;
   color: #17427c;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.45;
 }
 
@@ -4623,7 +4729,7 @@ a:hover {
 
 .accessibility-map__filter-title-row h3 {
   margin: 0 0 8px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -4636,13 +4742,18 @@ a:hover {
   padding-right: 2px;
 }
 
+.accessibility-map__chip-row--expanded {
+  max-height: none;
+  overflow-y: visible;
+}
+
 .accessibility-map__chip {
   border-radius: 999px;
   border: 1px solid #cbd3de;
   background: #fff;
   padding: 6px 11px;
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.2;
   color: #1f2933;
   cursor: pointer;
@@ -4675,7 +4786,7 @@ a:hover {
   background: #fff;
   color: #1f2933;
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.2;
   padding: 0 34px 0 12px;
   cursor: pointer;
@@ -4702,7 +4813,7 @@ a:hover {
 
 .accessibility-map__cascade-filter label > span {
   color: #4b5563;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -4754,7 +4865,7 @@ a:hover {
 .accessibility-map__filter-apply-button {
   min-height: 42px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .accessibility-map__results-header {
@@ -4779,19 +4890,18 @@ a:hover {
   background: transparent;
   color: #1766ff;
   font: inherit;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 500;
   cursor: pointer;
 }
 
 .accessibility-map__results-body {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
   margin: 0 -20px -18px;
   padding: 14px 20px 18px;
   border-top: 1px solid #c8d0da;
   background: #F4F5F6;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .accessibility-map__job-list {
@@ -4802,6 +4912,7 @@ a:hover {
 }
 
 .accessibility-map__job-card {
+  position: relative;
   width: 100%;
   text-align: left;
   border: 1px solid #c5ced8;
@@ -4809,6 +4920,37 @@ a:hover {
   background: #fff;
   padding: 12px 13px 13px;
   cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.accessibility-map__job-card:hover {
+  border-color: #8fb8ff;
+  box-shadow: 0 8px 18px rgba(47, 111, 235, 0.12);
+}
+
+.accessibility-map__job-card:focus-visible {
+  outline: 3px solid rgba(47, 125, 246, 0.24);
+  outline-offset: 3px;
+}
+
+.accessibility-map__job-card.is-selected {
+  border-color: #2f6efb;
+  background: #edf4ff;
+  box-shadow: 0 10px 22px rgba(47, 111, 235, 0.18);
+}
+
+.accessibility-map__job-card.is-selected .accessibility-map__job-company::before {
+  content: "선택됨";
+  display: inline-flex;
+  align-items: center;
+  margin-right: 7px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #2f6efb;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
 .accessibility-map__job-card-top,
@@ -4834,7 +4976,7 @@ a:hover {
 .accessibility-map__mini-badge {
   padding: 3px 7px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.2;
 }
@@ -4859,14 +5001,14 @@ a:hover {
 .accessibility-map__job-company {
   display: block;
   margin-top: 10px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
 }
 
 .accessibility-map__job-title {
   margin: 3px 0 10px;
   color: #293241;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .accessibility-map__job-meta {
@@ -4876,7 +5018,7 @@ a:hover {
   margin: 0 0 4px;
   padding-top: 10px;
   border-top: 1px dashed #ccd3dc;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .accessibility-map__job-meta strong,
@@ -4978,7 +5120,7 @@ a:hover {
   background: rgba(255, 255, 255, 0.96);
   color: #7b8797;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   box-shadow: 0 5px 11px rgba(26, 46, 86, 0.08);
   cursor: pointer;
@@ -5035,7 +5177,7 @@ a:hover {
 }
 
 .accessibility-map__profile-option strong {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.2;
 }
@@ -5043,7 +5185,7 @@ a:hover {
 .accessibility-map__profile-option small,
 .accessibility-map__profile-manage {
   color: #5a6573;
-  font-size: 12px;
+  font-size: 16px;
   line-height: 1.25;
 }
 
@@ -5063,18 +5205,6 @@ a:hover {
   height: 135px;
   object-fit: contain;
   filter: drop-shadow(0 8px 18px rgba(15, 23, 42, 0.12));
-}
-
-.accessibility-map__support-agency-note {
-  position: absolute;
-  top: 154px;
-  right: 18px;
-  z-index: 4;
-  width: 183px;
-  padding: 8px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.95);
 }
 
 .accessibility-map__legend strong {
@@ -5118,13 +5248,6 @@ a:hover {
 
 .accessibility-map__legend-dot.is-support {
   background: #8b5cf6;
-}
-
-.accessibility-map__legend-note {
-  margin: 12px 0 0;
-  color: #4b5563;
-  font-size: 12px;
-  line-height: 1.4;
 }
 
 .accessibility-map__map-surface {
@@ -5240,7 +5363,7 @@ a:hover {
 .accessibility-map__tile-diagnostics ul {
   margin: 0;
   padding-left: 18px;
-  font-size: 0.9rem;
+  font-size: 1rem;
   line-height: 1.45;
 }
 
@@ -5272,7 +5395,7 @@ a:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.72rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #fff;
   box-shadow: 0 10px 18px rgba(15, 23, 42, 0.14);
@@ -5307,6 +5430,49 @@ a:hover {
   background: #8b5cf6;
 }
 
+.accessibility-map__company-marker {
+  position: relative;
+  width: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.accessibility-map__company-marker img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.accessibility-map__company-marker span {
+  display: -webkit-box;
+  max-width: 156px;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #214481;
+  font-size: 1.28rem;
+  font-weight: 900;
+  line-height: 1.12;
+  text-align: center;
+  text-shadow:
+    2px 0 #fff,
+    -2px 0 #fff,
+    0 2px #fff,
+    0 -2px #fff,
+    1px 1px #fff,
+    -1px -1px #fff,
+    1px -1px #fff,
+    -1px 1px #fff;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  -webkit-text-stroke: 2px #fff;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  paint-order: stroke fill;
+}
+
 .accessibility-map__map-pill {
   position: absolute;
   left: 50%;
@@ -5318,7 +5484,7 @@ a:hover {
   padding: 7px 13px;
   background: rgba(255, 255, 255, 0.88);
   color: #2563eb;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
 }
 
@@ -5345,7 +5511,7 @@ a:hover {
 
 .accessibility-map__detail-header-top {
   color: #ef2f18;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .accessibility-map__title-row {
@@ -5370,7 +5536,7 @@ a:hover {
 .accessibility-map__detail-header p {
   margin: 6px 0 16px;
   color: #1f2933;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .accessibility-map__tab-row {
@@ -5384,7 +5550,7 @@ a:hover {
   background: transparent;
   padding: 12px 0 13px;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: #293241;
   cursor: pointer;
@@ -5479,7 +5645,7 @@ a:hover {
 }
 
 .accessibility-map__company-card p {
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .accessibility-map__company-initial {
@@ -5511,14 +5677,14 @@ a:hover {
   border-radius: 8px;
   background: #f4f4f5;
   color: #374151;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .accessibility-map__muted-box span {
   display: block;
   margin-bottom: 10px;
   color: #4b5563;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .accessibility-map__muted-box.is-accent {
@@ -5552,7 +5718,7 @@ a:hover {
 
 .accessibility-map__hiring-header span {
   color: #6d7785;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .accessibility-map__progress-track {
@@ -5572,7 +5738,7 @@ a:hover {
 .accessibility-map__hiring-card p {
   margin: 0;
   color: #202936;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.5;
 }
 
@@ -5636,7 +5802,7 @@ a:hover {
   border-radius: 999px;
   background: #d9f1de;
   color: #219548;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -5650,7 +5816,7 @@ a:hover {
 .accessibility-map__score-summary p {
   margin: 8px 0 0;
   color: #293241;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.55;
 }
 
@@ -5659,7 +5825,7 @@ a:hover {
   gap: 10px;
   margin-top: 20px;
   color: #67717f;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .accessibility-map__score-stats span {
@@ -5685,7 +5851,7 @@ a:hover {
   flex-wrap: wrap;
   margin-top: 22px;
   color: #6d7785;
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .accessibility-map__score-legend span::before {
@@ -5739,21 +5905,21 @@ a:hover {
 .accessibility-map__accessibility-list strong {
   display: block;
   margin-bottom: 5px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
 }
 
 .accessibility-map__accessibility-list p {
   margin: 0;
   color: #293241;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.55;
 }
 
 .accessibility-map__status-pill {
   border-radius: 4px;
   padding: 5px 9px;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -5788,7 +5954,7 @@ a:hover {
   border-radius: 8px;
   background: #e9f5ff;
   color: #17376c;
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .accessibility-map__source-note img {
@@ -6000,13 +6166,13 @@ a:hover {
 
 .onboarding-rail__text span {
   color: #303640;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.25;
 }
 
 .onboarding-rail__text strong {
   color: #101419;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.35;
 }
@@ -6286,7 +6452,7 @@ a:hover {
 
 .onboarding-calendar-select-button span {
   color: #5f6f83;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1;
 }
 
@@ -6321,7 +6487,7 @@ a:hover {
   background: transparent;
   color: #2d333b;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -6390,7 +6556,7 @@ a:hover {
   gap: 8px;
   margin-bottom: 8px;
   color: #667385;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1;
   text-align: center;
@@ -6420,7 +6586,7 @@ a:hover {
   background: transparent;
   color: #232a33;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
@@ -6466,7 +6632,7 @@ a:hover {
   padding: 0 13px;
   border-radius: 8px;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -6506,7 +6672,7 @@ a:hover {
 .onboarding-field small {
   margin-top: -5px;
   color: #333942;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.5;
 }
 
@@ -6534,7 +6700,7 @@ a:hover {
   background: #ffffff;
   color: #2d333b;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   cursor: pointer;
 }
 
@@ -6591,7 +6757,7 @@ a:hover {
 .onboarding-job-picker__column-head p {
   margin: 0;
   color: #617086;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.45;
 }
@@ -6680,7 +6846,7 @@ a:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1;
 }
@@ -6703,7 +6869,7 @@ a:hover {
   align-items: center;
   gap: 9px;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.35;
   cursor: pointer;
@@ -6723,7 +6889,7 @@ a:hover {
 .onboarding-job-picker__helper,
 .onboarding-job-picker__limit {
   margin: 0;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
 }
 
@@ -6751,7 +6917,7 @@ a:hover {
   border-radius: 10px;
   background: #e6f3ff;
   color: #123d75;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.45;
 }
@@ -6868,7 +7034,7 @@ a:hover {
 
 .onboarding-complete__summary dt {
   color: #444b55;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -6882,7 +7048,7 @@ a:hover {
 
 .onboarding-complete__summary span {
   color: #5e6670;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .onboarding-complete__actions {
@@ -6965,6 +7131,12 @@ a:hover {
     font-size: 16px;
   }
 
+  .app-header__locale-select {
+    min-width: 62px;
+    height: 42px;
+    padding: 0 8px;
+  }
+
   .app-footer__inner {
     width: auto;
     margin: 0 16px;
@@ -6987,7 +7159,7 @@ a:hover {
   }
 
   .app-footer__description {
-    font-size: 15px;
+    font-size: 16px;
   }
 
   .app-footer__social-list {
@@ -7049,7 +7221,7 @@ a:hover {
 
   .login-modal__signup-note,
   .login-modal__notice {
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .onboarding-main {
@@ -7213,7 +7385,7 @@ a:hover {
   background: #fff;
   color: #0059ff;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   cursor: pointer;
 }
 
@@ -7293,7 +7465,7 @@ a:hover {
   background: #2f7df6;
   color: #fff;
   padding: 5px 10px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1;
 }
@@ -7307,7 +7479,7 @@ a:hover {
   top: 15px;
   right: 14px;
   color: #1556c7;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 900;
 }
 
@@ -7324,13 +7496,13 @@ a:hover {
 
 .profile-card h3 {
   margin: 0 0 5px;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .profile-card p {
   margin: 0;
   color: #4b5563;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .profile-card__more {
@@ -7349,7 +7521,7 @@ a:hover {
   margin: 22px 0 0;
   padding-left: 16px;
   color: #6b7280;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.6;
 }
 
@@ -7416,7 +7588,7 @@ a:hover {
   background: #ffffff;
   color: #1556c7;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -7438,7 +7610,7 @@ a:hover {
 .profile-autosave-note {
   margin: 0 0 16px;
   color: #526173;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.5;
 }
@@ -7456,7 +7628,7 @@ a:hover {
   padding: 0 16px;
   border-radius: 7px;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 850;
   cursor: pointer;
 }
@@ -7645,14 +7817,14 @@ a:hover {
 .profile-readonly-summary dt {
   margin: 0 0 6px;
   color: #4b5563;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 800;
 }
 
 .profile-readonly-summary dd {
   margin: 0;
   color: #111827;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
   word-break: keep-all;
   overflow-wrap: anywhere;
@@ -7661,7 +7833,7 @@ a:hover {
 .profile-section-caption {
   margin-left: 12px;
   color: #6b7280;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 400;
 }
 
@@ -7677,7 +7849,7 @@ a:hover {
 }
 
 .profile-photo-field h2 {
-  font-size: 15px;
+  font-size: 16px;
   margin-bottom: 12px;
 }
 
@@ -7704,7 +7876,7 @@ a:hover {
 .profile-photo-field p {
   margin: 12px 0 0 44px;
   color: #6b7280;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .profile-two-column {
@@ -7760,7 +7932,7 @@ a:hover {
 
 .profile-job-picker legend {
   color: #111;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 900;
 }
 
@@ -7776,7 +7948,7 @@ a:hover {
 
 .profile-job-picker .onboarding-job-picker__option {
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .profile-option-state {
@@ -7788,7 +7960,7 @@ a:hover {
   border-radius: 8px;
   background: #f8fafc;
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -7830,7 +8002,7 @@ a:hover {
 
 .profile-label {
   color: #111;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 900;
 }
 
@@ -7856,7 +8028,7 @@ a:hover {
   background: #fff;
   color: #1f2937;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .profile-input,
@@ -7885,7 +8057,7 @@ a:hover {
   top: 50%;
   transform: translateY(-50%);
   color: #111;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .profile-unit-input {
@@ -7897,7 +8069,7 @@ a:hover {
 
 .profile-unit-input__unit {
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -7918,7 +8090,7 @@ a:hover {
   right: 14px;
   bottom: 12px;
   color: #a0a8b3;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1;
   pointer-events: none;
@@ -7960,13 +8132,13 @@ a:hover {
 
 .profile-help {
   color: #6b7280;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.35;
 }
 
 .profile-field-error {
   color: var(--danger);
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.35;
 }
@@ -8004,7 +8176,7 @@ a:hover {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .profile-radio span,
@@ -8146,7 +8318,7 @@ a:hover {
 
 .profile-chip-list > span {
   color: #6b7280;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .profile-chip-list button {
@@ -8160,7 +8332,7 @@ a:hover {
   background: #eef4ff;
   color: #0059ff;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -8320,7 +8492,7 @@ a:hover {
   display: inline-flex;
   margin-bottom: 8px;
   color: #0b5fd3;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 850;
   line-height: 1.2;
 }
@@ -8357,7 +8529,7 @@ a:hover {
 .settings-menu-item strong {
   margin: 12px 10px 2px;
   color: #6b7280;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 850;
   line-height: 1.2;
 }
@@ -8418,7 +8590,7 @@ a:hover {
 
 .settings-summary-card span {
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -8431,7 +8603,7 @@ a:hover {
 
 .settings-summary-card small {
   color: #4f5f73;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 650;
   line-height: 1.45;
 }
@@ -8653,38 +8825,7 @@ a:hover {
 
 .settings-provider-card span {
   color: #4b5563;
-  font-size: 15px;
-  font-weight: 650;
-}
-
-.settings-device-row {
-  min-height: 66px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 14px;
-  padding: 14px 16px;
-  border: 1px solid #e1e7f0;
-  border-radius: 10px;
-  background: #fafcff;
-}
-
-.settings-device-row div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.settings-device-row strong {
-  color: #111827;
-  font-size: 17px;
-  font-weight: 900;
-}
-
-.settings-device-row span {
-  color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 650;
 }
 
@@ -8721,7 +8862,7 @@ a:hover {
 
 .settings-page--refined .settings-toggle__description {
   color: #4f5f73;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .settings-preview {
@@ -8748,7 +8889,7 @@ a:hover {
 
 .settings-preview__header span {
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 650;
 }
 
@@ -8823,7 +8964,7 @@ a:hover {
   align-items: center;
   padding: 5px 9px;
   border-radius: 999px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 850;
 }
 
@@ -8843,28 +8984,6 @@ a:hover {
   border: 1px solid #d6dde8;
   background: #f3f6fa;
   color: #364152;
-}
-
-.settings-info-strip {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.settings-info-strip span,
-.settings-info-strip a {
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  padding: 10px 12px;
-  border: 1px solid #cfe0f7;
-  border-radius: 9px;
-  background: #fff;
-  color: #24415f;
-  font-size: 15px;
-  font-weight: 750;
-  line-height: 1.4;
 }
 
 .settings-notification-groups {
@@ -8894,7 +9013,7 @@ a:hover {
 .settings-notification-group__header p {
   margin: 6px 0 12px;
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 650;
   line-height: 1.5;
 }
@@ -8954,7 +9073,7 @@ a:hover {
 .settings-consent-card p {
   margin: 7px 0 0;
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 650;
   line-height: 1.5;
 }
@@ -8972,7 +9091,7 @@ a:hover {
   border-radius: 8px;
   background: #fff;
   color: #374151;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.5;
 }
@@ -9034,14 +9153,14 @@ a:hover {
   background: #fff;
   color: #17365f;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 850;
   cursor: pointer;
 }
 
 .settings-policy-highlight {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 10px;
 }
 
@@ -9078,7 +9197,7 @@ a:hover {
 .settings-policy-featured span,
 .settings-policy-featured small {
   color: #4b5563;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 650;
   line-height: 1.45;
 }
@@ -9108,8 +9227,8 @@ a:hover {
 
 .settings-danger-card--refined {
   padding: 22px;
-  border-color: #efc7c7;
-  background: #fff5f5;
+  border-color: #d9e2ef;
+  background: #fbfdff;
 }
 
 .settings-danger-card--refined h3 {
@@ -9118,6 +9237,39 @@ a:hover {
 
 .settings-danger-card--refined .settings-button {
   align-self: end;
+}
+
+.settings-withdrawal-accordion {
+  margin-top: 14px;
+  border: 1px solid #d9e2ef;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.settings-withdrawal-accordion summary {
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  color: #17365f;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.settings-withdrawal-accordion summary:focus-visible {
+  outline: 3px solid rgba(47, 125, 246, 0.24);
+  outline-offset: 3px;
+}
+
+.settings-withdrawal-accordion__body {
+  padding: 0 16px 16px;
+  border-top: 1px solid #e5edf7;
+}
+
+.settings-withdrawal-accordion__body > p {
+  margin-top: 14px;
 }
 
 .settings-danger-checklist {
@@ -9133,13 +9285,66 @@ a:hover {
   display: flex;
   align-items: center;
   padding: 9px 12px;
-  border: 1px solid #f0caca;
+  border: 1px solid #d9e2ef;
   border-radius: 8px;
-  background: #fff;
-  color: #513333;
-  font-size: 15px;
+  background: #f8fbff;
+  color: #263244;
+  font-size: 16px;
   font-weight: 750;
   line-height: 1.4;
+}
+
+.settings-withdrawal-retention {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.settings-withdrawal-retention__item {
+  min-height: 116px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #d9e2ef;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.settings-withdrawal-retention__item > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings-withdrawal-retention__item strong {
+  min-width: 0;
+  color: #111827;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.settings-withdrawal-retention__item > span {
+  display: block;
+  color: #374151;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.settings-danger-policy-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  margin-top: 12px;
+  color: #0b5fd3;
+  font-size: 16px;
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .settings-ops-details--compact {
@@ -9149,7 +9354,7 @@ a:hover {
 
 .settings-page--refined .settings-status-badge {
   min-height: 32px;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .settings-page--refined .settings-status-badge--warning {
@@ -9202,10 +9407,11 @@ a:hover {
   .settings-page__menu--refined,
   .settings-overview,
   .settings-provider-grid,
-  .settings-info-strip,
   .settings-consent-grid,
   .settings-support-priority,
   .settings-policy-highlight,
+  .settings-dialog__notice-list,
+  .settings-withdrawal-retention,
   .settings-danger-checklist {
     grid-template-columns: 1fr;
   }
@@ -9365,6 +9571,199 @@ html[data-bw-reduce-motion='on'] *::after {
   transition-duration: 0.001ms !important;
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-bw-font-size='large'] .app-frame {
+  font-size: 18px;
+}
+
+html[data-bw-font-size='xlarge'] .app-frame {
+  font-size: 20px;
+}
+
+html[data-bw-font-size='large'] .app-frame :where(h1) {
+  font-size: max(1em, 32px);
+}
+
+html[data-bw-font-size='xlarge'] .app-frame :where(h1) {
+  font-size: max(1em, 36px);
+}
+
+html[data-bw-font-size='large'] .app-frame :where(h2) {
+  font-size: max(1em, 25px);
+}
+
+html[data-bw-font-size='xlarge'] .app-frame :where(h2) {
+  font-size: max(1em, 28px);
+}
+
+html[data-bw-font-size='large'] .app-frame :where(h3, strong) {
+  font-size: max(1em, 19px);
+}
+
+html[data-bw-font-size='xlarge'] .app-frame :where(h3, strong) {
+  font-size: max(1em, 21px);
+}
+
+html[data-bw-font-size='large'] .app-frame :where(
+  p,
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  label,
+  legend,
+  summary,
+  dt,
+  dd,
+  li,
+  small,
+  th,
+  td,
+  figcaption
+),
+html[data-bw-font-size='large'] .app-frame span:not([aria-hidden='true']) {
+  font-size: max(1em, 18px);
+}
+
+html[data-bw-font-size='xlarge'] .app-frame :where(
+  p,
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  label,
+  legend,
+  summary,
+  dt,
+  dd,
+  li,
+  small,
+  th,
+  td,
+  figcaption
+),
+html[data-bw-font-size='xlarge'] .app-frame span:not([aria-hidden='true']) {
+  font-size: max(1em, 20px);
+}
+
+html[data-bw-font-size='large'] .app-frame :where(button, a, input, select, textarea) {
+  line-height: 1.35;
+}
+
+html[data-bw-font-size='xlarge'] .app-frame :where(button, a, input, select, textarea) {
+  line-height: 1.4;
+}
+
+html[data-bw-contrast='on'] {
+  --bg-top: #ffffff;
+  --bg-mid: #ffffff;
+  --bg-bottom: #ffffff;
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --line: #334155;
+  --text-main: #0f172a;
+  --text-sub: #1f2937;
+  --primary: #003ea8;
+  --primary-strong: #002e7d;
+  --danger: #9f1239;
+  --success: #065f46;
+  --warning: #7c2d12;
+}
+
+html[data-bw-contrast='on'] body,
+html[data-bw-contrast='on'] .app-frame,
+html[data-bw-contrast='on'] .app-frame__main,
+html[data-bw-contrast='on'] :where(
+  .main-page,
+  .jobs-page,
+  .accessibility-map,
+  .profile-page,
+  .settings-page,
+  .policy-detail-page,
+  .terms-page,
+  .privacy-page,
+  .not-found-page
+) {
+  color: #0f172a;
+  background-color: #ffffff;
+}
+
+html[data-bw-contrast='on'] .app-frame :where(
+  p,
+  span:not([aria-hidden='true']),
+  small,
+  dt,
+  dd,
+  li,
+  label,
+  legend,
+  summary
+) {
+  color: #0f172a;
+}
+
+html[data-bw-contrast='on'] .app-frame :where(
+  a,
+  button,
+  input,
+  select,
+  textarea
+) {
+  color: #003ea8;
+}
+
+html[data-bw-contrast='on'] .app-frame :where(
+  .home-summary-item,
+  .home-job-card,
+  .home-map-card,
+  .home-accessibility-summary,
+  .jobs-control-card,
+  .jobs-filter,
+  .jobs-list-panel,
+  .jobs-detail,
+  .jobs-feedback,
+  .jobs-profile-banner,
+  .jobs-card,
+  .accessibility-map__filter-panel,
+  .accessibility-map__map-panel,
+  .accessibility-map__detail-panel,
+  .accessibility-map__info-card,
+  .accessibility-map__score-card,
+  .accessibility-map__muted-box,
+  .profile-section-panel,
+  .profile-shell,
+  .settings-section,
+  .settings-summary-card,
+  .settings-toggle,
+  .settings-radio-group,
+  .settings-profile-card,
+  .settings-account-panel,
+  .settings-provider-card,
+  .settings-consent-card,
+  .settings-support-card,
+  .settings-contact-card,
+  .settings-policy-featured,
+  .settings-policy-accordion,
+  .settings-danger-card,
+  .policy-detail-page__content,
+  .not-found-page__content
+) {
+  border-color: #334155 !important;
+  box-shadow: none !important;
+}
+
+html[data-bw-contrast='on'] .app-frame :where(.primary-button, .home-button--primary, .home-apply-button, .settings-button--primary) {
+  border-color: #002e7d;
+  background: #003ea8;
+  color: #ffffff;
+}
+
+html[data-bw-screen-reader-mode='on'] .app-frame :where(p, li, dd, dt, label, summary, button, a) {
+  line-height: 1.85;
 }
 
 html[data-bw-font-size='large'] .settings-page--refined .settings-section__header h2,
@@ -9442,14 +9841,6 @@ html[data-bw-map-color-assist='on'] .accessibility-map__marker {
   box-shadow:
     inset 0 0 0 2px rgba(255, 255, 255, 0.72),
     0 0 0 2px rgba(17, 24, 39, 0.22);
-}
-
-html[data-bw-show-map-list='off'] .accessibility-map__layout {
-  grid-template-columns: minmax(520px, 1fr) 440px;
-}
-
-html[data-bw-show-map-list='off'] .accessibility-map__filter-panel {
-  display: none;
 }
 
 html[data-bw-screen-reader-mode='on'] .settings-page--refined .settings-toggle__description,
@@ -9577,7 +9968,7 @@ html[data-bw-screen-reader-mode='on'] .settings-page--refined .settings-section_
 
 .policy-detail-page__header dt {
   color: #667085;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
 }
 

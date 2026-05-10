@@ -6,13 +6,17 @@ import facebookIcon from '../../assets/footer/facebook-social.png';
 import instagramIcon from '../../assets/footer/insta-social.png';
 import twitterIcon from '../../assets/footer/twitter-social.png';
 import youtubeIcon from '../../assets/footer/youtube-social.png';
+import { getPolicyPath } from '../../config/policyDocuments';
 import { ROUTE_PATHS } from '../../config/routes';
+import { useLocale } from '../../i18n/LocaleContext';
 
 const footerPolicies = [
-  { id: 'terms', label: '이용약관', to: ROUTE_PATHS.terms },
-  { id: 'privacy', label: '개인정보처리방침', to: ROUTE_PATHS.privacy },
-  { id: 'accessibility', label: '접근성 정책' },
-  { id: 'data', label: '데이터 관리정책' }
+  { id: 'terms', labelKey: 'footer.terms', to: ROUTE_PATHS.terms },
+  { id: 'privacy-policy', labelKey: 'footer.privacy', to: ROUTE_PATHS.privacy },
+  { id: 'privacy-consent', labelKey: 'footer.privacyConsent', to: getPolicyPath('privacy-consent') },
+  { id: 'marketing-consent', labelKey: 'footer.marketingConsent', to: getPolicyPath('marketing-consent') },
+  { id: 'third-party', labelKey: 'footer.thirdParty', to: getPolicyPath('third-party') },
+  { id: 'outsourcing', labelKey: 'footer.outsourcing', to: getPolicyPath('outsourcing') }
 ];
 
 const footerSocials = [
@@ -24,6 +28,8 @@ const footerSocials = [
 ];
 
 export function AppFooter() {
+  const { localizePath, t } = useLocale();
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -33,20 +39,20 @@ export function AppFooter() {
       <div className="app-footer__inner">
         <div className="app-footer__top">
           <div className="app-footer__brand-group">
-            <button className="app-footer__brand" type="button" onClick={scrollToTop} aria-label="화면 맨 위로 이동">
-              <img className="app-footer__logo" src={logo} alt="" aria-hidden="true" />
+            <button className="app-footer__brand" type="button" onClick={scrollToTop} aria-label={t('footer.backToTop')}>
+              <img className="app-footer__logo" src={logo} alt="Bridgework 로고 아이콘" />
               <img className="app-footer__logo-text" src={logoText} alt="Bridgework" />
             </button>
             <p className="app-footer__description">
-              노동을 잇는 다리, 브릿지워크
+              {t('footer.description')}
             </p>
           </div>
 
-          <ul className="app-footer__social-list" aria-label="Bridgework 소셜 채널">
+          <ul className="app-footer__social-list" aria-label={t('footer.socials')}>
             {footerSocials.map((social) => (
               <li key={social.id}>
                 <button className="app-footer__social-item" type="button" aria-label={social.label}>
-                  <img src={social.icon} alt="" aria-hidden="true" />
+                  <img src={social.icon} alt={`${social.label} 아이콘`} />
                 </button>
               </li>
             ))}
@@ -54,10 +60,10 @@ export function AppFooter() {
         </div>
 
         <div className="app-footer__bottom">
-          <div className="app-footer__policy-list" aria-label="Bridgework 정책">
+          <div className="app-footer__policy-list" aria-label={t('footer.policies')}>
             {footerPolicies.map((policy) => (
-              <Link key={policy.id} className="app-footer__policy" to={policy.to || '#'}>
-                {policy.label}
+              <Link key={policy.id} className="app-footer__policy" to={localizePath(policy.to)}>
+                {t(policy.labelKey)}
               </Link>
             ))}
           </div>

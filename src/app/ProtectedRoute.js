@@ -3,10 +3,12 @@ import { useAuth } from '../auth/AuthContext';
 import { LoadingView } from '../components/common/LoadingView';
 import { PageShell } from '../components/common/PageShell';
 import { ROUTE_PATHS } from '../config/routes';
+import { useLocale } from '../i18n/LocaleContext';
 
 export function ProtectedRoute() {
   const { isAuthenticated, isInitializing } = useAuth();
   const location = useLocation();
+  const { localizePath } = useLocale();
 
   if (isInitializing) {
     return (
@@ -17,7 +19,7 @@ export function ProtectedRoute() {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to={ROUTE_PATHS.login} replace state={{ from: location }} />;
+    return <Navigate to={localizePath(ROUTE_PATHS.login)} replace state={{ from: location }} />;
   }
 
   return <Outlet />;

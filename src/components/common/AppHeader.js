@@ -7,12 +7,14 @@ import { useAuth } from '../../auth/AuthContext';
 import { LoginModal } from '../auth/LoginModal';
 import { accessibilityMapMockData } from '../../config/accessibilityMapMockData';
 import { ROUTE_PATHS } from '../../config/routes';
+import { useLocale } from '../../i18n/LocaleContext';
 
 const BRIDGEWORK_HOME_URL = 'https://www.bridgework.cloud/';
 
 export function AppHeader({ showMapSearch = false }) {
   const navigate = useNavigate();
   const { isAuthenticated, isInitializing, logout } = useAuth();
+  const { locale, supportedLocales, localizePath, switchLocale, t } = useLocale();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
@@ -28,7 +30,7 @@ export function AppHeader({ showMapSearch = false }) {
     try {
       setIsLoggingOut(true);
       await logout();
-      navigate(ROUTE_PATHS.root, { replace: true });
+      navigate(localizePath(ROUTE_PATHS.root), { replace: true });
     } finally {
       setIsLoggingOut(false);
     }
@@ -36,8 +38,8 @@ export function AppHeader({ showMapSearch = false }) {
 
   return (
     <header className="app-header">
-      <a className="app-header__brand" href={BRIDGEWORK_HOME_URL} aria-label="Bridgework 홈페이지로 이동">
-        <img className="app-header__logo" src={logo} alt="" aria-hidden="true" />
+      <a className="app-header__brand" href={BRIDGEWORK_HOME_URL} aria-label={t('header.brandLabel')}>
+        <img className="app-header__logo" src={logo} alt="Bridgework 로고 아이콘" />
         <img className="app-header__logo-text" src={logoText} alt="Bridgework" />
       </a>
 
@@ -45,24 +47,40 @@ export function AppHeader({ showMapSearch = false }) {
         <form
           className="app-header__map-search"
           role="search"
-          aria-label="접근성 지도 출발지 검색"
+          aria-label={t('header.searchLabel')}
           onSubmit={handleSearchSubmit}
         >
           <label className="sr-only" htmlFor="app-header-map-search">
-            접근성 지도 출발지 입력
+            {t('header.searchInputLabel')}
           </label>
           <input
             id="app-header-map-search"
             type="search"
             placeholder={accessibilityMapMockData.searchPlaceholder}
           />
-          <button className="app-header__search-button" type="submit" aria-label="출발지 검색">
-            <img src={searchIcon} alt="" aria-hidden="true" />
+          <button className="app-header__search-button" type="submit" aria-label={t('header.searchButtonLabel')}>
+            <img src={searchIcon} alt="검색 아이콘" />
           </button>
         </form>
       ) : null}
 
-      <div className="app-header__actions" aria-label="사용자 메뉴">
+      <div className="app-header__actions" aria-label={t('header.userMenuLabel')}>
+        <label className="sr-only" htmlFor="app-header-locale">
+          {t('common.languageSelect')}
+        </label>
+        <select
+          id="app-header-locale"
+          className="app-header__locale-select"
+          value={locale}
+          aria-label={t('common.languageSelect')}
+          onChange={(event) => switchLocale(event.target.value)}
+        >
+          {supportedLocales.map((item) => (
+            <option key={item.code} value={item.code}>
+              {item.shortLabel}
+            </option>
+          ))}
+        </select>
         {isAuthenticated ? (
           <button
             className="app-header__auth-button app-header__auth-button--logout"
@@ -70,7 +88,7 @@ export function AppHeader({ showMapSearch = false }) {
             onClick={handleLogout}
             disabled={isLoggingOut}
           >
-            {isLoggingOut ? '로그아웃 중' : '로그아웃'}
+            {isLoggingOut ? t('header.loggingOut') : t('header.logout')}
           </button>
         ) : (
           <button
@@ -79,7 +97,7 @@ export function AppHeader({ showMapSearch = false }) {
             onClick={() => setIsLoginModalOpen(true)}
             disabled={isInitializing}
           >
-            회원가입/로그인
+            {t('header.login')}
           </button>
         )}
       </div>

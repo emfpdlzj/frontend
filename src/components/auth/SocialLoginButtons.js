@@ -40,7 +40,7 @@ export function SocialLoginButtons({ onError }) {
           className={provider.className}
           onClick={() => handleLoginClick(provider.key)}
         >
-          <img className="social-button__logo" src={provider.logo} alt="" aria-hidden="true" />
+          <img className="social-button__logo" src={provider.logo} alt={`${provider.label} 로고`} />
           <span>{provider.label}</span>
         </button>
       ))}

@@ -4,8 +4,10 @@ import logoBig from '../../assets/logo_big.png';
 import { SocialLoginButtons } from './SocialLoginButtons';
 import { StatusMessage } from '../common/StatusMessage';
 import { ROUTE_PATHS } from '../../config/routes';
+import { useLocale } from '../../i18n/LocaleContext';
 
 export function LoginModal({ onClose }) {
+  const { localizePath } = useLocale();
   const closeButtonRef = useRef(null);
   const [error, setError] = useState('');
 
@@ -50,8 +52,8 @@ export function LoginModal({ onClose }) {
         </button>
 
         <div className="login-modal__body">
-          <div className="login-modal__brand-mark" aria-hidden="true">
-            <img className="login-modal__logo" src={logoBig} alt="" />
+          <div className="login-modal__brand-mark">
+            <img className="login-modal__logo" src={logoBig} alt="Bridgework 로고" />
           </div>
           <div className="login-modal__heading">
             <h2 id="login-modal-title" className="login-modal__title">BridgeWork</h2>
@@ -66,11 +68,11 @@ export function LoginModal({ onClose }) {
           <p className="login-modal__signup-note">처음 이용해도 별도 가입 절차 없이 바로 시작할 수 있어요.</p>
           <p className="login-modal__notice">
             회원가입을 진행하면{' '}
-            <Link to={ROUTE_PATHS.terms} onClick={onClose}>
+            <Link to={localizePath(ROUTE_PATHS.terms)} onClick={onClose}>
               이용약관
             </Link>{' '}
             및{' '}
-            <Link to={ROUTE_PATHS.privacy} onClick={onClose}>
+            <Link to={localizePath(ROUTE_PATHS.privacy)} onClick={onClose}>
               개인정보 처리방침
             </Link>
             에 동의하게 됩니다.

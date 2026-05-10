@@ -10,6 +10,7 @@ import {
 } from '../cache/recommendationCache';
 import { NAVER_MAP_CONFIG } from '../config/appConfig';
 import { ROUTE_PATHS } from '../config/routes';
+import { useLocale } from '../i18n/LocaleContext';
 import { loadNaverMapScript } from '../utils/naverMapSdk';
 
 const NAVER_MAP_SCRIPT_ID = 'bridgework-naver-map-sdk';
@@ -402,6 +403,7 @@ function StatusBadge({ children, tone = 'neutral' }) {
 }
 
 function ShortcutLink({ shortcut }) {
+  const { localizePath } = useLocale();
   const content = (
     <>
       <span aria-hidden="true">{shortcut.icon}</span>
@@ -418,13 +420,15 @@ function ShortcutLink({ shortcut }) {
   }
 
   return (
-    <Link className="home-shortcut" to={shortcut.to}>
+    <Link className="home-shortcut" to={localizePath(shortcut.to)}>
       {content}
     </Link>
   );
 }
 
 function HomeFeedback({ status, error, variant = 'block' }) {
+  const { localizePath } = useLocale();
+
   if (status === 'loading' || status === 'refetching') {
     return <div className="home-feedback" role="status">내 프로필 기준 추천 공고를 불러오는 중입니다.</div>;
   }
@@ -433,7 +437,7 @@ function HomeFeedback({ status, error, variant = 'block' }) {
     return (
       <div className={`home-feedback${variant === 'inline' ? ' is-inline' : ''}`} role="status">
         <span>로그인하면 프로필 기반 추천 공고를 확인할 수 있습니다.</span>
-        <Link className="home-feedback__link" to={ROUTE_PATHS.login}>
+        <Link className="home-feedback__link" to={localizePath(ROUTE_PATHS.login)}>
           로그인하기
         </Link>
       </div>
@@ -468,6 +472,7 @@ function HomeFeedback({ status, error, variant = 'block' }) {
 }
 
 export function MainPage() {
+  const { localizePath } = useLocale();
   const { status, error, profile, jobs, aiEnabled } = useHomeRecommendations();
   const visibleJobs = useMemo(() => jobs.slice(0, 5), [jobs]);
   const isLoggedOut = status === 'disabled';
@@ -516,7 +521,7 @@ export function MainPage() {
             <a className="home-button home-button--primary" href="#recommended-jobs-title">
               추천 공고 보기
             </a>
-            <Link className="home-button home-button--ghost" to={ROUTE_PATHS.accessibilityMap}>
+            <Link className="home-button home-button--ghost" to={localizePath(ROUTE_PATHS.accessibilityMap)}>
               지도에서 탐색
             </Link>
           </div>
@@ -542,7 +547,7 @@ export function MainPage() {
                 <span className="home-section-count">
                   {isLoggedOut ? '로그인 필요' : `${jobs.length}건 중 ${visibleJobs.length}건`}
                 </span>
-                <Link className="home-more-link" to={isLoggedOut ? ROUTE_PATHS.login : ROUTE_PATHS.jobs}>
+                <Link className="home-more-link" to={localizePath(isLoggedOut ? ROUTE_PATHS.login : ROUTE_PATHS.jobs)}>
                   더보기
                 </Link>
               </div>
@@ -629,7 +634,7 @@ export function MainPage() {
 
             {canShowJobs && jobs.length > visibleJobs.length ? (
               <div className="home-more-row">
-                <Link className="home-button home-button--secondary" to={ROUTE_PATHS.jobs}>
+                <Link className="home-button home-button--secondary" to={localizePath(ROUTE_PATHS.jobs)}>
                   추천 공고 더보기
                 </Link>
               </div>
@@ -667,7 +672,7 @@ export function MainPage() {
                 <span><i className="is-caution" /> 확인 필요</span>
                 <span><i className="is-agency" /> 지원기관</span>
               </div>
-              <Link className="home-button home-button--secondary home-button--wide" to={ROUTE_PATHS.accessibilityMap}>
+              <Link className="home-button home-button--secondary home-button--wide" to={localizePath(ROUTE_PATHS.accessibilityMap)}>
                 지도에서 자세히 보기
               </Link>
             </section>

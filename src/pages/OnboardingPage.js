@@ -6,6 +6,7 @@ import stepCompleteIcon from '../assets/signup/item-completion.png';
 import stepCurrentIcon from '../assets/signup/item-ing.png';
 import { useAuth } from '../auth/AuthContext';
 import { ROUTE_PATHS } from '../config/routes';
+import { useLocale } from '../i18n/LocaleContext';
 import { LoadingView } from '../components/common/LoadingView';
 import { StatusMessage } from '../components/common/StatusMessage';
 import { BirthDateField } from '../components/common/BirthDateField';
@@ -277,6 +278,7 @@ const toSignupProfile = (form) => {
 
 export function OnboardingPage() {
   const navigate = useNavigate();
+  const { localizePath } = useLocale();
   const { pendingSignup, completeSignup } = useAuth();
   const signupOptions = useSignupOptions();
   const [currentStep, setCurrentStep] = useState(1);
@@ -397,8 +399,8 @@ export function OnboardingPage() {
       {isComplete ? (
         <CompletionPanel
           summary={getCompletionSummary(form)}
-          onBack={() => navigate(ROUTE_PATHS.accessibilityMap)}
-          onProfile={() => navigate(ROUTE_PATHS.myProfile)}
+          onBack={() => navigate(localizePath(ROUTE_PATHS.accessibilityMap))}
+          onProfile={() => navigate(localizePath(ROUTE_PATHS.myProfile))}
         />
       ) : (
         <section className="onboarding-main" aria-labelledby="onboarding-title">
@@ -489,7 +491,7 @@ function StepRail({ currentStep }) {
           return (
             <li key={step.id} className={`onboarding-rail__item is-${status}`} aria-current={status === 'current' ? 'step' : undefined}>
               <span className="onboarding-rail__marker">
-                <img src={markerIcon} alt="" aria-hidden="true" />
+                <img src={markerIcon} alt={`${step.title} ${status === 'complete' ? '완료' : status === 'current' ? '진행 중' : '예정'} 아이콘`} />
               </span>
               <span className="onboarding-rail__text">
                 <span>{step.id}단계</span>
@@ -921,8 +923,8 @@ function JobPickerColumn({ title, description, children }) {
 function CompletionPanel({ summary, onBack, onProfile }) {
   return (
     <section className="onboarding-complete" aria-labelledby="onboarding-complete-title">
-      <div className="onboarding-complete__icon" aria-hidden="true">
-        <img src={checkCircleIcon} alt="" />
+      <div className="onboarding-complete__icon">
+        <img src={checkCircleIcon} alt="입력 완료 아이콘" />
       </div>
       <h1 id="onboarding-complete-title">기본 정보 입력 완료!</h1>
       <p>

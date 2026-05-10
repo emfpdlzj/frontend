@@ -6,12 +6,12 @@ import warningIcon from '../../assets/accessibility-map/warning-icon.svg';
 
 function MetaIcon({ type }) {
   if (type === 'time') {
-    return <img className="accessibility-map__meta-icon" src={timeIcon} alt="" aria-hidden="true" />;
+    return <img className="accessibility-map__meta-icon" src={timeIcon} alt="이동 시간 아이콘" />;
   }
   if (type === 'transfer') {
-    return <img className="accessibility-map__meta-icon" src={transferIcon} alt="" aria-hidden="true" />;
+    return <img className="accessibility-map__meta-icon" src={transferIcon} alt="환승 횟수 아이콘" />;
   }
-  return <img className="accessibility-map__meta-icon is-walk" src={walkIcon} alt="" aria-hidden="true" />;
+  return <img className="accessibility-map__meta-icon is-walk" src={walkIcon} alt="도보 이동 아이콘" />;
 }
 
 function DetailStatusBadge({ label }) {
@@ -208,7 +208,7 @@ export function AccessibilityMapDetailPanel({
                   <ul className="accessibility-map__accessibility-list">
                     {[...recommendationReasons, ...cautionPoints, ...checklist].map((item, index) => (
                       <li key={`${item}-${index}`}>
-                        <img className="accessibility-map__warning-icon" src={warningIcon} alt="" aria-hidden="true" />
+                        <img className="accessibility-map__warning-icon" src={warningIcon} alt="확인 필요 아이콘" />
                         <div>
                           <strong>{index < recommendationReasons.length ? '추천 이유' : index < recommendationReasons.length + cautionPoints.length ? '주의점' : '체크리스트'}</strong>
                           <p>{item}</p>
@@ -226,7 +226,7 @@ export function AccessibilityMapDetailPanel({
               <ul className="accessibility-map__accessibility-list">
                 {accessibility.detailItems.map(([title, description, status]) => (
                   <li key={`${title}-${status}`}>
-                    <img className="accessibility-map__warning-icon" src={warningIcon} alt="" aria-hidden="true" />
+                    <img className="accessibility-map__warning-icon" src={warningIcon} alt="접근성 상태 아이콘" />
                     <div>
                       <strong>{title}</strong>
                       <p>{description}</p>
@@ -238,7 +238,7 @@ export function AccessibilityMapDetailPanel({
             </section>
 
             <div className="accessibility-map__source-note">
-              <img src={infoIcon} alt="" aria-hidden="true" />
+              <img src={infoIcon} alt="데이터 출처 안내 아이콘" />
               <span><strong>데이터 출처</strong> · {accessibility.source.replace('데이터 출처 · ', '')}</span>
             </div>
           </>

@@ -8,23 +8,30 @@ import profileIcon from '../../assets/tab/profile_icon.png';
 import settingIcon from '../../assets/tab/setting_icon.png';
 import { useAuth } from '../../auth/AuthContext';
 import { ROUTE_PATHS } from '../../config/routes';
+import { useLocale } from '../../i18n/LocaleContext';
 import { LoginModal } from '../auth/LoginModal';
 
 const primaryTabs = [
-  { id: 'home', label: '홈', icon: homeIcon, to: ROUTE_PATHS.root },
-  { id: 'map', label: '접근성 지도', icon: mapIcon, to: ROUTE_PATHS.accessibilityMap },
-  { id: 'jobs', label: '퀵 맞춤 일자리 추천', icon: docsIcon, to: ROUTE_PATHS.jobs },
-  { id: 'business', label: '내 정보', icon: businesscardIcon, to: ROUTE_PATHS.profile }
+  { id: 'home', labelKey: 'nav.home', icon: homeIcon, to: ROUTE_PATHS.root },
+  { id: 'map', labelKey: 'nav.map', icon: mapIcon, to: ROUTE_PATHS.accessibilityMap },
+  { id: 'jobs', labelKey: 'nav.jobs', icon: docsIcon, to: ROUTE_PATHS.jobs },
+  { id: 'business', labelKey: 'nav.business', icon: businesscardIcon, to: ROUTE_PATHS.profile }
 ];
 
 const secondaryTabs = [
-  { id: 'profile', label: '사용자 메뉴', icon: profileIcon, type: 'user-menu' },
-  { id: 'settings', label: '설정', icon: settingIcon, to: ROUTE_PATHS.settings }
+  { id: 'profile', labelKey: 'nav.profile', icon: profileIcon, type: 'user-menu' },
+  { id: 'settings', labelKey: 'nav.settings', icon: settingIcon, to: ROUTE_PATHS.settings }
 ];
+
+function TabIcon({ item, label }) {
+  return <img src={item.icon} alt={`${label} 아이콘`} />;
+}
 
 function UserMenuTab({ item, onRequireLogin }) {
   const navigate = useNavigate();
   const { isAuthenticated, logout } = useAuth();
+  const { localizePath, t } = useLocale();
+  const label = t(item.labelKey);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ left: 80, top: 0 });
@@ -132,7 +139,7 @@ function UserMenuTab({ item, onRequireLogin }) {
     try {
       setIsLoggingOut(true);
       await logout();
-      navigate(ROUTE_PATHS.root, { replace: true });
+      navigate(localizePath(ROUTE_PATHS.root), { replace: true });
     } finally {
       setIsLoggingOut(false);
       setIsMenuOpen(false);
@@ -151,20 +158,20 @@ function UserMenuTab({ item, onRequireLogin }) {
         ref={triggerRef}
         type="button"
         className={`app-tab-nav__link${isMenuOpen ? ' is-active' : ''}`}
-        aria-label={item.label}
+        aria-label={label}
         aria-expanded={isMenuOpen}
         aria-haspopup="menu"
-        title={item.label}
+        title={label}
         onClick={handleTriggerClick}
       >
-        <img src={item.icon} alt="" aria-hidden="true" />
+        <TabIcon item={item} label={label} />
       </button>
 
       {isMenuOpen ? (
         <div
           className="app-tab-nav__logout-popover"
           role="menu"
-          aria-label="사용자 메뉴"
+          aria-label={label}
           style={{ left: menuPosition.left, top: menuPosition.top }}
           onMouseEnter={openMenu}
           onMouseLeave={scheduleCloseMenu}
@@ -176,7 +183,7 @@ function UserMenuTab({ item, onRequireLogin }) {
             onClick={handleLogout}
             disabled={isLoggingOut}
           >
-            {isLoggingOut ? '로그아웃 중' : '로그아웃'}
+            {isLoggingOut ? t('header.loggingOut') : t('header.logout')}
           </button>
         </div>
       ) : null}
@@ -186,6 +193,8 @@ function UserMenuTab({ item, onRequireLogin }) {
 
 function TabLink({ item, onRequireLogin }) {
   const { isAuthenticated } = useAuth();
+  const { localizePath, t } = useLocale();
+  const label = t(item.labelKey);
 
   if (item.type === 'user-menu') {
     return <UserMenuTab item={item} onRequireLogin={onRequireLogin} />;
@@ -193,8 +202,8 @@ function TabLink({ item, onRequireLogin }) {
 
   if (!item.to) {
     return (
-      <button type="button" className="app-tab-nav__link" aria-label={item.label} title={item.label}>
-        <img src={item.icon} alt="" aria-hidden="true" />
+      <button type="button" className="app-tab-nav__link" aria-label={label} title={label}>
+        <TabIcon item={item} label={label} />
       </button>
     );
   }
@@ -204,33 +213,34 @@ function TabLink({ item, onRequireLogin }) {
       <button
         type="button"
         className="app-tab-nav__link"
-        aria-label={`${item.label} 로그인 필요`}
-        title={item.label}
+        aria-label={`${label} ${t('nav.loginRequired')}`}
+        title={label}
         onClick={onRequireLogin}
       >
-        <img src={item.icon} alt="" aria-hidden="true" />
+        <TabIcon item={item} label={label} />
       </button>
     );
   }
 
   return (
     <NavLink
-      to={item.to}
+      to={localizePath(item.to)}
       className={({ isActive }) => `app-tab-nav__link${isActive ? ' is-active' : ''}`}
-      aria-label={item.label}
-      title={item.label}
+      aria-label={label}
+      title={label}
     >
-      <img src={item.icon} alt="" aria-hidden="true" />
+      <TabIcon item={item} label={label} />
     </NavLink>
   );
 }
 
 export function AppTabNavigation() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const { t } = useLocale();
 
   return (
     <>
-      <nav className="app-tab-nav" aria-label="주요 메뉴">
+      <nav className="app-tab-nav" aria-label={t('nav.mainMenu')}>
         <div className="app-tab-nav__group">
           {primaryTabs.map((item) => (
             <TabLink key={item.id} item={item} onRequireLogin={() => setIsLoginModalOpen(true)} />

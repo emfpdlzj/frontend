@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { profileApi } from '../api/profileApi';
+import { clearRecommendationCache } from '../cache/recommendationCache';
+import {
+  PROFILE_SCORING_UPDATED_EVENT,
+  notifyProfileScoringDataChanged,
+  readSelectedProfilePreference,
+  writeSelectedProfilePreference
+} from '../config/profileSelection';
 
 const initialState = {
   status: 'idle',
@@ -32,7 +39,7 @@ const sortProfiles = (profiles) =>
 export function useProfiles() {
   const { callWithAuth, isAuthenticated } = useAuth();
   const [state, setState] = useState(initialState);
-  const selectedProfileIdRef = useRef('');
+  const selectedProfileIdRef = useRef(readSelectedProfilePreference());
 
   useEffect(() => {
     selectedProfileIdRef.current = state.selectedProfileId;
@@ -63,6 +70,7 @@ export function useProfiles() {
           profiles.some((profile) => getProfileId(profile) === String(preferredProfileId))
             ? String(preferredProfileId)
             : fallbackProfileId;
+        writeSelectedProfilePreference(nextSelectedProfileId);
 
         setState((prev) => ({
           ...prev,
@@ -92,6 +100,29 @@ export function useProfiles() {
     },
     [callWithAuth, isAuthenticated]
   );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleProfileScoringUpdate = (event) => {
+      const changedProfileId = String(event.detail?.profileId || '');
+
+      if (!changedProfileId || changedProfileId !== selectedProfileIdRef.current) {
+        return;
+      }
+
+      clearRecommendationCache();
+      loadProfiles(undefined, selectedProfileIdRef.current);
+    };
+
+    window.addEventListener(PROFILE_SCORING_UPDATED_EVENT, handleProfileScoringUpdate);
+
+    return () => {
+      window.removeEventListener(PROFILE_SCORING_UPDATED_EVENT, handleProfileScoringUpdate);
+    };
+  }, [loadProfiles]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -149,6 +180,8 @@ export function useProfiles() {
   }, [callWithAuth, isAuthenticated, state.selectedProfileId]);
 
   const selectProfile = useCallback((profileId) => {
+    selectedProfileIdRef.current = String(profileId);
+    writeSelectedProfilePreference(profileId);
     setState((prev) => ({
       ...prev,
       selectedProfileId: String(profileId),
@@ -189,6 +222,7 @@ export function useProfiles() {
   const setDefaultProfile = useCallback(
     async (profileId) => {
       selectedProfileIdRef.current = String(profileId);
+      writeSelectedProfilePreference(profileId);
       return runMutation(
         (accessToken) => profileApi.setDefaultProfile(accessToken, profileId),
         '기본 프로필을 변경했습니다.'
@@ -207,6 +241,7 @@ export function useProfiles() {
 
       if (createdProfileId) {
         selectedProfileIdRef.current = createdProfileId;
+        writeSelectedProfilePreference(createdProfileId);
         setState((prev) => ({
           ...prev,
           selectedProfileId: createdProfileId
@@ -221,10 +256,14 @@ export function useProfiles() {
   const updateProfile = useCallback(
     async (profileId, payload) => {
       selectedProfileIdRef.current = String(profileId);
-      return runMutation(
+      writeSelectedProfilePreference(profileId);
+      const result = await runMutation(
         (accessToken) => profileApi.updateProfile(accessToken, profileId, payload),
         '프로필을 저장했습니다.'
       );
+      clearRecommendationCache();
+      notifyProfileScoringDataChanged(profileId);
+      return result;
     },
     [runMutation]
   );

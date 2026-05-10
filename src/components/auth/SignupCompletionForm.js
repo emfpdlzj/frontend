@@ -9,7 +9,7 @@ const toInitialForm = (seed) => ({
   gender: '',
   location: '',
   phoneNumber: '',
-  email: seed?.email || ''
+  contactEmail: seed?.contactEmail || ''
 });
 
 export function SignupCompletionForm({ seed, onSubmit, submitting }) {
@@ -52,13 +52,15 @@ export function SignupCompletionForm({ seed, onSubmit, submitting }) {
       return;
     }
 
+    const contactEmail = form.contactEmail.trim();
+
     await onSubmit({
       name: form.name.trim(),
       age: ageValue,
       gender: form.gender,
       location: form.location.trim(),
       phoneNumber: form.phoneNumber.trim(),
-      email: form.email.trim() || null
+      ...(contactEmail ? { contactEmail } : {})
     }).catch((submitError) => {
       setError(submitError.message || '회원가입 완료에 실패했습니다.');
     });
@@ -108,8 +110,8 @@ export function SignupCompletionForm({ seed, onSubmit, submitting }) {
         <Field label="이메일">
           <TextInput
             type="email"
-            value={form.email}
-            onChange={(value) => updateField('email', value)}
+            value={form.contactEmail}
+            onChange={(value) => updateField('contactEmail', value)}
             placeholder="예: user@example.com"
           />
         </Field>

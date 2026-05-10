@@ -12,6 +12,15 @@ export const ROUTE_PATHS = Object.freeze({
   privacy: '/privacy'
 });
 
+export const LOCALIZED_ROUTE_PATHS = Object.freeze(
+  Object.fromEntries(
+    Object.entries(ROUTE_PATHS).map(([key, path]) => [
+      key,
+      path === '/' ? '/:locale' : `/:locale${path}`
+    ])
+  )
+);
+
 export const LEGACY_ROUTE_PATHS = Object.freeze({
   home: '/home',
   meProfile: '/me-profile'

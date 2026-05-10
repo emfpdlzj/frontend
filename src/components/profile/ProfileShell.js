@@ -29,6 +29,28 @@ const sectionRows = [
 const PROFILE_DRAFT_AUTOSAVE_DEBOUNCE_MS = 1000;
 const PROFILE_DRAFT_AUTOSAVE_INTERVAL_MS = 60000;
 const PROFILE_DRAFT_CACHE_TTL_MS = 5 * 60 * 1000;
+const SAFE_PROFILE_DRAFT_FIELDS = [
+  'desiredJob',
+  'commuteRange',
+  'preferredWorkEnvironments',
+  'avoidedWorkEnvironments',
+  'requiredSupports',
+  'careerSummary',
+  'educationSummary',
+  'employmentTypeSummary',
+  'highestEducation',
+  'graduationStatus',
+  'majorCareer',
+  'targetJob',
+  'skills',
+  'certifications',
+  'workAvailability',
+  'workTypes',
+  'expectedSalary',
+  'workTimePreference',
+  'remoteAvailableYn',
+  'mobilityRange'
+];
 
 export function ProfileShell() {
   const {
@@ -147,7 +169,7 @@ export function ProfileShell() {
       });
       setLastAutosavedAt(formatAutosaveTime(cachedDraft.savedAt));
       lastAutosavedSnapshotRef.current = JSON.stringify(cachedDraft.draft);
-      showDraftToast('임시저장된 내용을 불러왔습니다.');
+      showDraftToast('민감 정보를 제외한 임시저장 내용을 불러왔습니다.');
     } else {
       setDraftProfile(baseDraft);
       setLastAutosavedAt('');
@@ -173,10 +195,11 @@ export function ProfileShell() {
       }
 
       const savedAt = Date.now();
+      const safeDraft = toSafeProfileDraft(draftProfile);
       const saved = writeProfileDraftCache(currentDraftStorageKey, {
         mode: isCreateMode ? 'create' : 'edit',
         profileId: selectedProfile?.profileId || null,
-        draft: draftProfile,
+        draft: safeDraft,
         savedAt
       });
 
@@ -188,7 +211,7 @@ export function ProfileShell() {
       lastAutosavedSnapshotRef.current = snapshot;
       setLastAutosavedAt(formatAutosaveTime(savedAt));
       refreshCachedDraftCards();
-      showDraftToast(toastMessage, 'success');
+      showDraftToast(`${toastMessage} 민감 정보는 브라우저에 저장하지 않습니다.`, 'success');
       return true;
     },
     [currentDraftStorageKey, draftProfile, hasAutosaveTarget, isCreateMode, refreshCachedDraftCards, selectedProfile?.profileId, showDraftToast]
@@ -385,7 +408,7 @@ export function ProfileShell() {
               disabled={isMutating || profiles.length >= 3}
               onClick={handleAddProfile}
             >
-              <img src={plusIcon} alt="" aria-hidden="true" />
+              <img src={plusIcon} alt="추가 아이콘" />
               프로필 추가
             </button>
           </div>
@@ -447,7 +470,7 @@ export function ProfileShell() {
               <h1 id="profile-title">
                 {currentProfileTitle}
                 <button type="button" aria-label="프로필 이름 수정" className="profile-edit-button" onClick={() => setActiveSection('basic')}>
-                  <img src={editIcon} alt="" aria-hidden="true" />
+                  <img src={editIcon} alt="수정 아이콘" />
                 </button>
               </h1>
               <label className="profile-default-toggle">
@@ -675,13 +698,21 @@ function getProfileDraftStorageKey(profileId) {
   return `${STORAGE_KEYS.profileDraftAutosave}:${profileId}`;
 }
 
+function toSafeProfileDraft(profile) {
+  return Object.fromEntries(
+    SAFE_PROFILE_DRAFT_FIELDS
+      .filter((field) => Object.prototype.hasOwnProperty.call(profile || {}, field))
+      .map((field) => [field, profile[field]])
+  );
+}
+
 function readProfileDraftCache(storageKey) {
   if (!storageKey || typeof window === 'undefined') {
     return null;
   }
 
   try {
-    const rawCache = window.localStorage.getItem(storageKey);
+    const rawCache = window.sessionStorage.getItem(storageKey);
 
     if (!rawCache) {
       return null;
@@ -712,8 +743,8 @@ function readProfileDraftSummaries() {
   const prefix = `${STORAGE_KEYS.profileDraftAutosave}:`;
   const summaries = [];
 
-  for (let index = 0; index < window.localStorage.length; index += 1) {
-    const storageKey = window.localStorage.key(index);
+  for (let index = 0; index < window.sessionStorage.length; index += 1) {
+    const storageKey = window.sessionStorage.key(index);
 
     if (!storageKey?.startsWith(prefix)) {
       continue;
@@ -742,7 +773,7 @@ function writeProfileDraftCache(storageKey, value) {
   }
 
   try {
-    window.localStorage.setItem(
+    window.sessionStorage.setItem(
       storageKey,
       JSON.stringify({
         version: 1,
@@ -761,7 +792,7 @@ function clearProfileDraftCache(storageKey) {
   }
 
   try {
-    window.localStorage.removeItem(storageKey);
+    window.sessionStorage.removeItem(storageKey);
   } catch {
     // 로컬 임시저장 정리 실패는 실제 프로필 저장 흐름을 막지 않습니다.
   }
@@ -842,7 +873,7 @@ function ProfileCard({ profile, selected = false, hasDraft = false, onSelect }) 
         <p>{hasDraft ? '5분 이내 임시저장 내용 있음' : updatedAtText ? `최종 수정일 ${updatedAtText}` : '최종 수정일 확인 필요'}</p>
       </div>
       <span className="profile-card__more" aria-hidden="true">
-        <img src={moreIcon} alt="" aria-hidden="true" />
+        <img src={moreIcon} alt="더보기 아이콘" />
       </span>
     </button>
   );
@@ -896,8 +927,7 @@ function ProfileTabs({ rows, activeSection, onTabClick, compact = false }) {
                 <img
                   className="profile-tabs__chevron"
                   src={active ? arrowUpWhiteIcon : arrowDownIcon}
-                  alt=""
-                  aria-hidden="true"
+                  alt={active ? '접기 아이콘' : '펼치기 아이콘'}
                 />
               </button>
             );

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { AccessibilityMapCanvas } from '../components/accessibility-map/AccessibilityMapCanvas';
 import { AccessibilityMapDetailPanel } from '../components/accessibility-map/AccessibilityMapDetailPanel';
 import { TrafficFilterPanel } from '../components/accessibility-map/TrafficFilterPanel';
@@ -24,8 +24,6 @@ export function AccessibilityMapPage() {
     hasAppliedConditions,
     mapViewport,
     errorMessage,
-    supportAgencyStatus,
-    supportAgencyErrorMessage,
     supportAgencyCount,
     explanation,
     explanationViewState,
@@ -47,7 +45,7 @@ export function AccessibilityMapPage() {
   } = useAccessibilityMap();
   const [currentLocation, setCurrentLocation] = useState(null);
 
-  useEffect(() => {
+  const requestCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
       return;
     }
@@ -105,13 +103,12 @@ export function AccessibilityMapPage() {
           showProfileSelect={isAiEnabled}
           profiles={profiles}
           selectedProfileId={selectedProfileId}
-          supportAgencyStatus={supportAgencyStatus}
-          supportAgencyErrorMessage={supportAgencyErrorMessage}
           supportAgencyCount={supportAgencyCount}
           currentLocation={currentLocation}
           viewport={viewport}
           viewState={viewState}
           onSelectProfile={setSelectedProfileId}
+          onRequestCurrentLocation={requestCurrentLocation}
           onRetry={reloadRecommendations}
         />
         {viewState === 'success' && selectedJob ? (
@@ -135,6 +132,9 @@ export function AccessibilityMapPage() {
               ) : null}
               {viewState === 'loading' ? (
                 <StatusMessage>지역 접근성 지도 추천을 불러오는 중입니다.</StatusMessage>
+              ) : null}
+              {viewState === 'calculating' ? (
+                <StatusMessage>선택한 프로필 기준으로 접근성 점수를 다시 계산하는 중입니다.</StatusMessage>
               ) : null}
               {viewState === 'error' ? (
                 <StatusMessage kind="error">{errorMessage || '상세 데이터를 불러오지 못했습니다.'}</StatusMessage>

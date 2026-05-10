@@ -1,20 +1,22 @@
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { POLICY_DOCUMENTS, POLICY_DOCUMENT_MAP, getPolicyPath } from '../config/policyDocuments';
 import { ROUTE_PATHS } from '../config/routes';
+import { useLocale } from '../i18n/LocaleContext';
 
 export function PolicyDetailPage() {
   const { policyId } = useParams();
+  const { localizePath } = useLocale();
   const policy = POLICY_DOCUMENT_MAP[policyId];
 
   if (!policy) {
-    return <Navigate to={ROUTE_PATHS.settings} replace />;
+    return <Navigate to={localizePath(ROUTE_PATHS.settings)} replace />;
   }
 
   return (
     <main className="policy-detail-page" aria-labelledby="policy-detail-title">
       <div className="policy-detail-page__layout">
         <aside className="policy-detail-page__side" aria-label="정책 문서 목록">
-          <Link className="policy-detail-page__back" to={`${ROUTE_PATHS.settings}#policies`}>
+          <Link className="policy-detail-page__back" to={localizePath(`${ROUTE_PATHS.settings}#policies`)}>
             환경설정으로 돌아가기
           </Link>
           <nav>
@@ -22,7 +24,7 @@ export function PolicyDetailPage() {
               <Link
                 key={item.id}
                 className={`policy-detail-page__nav-link${item.id === policy.id ? ' is-active' : ''}`}
-                to={getPolicyPath(item.id)}
+                to={localizePath(getPolicyPath(item.id))}
               >
                 {item.title}
               </Link>

@@ -36,6 +36,10 @@ test.each(['/', '/profile', '/my/profile'])('renders the login button in the sha
 test('renders the shared footer on the jobs page', () => {
   renderApp('/jobs', { isAuthenticated: true });
 
-  expect(screen.getByRole('link', { name: '이용약관' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: '개인정보처리방침' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '서비스 이용약관' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '개인정보 처리방침' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '개인정보 수집·이용 동의' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '마케팅 정보 수신 동의' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '제3자 제공 동의' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '개인정보 처리위탁 안내' })).toBeInTheDocument();
 });

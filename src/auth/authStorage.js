@@ -26,18 +26,38 @@ const createSafeStorage = (storageName) => ({
 
 const persistentStorage = createSafeStorage('localStorage');
 const sessionFallbackStorage = createSafeStorage('sessionStorage');
+let memoryTokenSnapshot = null;
+
+const removeKeysByPrefix = (storageName, prefixes) => {
+  try {
+    const storage = window[storageName];
+    const keysToRemove = [];
+
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+
+      if (prefixes.some((prefix) => key?.startsWith(prefix))) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => storage.removeItem(key));
+  } catch (error) {
+    // 브라우저 저장소 접근이 차단된 환경에서는 메모리 세션 정리만 보장한다.
+  }
+};
 
 const readTokenSnapshot = (storage) => {
   const accessToken = storage.get(STORAGE_KEYS.accessToken);
   const refreshToken = storage.get(STORAGE_KEYS.refreshToken);
   const tokenType = storage.get(STORAGE_KEYS.tokenType) || 'Bearer';
 
-  if (!accessToken) {
+  if (!accessToken && !refreshToken) {
     return null;
   }
 
   return {
-    accessToken,
+    accessToken: accessToken || null,
     refreshToken,
     tokenType,
     accessTokenExpiresAt: storage.get(STORAGE_KEYS.accessTokenExpiresAt),
@@ -47,45 +67,55 @@ const readTokenSnapshot = (storage) => {
 
 export const authStorage = {
   readTokens() {
-    const storedTokens = readTokenSnapshot(persistentStorage);
-    if (storedTokens) {
-      return storedTokens;
+    if (memoryTokenSnapshot) {
+      return memoryTokenSnapshot;
     }
 
-    const legacySessionTokens = readTokenSnapshot(sessionFallbackStorage);
-    if (legacySessionTokens) {
-      this.writeTokens(legacySessionTokens);
-      sessionFallbackStorage.remove(STORAGE_KEYS.accessToken);
-      sessionFallbackStorage.remove(STORAGE_KEYS.refreshToken);
-      sessionFallbackStorage.remove(STORAGE_KEYS.tokenType);
-      sessionFallbackStorage.remove(STORAGE_KEYS.accessTokenExpiresAt);
-      sessionFallbackStorage.remove(STORAGE_KEYS.refreshTokenExpiresAt);
+    const legacyPersistentTokens = readTokenSnapshot(persistentStorage);
+    if (legacyPersistentTokens) {
+      this.clearTokenStorage();
+      return {
+        accessToken: null,
+        refreshToken: legacyPersistentTokens.refreshToken,
+        tokenType: legacyPersistentTokens.tokenType,
+        accessTokenExpiresAt: null,
+        refreshTokenExpiresAt: legacyPersistentTokens.refreshTokenExpiresAt
+      };
     }
 
-    return legacySessionTokens;
+    const sessionTokens = readTokenSnapshot(sessionFallbackStorage);
+    if (sessionTokens) {
+      memoryTokenSnapshot = sessionTokens;
+      return sessionTokens;
+    }
+
+    return memoryTokenSnapshot;
   },
 
   writeTokens(tokenPair) {
-    persistentStorage.set(STORAGE_KEYS.accessToken, tokenPair.accessToken);
-    if (tokenPair.refreshToken) {
-      persistentStorage.set(STORAGE_KEYS.refreshToken, tokenPair.refreshToken);
-    } else {
-      persistentStorage.remove(STORAGE_KEYS.refreshToken);
+    memoryTokenSnapshot = {
+      accessToken: tokenPair.accessToken,
+      refreshToken: tokenPair.refreshToken || null,
+      tokenType: tokenPair.tokenType || 'Bearer',
+      accessTokenExpiresAt: tokenPair.accessTokenExpiresAt || null,
+      refreshTokenExpiresAt: tokenPair.refreshTokenExpiresAt || null
+    };
+    this.clearTokenStorage();
+    if (memoryTokenSnapshot.refreshToken) {
+      sessionFallbackStorage.set(STORAGE_KEYS.refreshToken, memoryTokenSnapshot.refreshToken);
+      sessionFallbackStorage.set(STORAGE_KEYS.tokenType, memoryTokenSnapshot.tokenType);
     }
-    persistentStorage.set(STORAGE_KEYS.tokenType, tokenPair.tokenType || 'Bearer');
-    if (tokenPair.accessTokenExpiresAt) {
-      persistentStorage.set(STORAGE_KEYS.accessTokenExpiresAt, tokenPair.accessTokenExpiresAt);
-    } else {
-      persistentStorage.remove(STORAGE_KEYS.accessTokenExpiresAt);
-    }
-    if (tokenPair.refreshTokenExpiresAt) {
-      persistentStorage.set(STORAGE_KEYS.refreshTokenExpiresAt, tokenPair.refreshTokenExpiresAt);
-    } else {
-      persistentStorage.remove(STORAGE_KEYS.refreshTokenExpiresAt);
+    if (memoryTokenSnapshot.refreshTokenExpiresAt) {
+      sessionFallbackStorage.set(STORAGE_KEYS.refreshTokenExpiresAt, memoryTokenSnapshot.refreshTokenExpiresAt);
     }
   },
 
   clearTokens() {
+    memoryTokenSnapshot = null;
+    this.clearTokenStorage();
+  },
+
+  clearTokenStorage() {
     [persistentStorage, sessionFallbackStorage].forEach((storage) => {
       storage.remove(STORAGE_KEYS.accessToken);
       storage.remove(STORAGE_KEYS.refreshToken);
@@ -96,8 +126,26 @@ export const authStorage = {
     });
   },
 
+  clearUserScopedStorage() {
+    this.clearTokens();
+    this.clearSignupSession();
+    removeKeysByPrefix('localStorage', [
+      `${STORAGE_KEYS.profileDraftAutosave}:`,
+      STORAGE_KEYS.selectedProfile,
+      STORAGE_KEYS.authProvider
+    ]);
+    removeKeysByPrefix('sessionStorage', [
+      `${STORAGE_KEYS.profileDraftAutosave}:`,
+      STORAGE_KEYS.selectedProfile,
+      STORAGE_KEYS.signupSession,
+      STORAGE_KEYS.oauthReturnTo,
+      `${STORAGE_KEYS.oauthState}:`,
+      STORAGE_KEYS.naverState
+    ]);
+  },
+
   readAuthProvider() {
-    return persistentStorage.get(STORAGE_KEYS.authProvider);
+    return sessionFallbackStorage.get(STORAGE_KEYS.authProvider);
   },
 
   writeAuthProvider(provider) {
@@ -105,7 +153,7 @@ export const authStorage = {
       return;
     }
 
-    persistentStorage.set(STORAGE_KEYS.authProvider, provider);
+    sessionFallbackStorage.set(STORAGE_KEYS.authProvider, provider);
   },
 
   readSignupSession() {

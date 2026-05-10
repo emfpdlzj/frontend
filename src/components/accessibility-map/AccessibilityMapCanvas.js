@@ -7,12 +7,19 @@ import profileIcon from '../../assets/accessibility-map/profile-icon.png';
 import settingIcon from '../../assets/accessibility-map/setting-icon.png';
 import { NAVER_MAP_CONFIG } from '../../config/appConfig';
 import { ROUTE_PATHS } from '../../config/routes';
+import { useLocale } from '../../i18n/LocaleContext';
 import { loadNaverMapScript } from '../../utils/naverMapSdk';
 import { LoadingView } from '../common/LoadingView';
 import { StatusMessage } from '../common/StatusMessage';
 
 const NAVER_MAP_SCRIPT_ID = 'bridgework-naver-map-sdk';
 const NAVER_MAP_READY_CALLBACK = '__bridgeworkNaverMapReady__';
+const MAX_RENDERED_MARKERS = 250;
+const MARKER_GRID_DECIMALS_BY_ZOOM = [
+  [13, 4],
+  [10, 3],
+  [0, 2]
+];
 
 function createNaverLatLng(location) {
   if (!location) {
@@ -31,13 +38,32 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function getSafeMarkerType(type) {
+  return ['office', 'support-agency'].includes(type) ? type : 'support-agency';
+}
+
+function createMarkerElement(marker) {
+  const markerType = getSafeMarkerType(marker.type);
+  const wrapper = document.createElement('div');
+  wrapper.className = `accessibility-map__company-marker is-${markerType}`;
+  wrapper.setAttribute('aria-hidden', 'true');
+
+  const image = document.createElement('img');
+  image.src = companyMapMarker;
+  image.alt = markerType === 'office' ? '회사 위치 마커 아이콘' : '근로지원기관 위치 마커 아이콘';
+
+  const label = document.createElement('span');
+  label.textContent = marker.displayLabel || marker.label || '';
+
+  wrapper.append(image, label);
+  return wrapper;
+}
+
 function createMarkerIcon(marker) {
-  if (marker.type === 'office') {
+  if (marker.type === 'office' || marker.type === 'support-agency') {
     return {
-      url: companyMapMarker,
-      size: new window.naver.maps.Size(25, 25),
-      scaledSize: new window.naver.maps.Size(25, 25),
-      anchor: new window.naver.maps.Point(12, 25)
+      content: createMarkerElement(marker),
+      anchor: new window.naver.maps.Point(90, 25)
     };
   }
 
@@ -48,7 +74,37 @@ function createMarkerIcon(marker) {
 }
 
 function canRenderMap(viewState) {
-  return viewState !== 'loading' && viewState !== 'error';
+  return viewState !== 'loading' && viewState !== 'calculating' && viewState !== 'error';
+}
+
+function getMarkerGridDecimals(zoom) {
+  const normalizedZoom = Number(zoom);
+  const [, decimals] = MARKER_GRID_DECIMALS_BY_ZOOM.find(([minZoom]) => normalizedZoom >= minZoom) ||
+    MARKER_GRID_DECIMALS_BY_ZOOM[MARKER_GRID_DECIMALS_BY_ZOOM.length - 1];
+  return decimals;
+}
+
+function toRenderableMarkers(markers, zoom) {
+  const validMarkers = markers.filter((marker) => Number.isFinite(Number(marker.lat)) && Number.isFinite(Number(marker.lng)));
+
+  if (validMarkers.length <= MAX_RENDERED_MARKERS) {
+    return validMarkers;
+  }
+
+  const decimals = getMarkerGridDecimals(zoom);
+  const cells = new Map();
+
+  validMarkers.forEach((marker) => {
+    const lat = Number(marker.lat).toFixed(decimals);
+    const lng = Number(marker.lng).toFixed(decimals);
+    const key = `${lat}:${lng}:${getSafeMarkerType(marker.type)}`;
+
+    if (!cells.has(key)) {
+      cells.set(key, marker);
+    }
+  });
+
+  return Array.from(cells.values()).slice(0, MAX_RENDERED_MARKERS);
 }
 
 function AccessibilityMapCanvasComponent({
@@ -57,15 +113,15 @@ function AccessibilityMapCanvasComponent({
   showProfileSelect = true,
   profiles = [],
   selectedProfileId,
-  supportAgencyStatus,
-  supportAgencyErrorMessage,
   supportAgencyCount = 0,
   currentLocation,
   viewport,
   viewState,
   onSelectProfile,
+  onRequestCurrentLocation,
   onRetry
 }) {
+  const { localizePath } = useLocale();
   const mapElementRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const currentLocationMarkerRef = useRef(null);
@@ -220,8 +276,7 @@ function AccessibilityMapCanvasComponent({
     }
 
     markerRefs.current.forEach((marker) => marker.setMap(null));
-    markerRefs.current = markers
-      .filter((marker) => Number.isFinite(Number(marker.lat)) && Number.isFinite(Number(marker.lng)))
+    markerRefs.current = toRenderableMarkers(markers, viewport.zoom)
       .map((marker) =>
         new window.naver.maps.Marker({
           position: new window.naver.maps.LatLng(Number(marker.lat), Number(marker.lng)),
@@ -230,7 +285,7 @@ function AccessibilityMapCanvasComponent({
           icon: createMarkerIcon(marker)
         })
       );
-  }, [mapScriptStatus, markers, viewState]);
+  }, [mapScriptStatus, markers, viewport.zoom, viewState]);
 
   useEffect(
     () => () => {
@@ -291,6 +346,11 @@ function AccessibilityMapCanvasComponent({
   };
 
   const handleMoveToCurrentLocation = () => {
+    if (!currentLocation) {
+      onRequestCurrentLocation?.();
+      return;
+    }
+
     if (!mapInstanceRef.current || !currentLocation) {
       return;
     }
@@ -304,6 +364,14 @@ function AccessibilityMapCanvasComponent({
     return (
       <section className="accessibility-map__map-panel is-feedback">
         <LoadingView label="지역 접근성 지도를 준비하는 중입니다..." />
+      </section>
+    );
+  }
+
+  if (viewState === 'calculating') {
+    return (
+      <section className="accessibility-map__map-panel is-feedback">
+        <LoadingView label="선택한 프로필 기준으로 접근성 점수를 다시 계산하는 중입니다..." />
       </section>
     );
   }
@@ -364,7 +432,7 @@ function AccessibilityMapCanvasComponent({
             onClick={() => setIsProfileMenuOpen((isOpen) => !isOpen)}
           >
             <span>{selectedProfile ? selectedProfile.name : '프로필을 선택하세요'}</span>
-            <img src={arrowDown} alt="" aria-hidden="true" />
+            <img src={arrowDown} alt="프로필 목록 펼치기 아이콘" />
           </button>
           {isProfileMenuOpen ? (
             <div className="accessibility-map__profile-menu" role="listbox" aria-label="프로필 목록">
@@ -380,14 +448,14 @@ function AccessibilityMapCanvasComponent({
                     setIsProfileMenuOpen(false);
                   }}
                 >
-                  <img src={profileIcon} alt="" aria-hidden="true" />
+                  <img src={profileIcon} alt="프로필 아이콘" />
                   <span>
                     <strong>{profile.name}</strong>
                   </span>
                 </button>
               ))}
-              <Link to={ROUTE_PATHS.myProfile} className="accessibility-map__profile-manage">
-                <img src={settingIcon} alt="" aria-hidden="true" />
+              <Link to={localizePath(ROUTE_PATHS.myProfile)} className="accessibility-map__profile-manage">
+                <img src={settingIcon} alt="프로필 관리 아이콘" />
                 프로필 관리
               </Link>
             </div>
@@ -401,15 +469,9 @@ function AccessibilityMapCanvasComponent({
             src={accessibilityScorePanel}
             alt="접근성 점수 기준: A 80 이상, B 60~79, C 60 미만"
           />
-          <aside className="accessibility-map__support-agency-note" aria-label="근로지원인 수행기관 표시 상태">
-            {supportAgencyStatus === 'error' ? (
-              <p className="accessibility-map__legend-note" role="alert">{supportAgencyErrorMessage}</p>
-            ) : (
-              <p className="accessibility-map__legend-note">수행기관 {supportAgencyCount}곳 표시</p>
-            )}
-          </aside>
           <div className="accessibility-map__map-pill">
             공고 {markers.filter((marker) => marker.type === 'office').length}개 · 수행기관 {supportAgencyCount}곳
+            {markers.length > MAX_RENDERED_MARKERS ? ` · 지도 표시 ${MAX_RENDERED_MARKERS}개` : ''}
           </div>
         </>
       ) : null}
@@ -418,8 +480,7 @@ function AccessibilityMapCanvasComponent({
           type="button"
           className="accessibility-map__map-action-button is-location"
           onClick={handleMoveToCurrentLocation}
-          aria-label="현재 위치로 이동"
-          disabled={!currentLocation}
+          aria-label={currentLocation ? '현재 위치로 이동' : '현재 위치 사용 요청'}
         >
           <svg className="accessibility-map__location-icon" viewBox="0 0 29 29" aria-hidden="true" focusable="false">
             <path d="M13.89 23.01V21a0.61 0.61 0 0 1 1.22 0v2.01a8.533 8.533 0 0 0 7.9-7.9H21a0.61 0.61 0 0 1 0-1.22h2.01a8.533 8.533 0 0 0-7.9-7.9V8a0.61 0.61 0 0 1-1.22 0V5.99a8.533 8.533 0 0 0-7.9 7.9H8a0.61 0.61 0 0 1 0 1.22H5.99a8.533 8.533 0 0 0 7.9 7.9Zm10.36-8.51c0 5.385-4.365 9.75-9.75 9.75s-9.75-4.365-9.75-9.75 4.365-9.75 9.75-9.75 9.75 4.365 9.75 9.75Zm-9.75 1.625a1.625 1.625 0 1 0 0-3.25 1.625 1.625 0 0 0 0 3.25Z" />

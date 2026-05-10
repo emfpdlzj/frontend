@@ -16,7 +16,11 @@ export const STORAGE_KEYS = {
   signupOptionsCache: 'bridgework.signupOptionsCache',
   jobFilterOptionsCache: 'bridgework.jobFilterOptionsCache',
   profileDraftAutosave: 'bridgework.profileDraftAutosave',
-  authProvider: 'bridgework.authProvider'
+  authProvider: 'bridgework.authProvider',
+  selectedProfile: 'bridgework:selected-profile-id',
+  oauthReturnTo: 'bridgework.oauth.returnTo',
+  oauthState: 'bridgework.oauth.state',
+  naverState: 'bridgework.oauth.naver.state'
 };
 
 export const SOCIAL_PROVIDER = {
@@ -54,7 +58,7 @@ export const OAUTH_CONFIG = {
   }
 };
 
-export const NAVER_STATE_KEY = 'bridgework.oauth.naver.state';
+export const NAVER_STATE_KEY = STORAGE_KEYS.naverState;
 
 export const NAVER_MAP_CONFIG = {
   clientId: process.env.REACT_APP_NAVER_MAP_CLIENT_ID || ''

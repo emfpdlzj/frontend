@@ -4,7 +4,10 @@ import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App';
 import { AuthProvider } from './auth/AuthContext';
+import { applyAccessibilityPreferences, readAccessibilityPreferences } from './config/accessibilityPreferences';
 import reportWebVitals from './reportWebVitals';
+
+applyAccessibilityPreferences(readAccessibilityPreferences());
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 const app = (

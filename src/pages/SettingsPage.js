@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { authApi } from '../api/authApi';
+import { useAccessibilityPreferences } from '../accessibility/AccessibilityPreferencesContext';
 import { useAuth } from '../auth/AuthContext';
 import { authStorage } from '../auth/authStorage';
 import basicProfileImage from '../assets/settings/img.png';
@@ -12,12 +14,10 @@ import {
   SettingsToggle
 } from '../components/settings/SettingsControls';
 import { WithdrawalConfirmDialog } from '../components/settings/WithdrawalConfirmDialog';
-import {
-  applyAccessibilityPreferences,
-  readAccessibilityPreferences,
-  saveAccessibilityPreferences
-} from '../config/accessibilityPreferences';
+import { StatusMessage } from '../components/common/StatusMessage';
 import { POLICY_DOCUMENTS, getPolicyPath } from '../config/policyDocuments';
+import { useProfiles } from '../hooks/useProfiles';
+import { useLocale } from '../i18n/LocaleContext';
 
 const settingsMenu = [
   { id: 'account', label: '계정', group: '자주 사용' },
@@ -57,18 +57,42 @@ const notificationGroups = [
 ];
 
 const privacyItems = [
-  ['개인정보 수집·이용 동의', '동의 완료', 'success', '계정 생성과 서비스 제공에 필요한 동의입니다.'],
-  ['민감정보 수집·이용 동의', '동의 완료', 'success', '추천 품질 개선을 위해 사용되며 기본 공개되지 않습니다.'],
-  ['제3자 제공 동의', '확인 필요', 'warning', '지원 또는 기업 공개 설정 시 제공 범위를 확인합니다.'],
-  ['마케팅 수신 동의', '선택 미동의', 'neutral', '선택 동의이며 서비스 이용에 필수는 아닙니다.'],
+  ['개인정보 수집·이용 동의', '동의 완료', 'success', '계정 생성과 서비스 제공에 필요한 동의입니다.', 'privacy-consent'],
+  ['민감정보 수집·이용 동의', '동의 완료', 'success', '추천 품질 개선을 위해 사용되며 기본 공개되지 않습니다.', 'sensitive-consent'],
+  ['제3자 제공 동의', '확인 필요', 'warning', '지원 또는 기업 공개 설정 시 제공 범위를 확인합니다.', 'third-party'],
+  ['마케팅 정보 수신 동의', '선택 미동의', 'neutral', '선택 동의이며 서비스 이용에 필수는 아닙니다.', 'marketing-consent'],
   ['개인정보 다운로드 요청', '신청 가능', 'neutral', '내 계정 데이터를 파일로 요청할 수 있습니다.'],
-  ['열람/수정/삭제 요청', '신청 가능', 'neutral', '개인정보 처리 요청 절차를 확인합니다.']
+  ['열람/수정/삭제 요청', '신청 가능', 'neutral', '개인정보 처리 요청 절차를 확인합니다.'],
+  ['탈퇴 후 개인정보 파기/보관 안내', '확인 가능', 'neutral', '탈퇴 유예 기간, 삭제 대상, 분리 보관 대상을 확인합니다.', 'withdrawal-retention']
 ];
 
-const highlightedPolicyIds = ['privacy-consent', 'sensitive-consent'];
+const highlightedPolicyIds = ['privacy-policy', 'privacy-consent', 'withdrawal-retention', 'marketing-consent'];
 const highlightedPolicyItems = highlightedPolicyIds
   .map((policyId) => POLICY_DOCUMENTS.find((policy) => policy.id === policyId))
   .filter(Boolean);
+
+const withdrawalRetentionItems = [
+  {
+    title: '탈퇴 시 삭제되는 정보',
+    status: '삭제/비식별',
+    description: '탈퇴 확정 후 계정 식별 정보, 프로필, 접근성 설정, 저장 공고, 추천 이력은 삭제 또는 비식별 처리 대상입니다.'
+  },
+  {
+    title: '탈퇴 후 복구 가능 여부',
+    status: '30일 내 가능',
+    description: '탈퇴 신청 후 30일 안에 다시 로그인하면 계정 복구와 탈퇴 신청 취소를 진행할 수 있습니다.'
+  },
+  {
+    title: '법정 보관 정보',
+    status: '분리 보관',
+    description: '법령 준수, 분쟁 대응, 보안 목적의 인증 기록, 처리 로그, 문의 이력은 일반 데이터와 분리 보관될 수 있습니다.'
+  },
+  {
+    title: '재가입 제한 여부',
+    status: '확인 필요',
+    description: '재가입 제한 기간이나 동일 소셜 계정 재가입 조건은 운영 정책 확정 전까지 단정하지 않고 확인 필요로 안내합니다.'
+  }
+];
 
 const getUserField = (user, keys, fallback = '로그인 후 확인') => {
   for (const key of keys) {
@@ -78,6 +102,13 @@ const getUserField = (user, keys, fallback = '로그인 후 확인') => {
   }
 
   return fallback;
+};
+
+const getProfileId = (profile) => String(profile?.profileId ?? profile?.id ?? '');
+
+const getTextField = (value) => {
+  const text = String(value ?? '').trim();
+  return text || '';
 };
 
 const normalizeProvider = (value) => {
@@ -165,8 +196,8 @@ function SettingsSummaryCard({ title, value, description, href, provider, logo }
       <strong>{value}</strong>
       <small>{description}</small>
       {logo ? (
-        <span className={`settings-summary-card__provider settings-summary-card__provider--${provider.toLowerCase()}`} aria-hidden="true">
-          <img src={logo} alt="" />
+        <span className={`settings-summary-card__provider settings-summary-card__provider--${provider.toLowerCase()}`}>
+          <img src={logo} alt={`${provider} 로그인 제공자 로고`} />
         </span>
       ) : null}
     </a>
@@ -174,53 +205,146 @@ function SettingsSummaryCard({ title, value, description, href, provider, logo }
 }
 
 export function SettingsPage() {
-  const { currentUser, isAuthenticated, isInitializing, tokens } = useAuth();
-  const [preferences, setPreferences] = useState(readAccessibilityPreferences);
-  const [savedPreferences, setSavedPreferences] = useState(readAccessibilityPreferences);
+  const { callWithAuth, clearSession, currentUser, isAuthenticated, tokens } = useAuth();
+  const { localizePath } = useLocale();
+  const {
+    preferences,
+    savedPreferences,
+    updatePreference,
+    persistPreferences
+  } = useAccessibilityPreferences();
+  const {
+    status: profileStatus,
+    detailStatus: profileDetailStatus,
+    error: profileError,
+    detailError: profileDetailError,
+    profiles,
+    selectedProfile,
+    reload: reloadProfiles
+  } = useProfiles();
+  const defaultProfileSummary = useMemo(
+    () => profiles.find((profile) => profile?.isDefault) || null,
+    [profiles]
+  );
+  const defaultProfile = useMemo(() => {
+    if (!defaultProfileSummary) {
+      return null;
+    }
+
+    if (getProfileId(selectedProfile) === getProfileId(defaultProfileSummary)) {
+      return {
+        ...defaultProfileSummary,
+        ...selectedProfile
+      };
+    }
+
+    return defaultProfileSummary;
+  }, [defaultProfileSummary, selectedProfile]);
+  const isProfileLoading = isAuthenticated && ['idle', 'loading'].includes(profileStatus);
+  const isProfileRefetching = isAuthenticated && profileStatus === 'refetching';
+  const isProfileDetailLoading =
+    isAuthenticated &&
+    Boolean(defaultProfileSummary) &&
+    ['idle', 'loading'].includes(profileDetailStatus) &&
+    getProfileId(selectedProfile) !== getProfileId(defaultProfileSummary);
+  const hasProfileLoadError = isAuthenticated && (profileStatus === 'error' || profileDetailStatus === 'error');
+  const hasNoProfile = isAuthenticated && profileStatus === 'empty';
   const account = useMemo(
     () => ({
-      name: getUserField(currentUser, ['name', 'nickname', 'username'], isAuthenticated ? '이름 확인 필요' : '로그인 필요'),
-      email: getUserField(currentUser, ['email'], isAuthenticated ? '이메일 확인 필요' : '로그인 필요'),
-      phone: getUserField(currentUser, ['phone', 'phoneNumber', 'mobile'], isAuthenticated ? '연락처 확인 필요' : '로그인 필요'),
+      name:
+        getTextField(defaultProfile?.fullName) ||
+        getUserField(currentUser, ['name', 'nickname', 'username'], isAuthenticated ? '이름 확인 필요' : '로그인 필요'),
+      email:
+        getTextField(defaultProfile?.contactEmail) ||
+        getUserField(currentUser, ['email'], isAuthenticated ? '이메일 확인 필요' : '로그인 필요'),
+      phone:
+        getTextField(defaultProfile?.contactPhone) ||
+        getUserField(currentUser, ['phone', 'phoneNumber', 'mobile'], isAuthenticated ? '연락처 확인 필요' : '로그인 필요'),
       provider:
         findProviderInObject(currentUser) ||
         normalizeProvider(authStorage.readAuthProvider()) ||
         findProviderInObject(decodeJwtPayload(tokens?.accessToken))
     }),
-    [currentUser, isAuthenticated, tokens]
+    [currentUser, defaultProfile, isAuthenticated, tokens]
   );
+  const accountProfileStatusText = hasNoProfile
+    ? '기본 프로필 없음'
+    : hasProfileLoadError
+      ? '기본 프로필 확인 필요'
+      : isProfileLoading || isProfileDetailLoading
+        ? '기본 프로필 불러오는 중'
+        : isProfileRefetching
+          ? '기본 프로필 새로고침 중'
+          : defaultProfile
+            ? '기본 프로필 연동'
+            : '기본 프로필';
+  const accountProfileStatusTone = hasProfileLoadError || hasNoProfile ? 'warning' : defaultProfile ? 'success' : 'neutral';
   const accountSummary = isAuthenticated ? '로그인됨' : '로그인 필요';
   const accountProvider = account.provider || 'SOCIAL';
   const accountProviderLogo = account.provider === 'KAKAO' ? kakaoLogo : account.provider === 'NAVER' ? naverLogo : null;
   const accountDescription = isAuthenticated ? `${accountProvider} 계정` : '계정 정보는 로그인 후 표시';
-  const accessibilitySummary = preferences.showMapList ? '목록 함께 보기' : '지도 중심 보기';
+  const accessibilitySummary = preferences.screenReaderMode ? '읽기 순서 최적화' : '표시 환경 조정';
   const accessibilityDescription = preferences.screenReaderMode ? '스크린리더 최적화 사용' : '지도 대체 정보 설정 가능';
   const [saveState, setSaveState] = useState('idle');
   const [isWithdrawalOpen, setIsWithdrawalOpen] = useState(false);
   const [isWithdrawalConfirmed, setIsWithdrawalConfirmed] = useState(false);
+  const [withdrawalState, setWithdrawalState] = useState({
+    status: 'idle',
+    message: ''
+  });
 
   const hasChanges = useMemo(() => {
     return JSON.stringify(preferences) !== JSON.stringify(savedPreferences);
   }, [preferences, savedPreferences]);
 
-  const updatePreference = (key, value) => {
+  const handlePreferenceChange = (key, value) => {
     setSaveState('idle');
-    setPreferences((current) => ({ ...current, [key]: value }));
+    updatePreference(key, value);
   };
 
   const savePreferences = () => {
     try {
-      saveAccessibilityPreferences(preferences);
-      setSavedPreferences(preferences);
+      persistPreferences();
       setSaveState('success');
     } catch (error) {
       setSaveState('error');
     }
   };
 
-  useEffect(() => {
-    applyAccessibilityPreferences(preferences);
-  }, [preferences]);
+  const resetWithdrawalDialog = () => {
+    setIsWithdrawalOpen(false);
+    setIsWithdrawalConfirmed(false);
+  };
+
+  const handleWithdrawalSubmit = async () => {
+    if (!isAuthenticated) {
+      setWithdrawalState({
+        status: 'error',
+        message: '회원탈퇴 신청은 로그인 후 진행할 수 있습니다.'
+      });
+      return;
+    }
+
+    setWithdrawalState({
+      status: 'loading',
+      message: '회원탈퇴 신청을 처리하는 중입니다.'
+    });
+
+    try {
+      await callWithAuth((accessToken, signal) => authApi.withdraw(accessToken, signal));
+      resetWithdrawalDialog();
+      clearSession();
+      setWithdrawalState({
+        status: 'success',
+        message: '회원탈퇴 신청이 접수되었습니다. 30일 내 다시 로그인하면 탈퇴 신청이 취소됩니다.'
+      });
+    } catch (error) {
+      setWithdrawalState({
+        status: 'error',
+        message: error?.message || '회원탈퇴 신청에 실패했습니다. 잠시 후 다시 시도해 주세요.'
+      });
+    }
+  };
 
   const handleMenuClick = (event, targetId) => {
     const target = document.getElementById(targetId);
@@ -308,7 +432,7 @@ export function SettingsPage() {
           >
             <div className="settings-account-layout">
               <div className="settings-profile-card" aria-label="계정 요약">
-                <img className="settings-profile-card__avatar" src={basicProfileImage} alt="" aria-hidden="true" />
+                <img className="settings-profile-card__avatar" src={basicProfileImage} alt="기본 프로필 이미지" />
                 <div className="settings-profile-card__copy">
                   <strong>{account.name}</strong>
                   <span>{account.email}</span>
@@ -319,48 +443,50 @@ export function SettingsPage() {
                     {currentUser?.signupCompleted === false ? (
                       <SettingsStatusBadge tone="warning">가입 완료 필요</SettingsStatusBadge>
                     ) : (
-                      <SettingsStatusBadge tone="neutral">기본 프로필</SettingsStatusBadge>
+                      <SettingsStatusBadge tone={accountProfileStatusTone}>{accountProfileStatusText}</SettingsStatusBadge>
                     )}
                   </div>
                 </div>
               </div>
 
               <div className="settings-account-panel">
+                {hasProfileLoadError ? (
+                  <StatusMessage kind="error">
+                    {profileDetailError || profileError || '기본 프로필 정보를 불러오지 못했습니다.'}
+                    <button type="button" className="settings-inline-text-button" onClick={reloadProfiles}>
+                      다시 시도
+                    </button>
+                  </StatusMessage>
+                ) : null}
+                {hasNoProfile ? (
+                  <StatusMessage kind="info">등록된 기본 프로필이 없습니다. 내 정보에서 기본 프로필을 먼저 생성해 주세요.</StatusMessage>
+                ) : null}
                 <div className="settings-grid settings-grid--three">
                   <AccountField
                     id="settings-name"
                     label="이름"
                     type="text"
-                    value={account.name}
+                    value={isProfileLoading || isProfileDetailLoading ? '기본 프로필 불러오는 중' : account.name}
                     readOnly
                   />
                   <AccountField
                     id="settings-email"
                     label="이메일"
                     type="email"
-                    value={account.email}
+                    value={isProfileLoading || isProfileDetailLoading ? '기본 프로필 불러오는 중' : account.email}
                     readOnly
                   />
                   <AccountField
                     id="settings-phone"
                     label="연락처"
                     type="tel"
-                    value={account.phone}
+                    value={isProfileLoading || isProfileDetailLoading ? '기본 프로필 불러오는 중' : account.phone}
                     readOnly
                   />
                 </div>
               </div>
             </div>
 
-            <div className="settings-device-row">
-              <div>
-                <strong>최근 로그인 기기</strong>
-                <span>{isInitializing ? '로그인 상태 확인 중' : isAuthenticated ? '현재 브라우저 세션' : '로그인 후 확인할 수 있습니다.'}</span>
-              </div>
-              <button type="button" className="settings-button settings-button--secondary">
-                로그인 기록 보기
-              </button>
-            </div>
           </SettingsSection>
 
           <SettingsSection
@@ -376,7 +502,7 @@ export function SettingsPage() {
                     legend="글자 크기"
                     name="font-size"
                     value={preferences.fontSize}
-                    onChange={(value) => updatePreference('fontSize', value)}
+                    onChange={(value) => handlePreferenceChange('fontSize', value)}
                     options={[
                       { value: 'default', label: '기본' },
                       { value: 'large', label: '크게' },
@@ -387,7 +513,7 @@ export function SettingsPage() {
                     legend="점수 표시"
                     name="score-display"
                     value={preferences.scoreDisplay}
-                    onChange={(value) => updatePreference('scoreDisplay', value)}
+                    onChange={(value) => handlePreferenceChange('scoreDisplay', value)}
                     options={[
                       { value: 'text-color', label: '색상+문자' },
                       { value: 'text-first', label: '문자 중심' }
@@ -400,45 +526,33 @@ export function SettingsPage() {
                     label="고대비 모드"
                     description="텍스트와 카드 경계를 더 뚜렷하게 표시"
                     checked={preferences.contrast}
-                    onChange={(value) => updatePreference('contrast', value)}
+                    onChange={(value) => handlePreferenceChange('contrast', value)}
                   />
                   <SettingsToggle
                     id="reduce-motion"
                     label="애니메이션 줄이기"
                     description="전환과 지도 움직임을 줄임"
                     checked={preferences.reduceMotion}
-                    onChange={(value) => updatePreference('reduceMotion', value)}
+                    onChange={(value) => handlePreferenceChange('reduceMotion', value)}
                   />
                   <SettingsToggle
                     id="map-color-assist"
                     label="지도 색상 보조"
                     description="마커에 텍스트와 패턴을 함께 표시"
                     checked={preferences.mapColorAssist}
-                    onChange={(value) => updatePreference('mapColorAssist', value)}
-                  />
-                  <SettingsToggle
-                    id="show-map-list"
-                    label="지도 정보를 목록으로 함께 보기"
-                    description="공고, 기업, 수행기관을 목록으로 제공"
-                    checked={preferences.showMapList}
-                    onChange={(value) => updatePreference('showMapList', value)}
+                    onChange={(value) => handlePreferenceChange('mapColorAssist', value)}
                   />
                   <SettingsToggle
                     id="screen-reader-mode"
                     label="스크린리더 최적화"
                     description="추천 이유와 지도 요약을 읽기 순서로 제공"
                     checked={preferences.screenReaderMode}
-                    onChange={(value) => updatePreference('screenReaderMode', value)}
+                    onChange={(value) => handlePreferenceChange('screenReaderMode', value)}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="settings-info-strip">
-              <span>장애/접근성 정보는 추천 목적으로만 사용됩니다.</span>
-              <span>AI 추천은 확정 판단이 아닌 참고 정보입니다.</span>
-              <a href="#policies">“확인 필요” 표시 기준 보기</a>
-            </div>
           </SettingsSection>
 
           <SettingsSection id="notifications" title="알림 설정" description="알림은 중요도와 사용 목적에 따라 나누어 관리합니다." tone="primary">
@@ -457,7 +571,7 @@ export function SettingsPage() {
                         label={label}
                         description={description}
                         checked={preferences[key]}
-                        onChange={(value) => updatePreference(key, value)}
+                        onChange={(value) => handlePreferenceChange(key, value)}
                       />
                     ))}
                   </div>
@@ -469,15 +583,27 @@ export function SettingsPage() {
           <SettingsSection id="privacy" title="내 데이터 관리" description="동의 상태와 데이터 요청을 한곳에서 확인합니다.">
             <div className="settings-data-layout">
               <div className="settings-consent-grid">
-                {privacyItems.map(([title, status, tone, description]) => (
-                  <button key={title} type="button" className="settings-consent-card">
-                    <div>
-                      <strong>{title}</strong>
-                      <p>{description}</p>
-                    </div>
-                    <SettingsStatusBadge tone={tone}>{status}</SettingsStatusBadge>
-                  </button>
-                ))}
+                {privacyItems.map(([title, status, tone, description, policyId]) => {
+                  const cardContent = (
+                    <>
+                      <div>
+                        <strong>{title}</strong>
+                        <p>{description}</p>
+                      </div>
+                      <SettingsStatusBadge tone={tone}>{status}</SettingsStatusBadge>
+                    </>
+                  );
+
+                  return policyId ? (
+                    <Link key={title} to={localizePath(getPolicyPath(policyId))} className="settings-consent-card">
+                      {cardContent}
+                    </Link>
+                  ) : (
+                    <button key={title} type="button" className="settings-consent-card">
+                      {cardContent}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </SettingsSection>
@@ -512,7 +638,7 @@ export function SettingsPage() {
                   rel="noreferrer"
                   aria-label="카톡 상담채널 새 창으로 열기"
                 >
-                  <img src={kakaoLogo} alt="" aria-hidden="true" />
+                  <img src={kakaoLogo} alt="카카오톡 아이콘" />
                   카톡 상담채널
                 </a>
                 <span>
@@ -528,7 +654,7 @@ export function SettingsPage() {
           <SettingsSection id="policies" title="약관 및 정책" description="자주 확인하는 정책을 먼저 보여주고 나머지는 접어서 제공합니다." tone="compact">
             <div className="settings-policy-highlight">
               {highlightedPolicyItems.map((policy) => (
-                <Link key={policy.id} to={getPolicyPath(policy.id)} className="settings-policy-featured">
+                <Link key={policy.id} to={localizePath(getPolicyPath(policy.id))} className="settings-policy-featured">
                   <strong>{policy.title}</strong>
                   <span>{policy.summary}</span>
                   <small>마지막 수정일 {policy.updatedAt}</small>
@@ -539,7 +665,7 @@ export function SettingsPage() {
               <summary>전체 약관 및 정책 보기</summary>
               <div className="settings-policy-list">
                 {POLICY_DOCUMENTS.map((policy) => (
-                  <Link key={policy.id} to={getPolicyPath(policy.id)} className="settings-policy-row">
+                  <Link key={policy.id} to={localizePath(getPolicyPath(policy.id))} className="settings-policy-row">
                     <span>{policy.title}</span>
                     <small>마지막 수정일 {policy.updatedAt}</small>
                     <span aria-hidden="true">›</span>
@@ -549,24 +675,58 @@ export function SettingsPage() {
             </details>
           </SettingsSection>
 
-          <SettingsSection id="danger" title="회원탈퇴" description="계정 삭제는 복구와 보관 범위를 확인한 뒤 진행합니다." tone="danger">
+          <SettingsSection id="danger" title="회원탈퇴" description="계정 삭제는 복구와 보관 범위를 확인한 뒤 진행합니다.">
             <div className="settings-danger-card settings-danger-card--refined">
               <div>
-                <h3>탈퇴 전 확인할 내용</h3>
-                <p>탈퇴 시 일부 정보는 즉시 삭제되고, 법정 보관 정보와 처리 로그는 정해진 기간 동안 분리 보관됩니다.</p>
-                <ul className="settings-danger-checklist">
-                  <li>계정, 프로필, 저장 공고 삭제 범위 확인</li>
-                  <li>지원 이력과 법정 보관 정보 분리 보관 안내</li>
-                  <li>탈퇴 후 복구 가능 여부 및 재가입 제한 확인</li>
-                  <li>개인정보 파기/분리보관 처리 로그 안내</li>
-                </ul>
+                <h3>회원탈퇴 신청</h3>
+                <p>탈퇴 신청은 30일 유예 기간과 개인정보 보관 범위를 확인한 뒤 진행합니다.</p>
+                <details className="settings-withdrawal-accordion">
+                  <summary>탈퇴 전 확인할 내용</summary>
+                  <div className="settings-withdrawal-accordion__body">
+                    <p>
+                      탈퇴 신청 후 30일 유예 기간이 적용되며, 탈퇴 확정 시 개인정보는 삭제 또는 비식별 처리됩니다.
+                      법령상 필요한 기록은 일반 서비스 데이터와 분리 보관될 수 있습니다.
+                    </p>
+                    <div className="settings-withdrawal-retention" aria-label="탈퇴 전 유의사항 안내">
+                      {withdrawalRetentionItems.map((item) => (
+                        <div key={item.title} className="settings-withdrawal-retention__item">
+                          <div>
+                            <strong>{item.title}</strong>
+                            <SettingsStatusBadge tone={item.status === '확인 필요' ? 'warning' : 'neutral'}>
+                              {item.status}
+                            </SettingsStatusBadge>
+                          </div>
+                          <span>{item.description}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <ul className="settings-danger-checklist">
+                      <li>탈퇴 시 삭제되는 정보 확인</li>
+                      <li>30일 내 복구 가능 여부 확인</li>
+                      <li>법정 보관 정보의 분리 보관 확인</li>
+                      <li>재가입 제한 여부는 확인 필요로 안내</li>
+                    </ul>
+                    <Link className="settings-danger-policy-link" to={localizePath(getPolicyPath('withdrawal-retention'))}>
+                      탈퇴 후 개인정보 파기/보관 안내 자세히 보기
+                    </Link>
+                  </div>
+                </details>
+                {withdrawalState.message ? (
+                  <StatusMessage kind={withdrawalState.status === 'error' ? 'error' : 'info'}>
+                    {withdrawalState.message}
+                  </StatusMessage>
+                ) : null}
               </div>
               <button
                 type="button"
-                className="settings-button settings-button--danger"
-                onClick={() => setIsWithdrawalOpen(true)}
+                className="settings-button settings-button--secondary"
+                disabled={!isAuthenticated || withdrawalState.status === 'loading'}
+                onClick={() => {
+                  setWithdrawalState({ status: 'idle', message: '' });
+                  setIsWithdrawalOpen(true);
+                }}
               >
-                회원탈퇴
+                {withdrawalState.status === 'loading' ? '신청 중' : '회원탈퇴'}
               </button>
             </div>
           </SettingsSection>
@@ -578,9 +738,11 @@ export function SettingsPage() {
           isConfirmed={isWithdrawalConfirmed}
           onConfirmChange={setIsWithdrawalConfirmed}
           onClose={() => {
-            setIsWithdrawalOpen(false);
-            setIsWithdrawalConfirmed(false);
+            resetWithdrawalDialog();
           }}
+          onSubmit={handleWithdrawalSubmit}
+          isSubmitting={withdrawalState.status === 'loading'}
+          errorMessage={withdrawalState.status === 'error' ? withdrawalState.message : ''}
         />
       ) : null}
     </main>

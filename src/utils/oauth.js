@@ -1,6 +1,6 @@
-import { NAVER_STATE_KEY, OAUTH_CONFIG } from '../config/appConfig';
+import { OAUTH_CONFIG, STORAGE_KEYS } from '../config/appConfig';
 
-const OAUTH_RETURN_TO_KEY = 'bridgework.oauth.returnTo';
+const OAUTH_RETURN_TO_KEY = STORAGE_KEYS.oauthReturnTo;
 
 const readProviderConfig = (provider) => OAUTH_CONFIG[provider];
 
@@ -22,10 +22,25 @@ const generateState = () => {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 };
 
+const getOAuthStateKey = (provider) => `${STORAGE_KEYS.oauthState}:${provider}`;
+
+const createAndStoreState = (provider) => {
+  const state = generateState();
+  sessionStorage.setItem(getOAuthStateKey(provider), state);
+  return state;
+};
+
 export const oauthUtils = {
   saveReturnTo(path) {
     const fallbackPath = '/';
-    const safePath = typeof path === 'string' && path.startsWith('/') ? path : fallbackPath;
+    const safePath =
+      typeof path === 'string' &&
+      path.startsWith('/') &&
+      !path.startsWith('//') &&
+      !path.startsWith('/\\') &&
+      !path.startsWith('/auth/')
+        ? path
+        : fallbackPath;
     sessionStorage.setItem(OAUTH_RETURN_TO_KEY, safePath);
   },
 
@@ -33,7 +48,7 @@ export const oauthUtils = {
     const path = sessionStorage.getItem(OAUTH_RETURN_TO_KEY);
     sessionStorage.removeItem(OAUTH_RETURN_TO_KEY);
 
-    if (!path || !path.startsWith('/') || path.startsWith('/auth/')) {
+    if (!path || !path.startsWith('/') || path.startsWith('//') || path.startsWith('/\\') || path.startsWith('/auth/')) {
       return '/';
     }
 
@@ -51,16 +66,18 @@ export const oauthUtils = {
     }
 
     if (provider === 'KAKAO') {
+      const state = createAndStoreState(provider);
+
       return `${config.authorizeUrl}?${toQueryString({
         response_type: 'code',
         client_id: config.clientId,
-        redirect_uri: config.redirectUri
+        redirect_uri: config.redirectUri,
+        state
       })}`;
     }
 
     if (provider === 'NAVER') {
-      const state = generateState();
-      sessionStorage.setItem(NAVER_STATE_KEY, state);
+      const state = createAndStoreState(provider);
 
       return `${config.authorizeUrl}?${toQueryString({
         response_type: 'code',
@@ -73,14 +90,19 @@ export const oauthUtils = {
     throw new Error(`지원하지 않는 provider 입니다: ${provider}`);
   },
 
-  verifyNaverState(returnedState) {
-    const expected = sessionStorage.getItem(NAVER_STATE_KEY);
-    sessionStorage.removeItem(NAVER_STATE_KEY);
+  verifyState(provider, returnedState) {
+    const stateKey = getOAuthStateKey(provider);
+    const expected = sessionStorage.getItem(stateKey);
+    sessionStorage.removeItem(stateKey);
 
     if (!expected || !returnedState) {
       return false;
     }
 
     return expected === returnedState;
+  },
+
+  verifyNaverState(returnedState) {
+    return this.verifyState('NAVER', returnedState);
   }
 };
