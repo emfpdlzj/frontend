@@ -4,6 +4,8 @@ import arrowUpWhiteIcon from '../../assets/profile/arrow_up_white.png';
 import editIcon from '../../assets/profile/edit_icon.png';
 import moreIcon from '../../assets/profile/more_icon.png';
 import plusIcon from '../../assets/profile/plus_icon.png';
+import { profileApi } from '../../api/profileApi';
+import { useAuth } from '../../auth/AuthContext';
 import { STORAGE_KEYS } from '../../config/appConfig';
 import { useProfiles } from '../../hooks/useProfiles';
 import { normalizeBirthDate } from '../../utils/birthDate';
@@ -29,6 +31,8 @@ const sectionRows = [
 const PROFILE_DRAFT_AUTOSAVE_DEBOUNCE_MS = 1000;
 const PROFILE_DRAFT_AUTOSAVE_INTERVAL_MS = 60000;
 const PROFILE_DRAFT_CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_PORTFOLIO_PDF_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_PORTFOLIO_PDF_SIZE_LABEL = '10MB';
 const SAFE_PROFILE_DRAFT_FIELDS = [
   'desiredJob',
   'commuteRange',
@@ -53,6 +57,7 @@ const SAFE_PROFILE_DRAFT_FIELDS = [
 ];
 
 export function ProfileShell() {
+  const { callWithAuth } = useAuth();
   const {
     status,
     detailStatus,
@@ -78,9 +83,12 @@ export function ProfileShell() {
   const [draftToast, setDraftToast] = useState(null);
   const [lastAutosavedAt, setLastAutosavedAt] = useState('');
   const [cachedDraftCards, setCachedDraftCards] = useState([]);
+  const [isExtractingPortfolio, setIsExtractingPortfolio] = useState(false);
+  const [isPortfolioConfirmOpen, setIsPortfolioConfirmOpen] = useState(false);
   const loadedDraftKeyRef = useRef('');
   const lastAutosavedSnapshotRef = useRef('');
   const autosaveDebounceRef = useRef(null);
+  const portfolioFileInputRef = useRef(null);
   const activeRowIndex = sectionRows.findIndex((row) => row.some((section) => section.id === activeSection));
   const visibleTopRows = activeSection && activeRowIndex === 0 ? [sectionRows[0]] : sectionRows;
   const showBottomRow = activeSection && activeRowIndex === 0;
@@ -122,6 +130,12 @@ export function ProfileShell() {
 
     return '';
   }, [isCreateMode, selectedProfile?.profileId]);
+  const selectedProfileSummary = useMemo(
+    () => profiles.find((profile) => String(profile.profileId) === String(selectedProfileId)) || null,
+    [profiles, selectedProfileId]
+  );
+  const selectedProfileForToggle = isCreateMode ? null : selectedProfile || selectedProfileSummary;
+  const isDefaultProfileSelected = Boolean(selectedProfileForToggle?.isDefault);
   const canDeleteProfile = Boolean(selectedProfile) && !isCreateMode && !selectedProfile.isDefault && profiles.length > 1 && !isMutating;
 
   const showDraftToast = useCallback((message, kind = 'info') => {
@@ -254,11 +268,13 @@ export function ProfileShell() {
   };
 
   const handleSetDefault = async () => {
-    if (!selectedProfile || selectedProfile.isDefault || isMutating) {
+    const targetProfile = selectedProfileForToggle;
+
+    if (!targetProfile || targetProfile.isDefault || isMutating || isExtractingPortfolio) {
       return;
     }
 
-    await setDefaultProfile(selectedProfile.profileId);
+    await setDefaultProfile(targetProfile.profileId);
   };
 
   const handleAddProfile = () => {
@@ -335,7 +351,7 @@ export function ProfileShell() {
   };
 
   const handleSave = async () => {
-    if (!draftProfile || isMutating) {
+    if (!draftProfile || isMutating || isExtractingPortfolio) {
       return;
     }
 
@@ -393,6 +409,88 @@ export function ProfileShell() {
       await deleteProfile(selectedProfile.profileId);
       loadedDraftKeyRef.current = '';
       lastAutosavedSnapshotRef.current = '';
+    }
+  };
+
+  const handlePortfolioExtractClick = () => {
+    if (!draftProfile || isMutating || isExtractingPortfolio) {
+      return;
+    }
+
+    setIsPortfolioConfirmOpen(true);
+  };
+
+  const handlePortfolioExtractCancel = () => {
+    setIsPortfolioConfirmOpen(false);
+  };
+
+  const handlePortfolioExtractConfirm = () => {
+    setIsPortfolioConfirmOpen(false);
+
+    if (!portfolioFileInputRef.current) {
+      setFormError('파일 업로드 입력을 초기화하지 못했습니다. 화면을 새로고침 후 다시 시도해 주세요.');
+      return;
+    }
+
+    portfolioFileInputRef.current.value = '';
+    portfolioFileInputRef.current.click();
+  };
+
+  const handlePortfolioFileSelected = async (event) => {
+    const selectedFile = event.target.files?.[0];
+
+    if (!selectedFile) {
+      return;
+    }
+
+    const normalizedName = selectedFile.name.toLowerCase();
+    const isPdf = selectedFile.type === 'application/pdf' || normalizedName.endsWith('.pdf');
+
+    if (!isPdf) {
+      setFormError('PDF 파일만 업로드할 수 있습니다.');
+      return;
+    }
+
+    if (selectedFile.size > MAX_PORTFOLIO_PDF_SIZE_BYTES) {
+      setFormError(`PDF 파일 크기는 ${MAX_PORTFOLIO_PDF_SIZE_LABEL} 이하만 업로드할 수 있습니다.`);
+      return;
+    }
+
+    setFormError('');
+    setIsExtractingPortfolio(true);
+
+    try {
+      const result = await callWithAuth((accessToken) =>
+        profileApi.extractProfileDraftFromPortfolio(accessToken, selectedFile)
+      );
+      const extractedDraft = toExtractedDraft(result?.draft);
+
+      if (!extractedDraft) {
+        throw new Error('포트폴리오에서 프로필 정보를 추출하지 못했습니다.');
+      }
+
+      setDraftProfile((prev) => ({
+        ...createEmptyProfileDraft(),
+        profileId: prev?.profileId,
+        userId: prev?.userId,
+        isDefault: prev?.isDefault,
+        updatedAt: prev?.updatedAt,
+        ...extractedDraft
+      }));
+
+      setFormatValidationVisible({});
+      showDraftToast('PDF 분석 결과를 반영했습니다. 저장 버튼을 누르면 서버에 반영됩니다.', 'success');
+    } catch (error) {
+      if (error?.status === 413 || error?.errorCode === 'FILE_TOO_LARGE') {
+        setFormError(`PDF 파일 크기는 ${MAX_PORTFOLIO_PDF_SIZE_LABEL} 이하만 업로드할 수 있습니다.`);
+        return;
+      }
+      setFormError(error.message || '포트폴리오 분석에 실패했습니다.');
+    } finally {
+      setIsExtractingPortfolio(false);
+      if (portfolioFileInputRef.current) {
+        portfolioFileInputRef.current.value = '';
+      }
     }
   };
 
@@ -461,6 +559,13 @@ export function ProfileShell() {
         </aside>
 
         <section className="profile-workspace" aria-labelledby="profile-title">
+          <input
+            ref={portfolioFileInputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="profile-file-input-hidden"
+            onChange={handlePortfolioFileSelected}
+          />
           <button type="button" className="profile-delete-button" disabled={!canDeleteProfile} onClick={handleDelete}>
             프로필 삭제
           </button>
@@ -476,8 +581,8 @@ export function ProfileShell() {
               <label className="profile-default-toggle">
                 <input
                   type="checkbox"
-                  checked={Boolean(selectedProfile?.isDefault) && !isCreateMode}
-                  disabled={!selectedProfile || isCreateMode || selectedProfile.isDefault || isMutating}
+                  checked={isDefaultProfileSelected}
+                  disabled={!selectedProfileForToggle || isCreateMode || isDefaultProfileSelected || isMutating || isExtractingPortfolio}
                   onChange={handleSetDefault}
                 />
                 <span aria-hidden="true" />
@@ -511,8 +616,21 @@ export function ProfileShell() {
             {(isCreateMode || (detailStatus === 'success' && visibleProfile)) ? (
               <>
                 <div className="profile-form-actions">
+                  <button
+                    type="button"
+                    className="profile-secondary-action profile-portfolio-action"
+                    onClick={handlePortfolioExtractClick}
+                    disabled={isMutating || isExtractingPortfolio}
+                  >
+                    {isExtractingPortfolio ? 'PDF 분석 중...' : '내 포트폴리오 pdf 파일로 생성하기'}
+                  </button>
                   {isCreateMode ? (
-                    <button type="button" className="profile-secondary-action" onClick={handleCancelCreate} disabled={isMutating}>
+                    <button
+                      type="button"
+                      className="profile-secondary-action"
+                      onClick={handleCancelCreate}
+                      disabled={isMutating || isExtractingPortfolio}
+                    >
                       취소
                     </button>
                   ) : null}
@@ -520,11 +638,12 @@ export function ProfileShell() {
                     type="button"
                     className="profile-primary-action"
                     onClick={handleSave}
-                    disabled={isMutating || (!isCreateMode && !hasDraftChanges)}
+                    disabled={isMutating || isExtractingPortfolio || (!isCreateMode && !hasDraftChanges)}
                   >
                     {isMutating ? '저장 중...' : isCreateMode ? '프로필 추가 완료' : '변경사항 저장'}
                   </button>
                 </div>
+                <p className="profile-portfolio-note">업로드 가능: PDF, 최대 {MAX_PORTFOLIO_PDF_SIZE_LABEL}</p>
                 <ProfileTabs rows={visibleTopRows} activeSection={activeSection} onTabClick={handleTabClick} />
                 <ProfileSectionPanel
                   activeSection={activeSection}
@@ -544,6 +663,22 @@ export function ProfileShell() {
       {draftToast ? (
         <div className={`profile-toast profile-toast--${draftToast.kind}`} role="status" aria-live="polite">
           {draftToast.message}
+        </div>
+      ) : null}
+      {isPortfolioConfirmOpen ? (
+        <div className="profile-confirm-backdrop" role="presentation">
+          <div className="profile-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-confirm-title">
+            <h2 id="profile-confirm-title">포트폴리오로 프로필 생성</h2>
+            <p>이미 입력된 값들도 새로 덮어쓰기 됩니다. 진행하시겠습니까?</p>
+            <div className="profile-confirm-actions">
+              <button type="button" className="profile-secondary-action" onClick={handlePortfolioExtractCancel}>
+                아니오
+              </button>
+              <button type="button" className="profile-primary-action" onClick={handlePortfolioExtractConfirm}>
+                예
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
     </main>
@@ -637,6 +772,91 @@ function toDraftProfile(profile) {
       typeof profile?.disabilityRegisteredYn === 'boolean' ? profile.disabilityRegisteredYn : null,
     remoteAvailableYn: typeof profile?.remoteAvailableYn === 'boolean' ? profile.remoteAvailableYn : null,
     patrioticVeteranYn: typeof profile?.patrioticVeteranYn === 'boolean' ? profile.patrioticVeteranYn : null
+  };
+}
+
+function toTextOrEmpty(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return String(value);
+}
+
+function toBooleanOrNull(value) {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  return null;
+}
+
+function toStringArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => String(item ?? '').trim())
+    .filter((item) => item.length > 0);
+}
+
+function toExtractedDraft(draft) {
+  if (!draft || typeof draft !== 'object') {
+    return null;
+  }
+
+  return {
+    desiredJob: toTextOrEmpty(draft.desiredJob),
+    commuteRange: toTextOrEmpty(draft.commuteRange),
+    preferredWorkEnvironments: toStringArray(draft.preferredWorkEnvironments),
+    avoidedWorkEnvironments: toStringArray(draft.avoidedWorkEnvironments),
+    requiredSupports: toStringArray(draft.requiredSupports),
+    disabilityType: toTextOrEmpty(draft.disabilityType),
+    careerSummary: toTextOrEmpty(draft.careerSummary),
+    educationSummary: toTextOrEmpty(draft.educationSummary),
+    employmentTypeSummary: toTextOrEmpty(draft.employmentTypeSummary),
+    fullName: toTextOrEmpty(draft.fullName),
+    contactPhone: toTextOrEmpty(draft.contactPhone),
+    contactEmail: toTextOrEmpty(draft.contactEmail),
+    birthDate: toTextOrEmpty(draft.birthDate),
+    genderType: toTextOrEmpty(draft.genderType),
+    ageGroup: toTextOrEmpty(draft.ageGroup),
+    residenceRegion: toTextOrEmpty(draft.residenceRegion),
+    detailAddress: toTextOrEmpty(draft.detailAddress),
+    emergencyContact: toTextOrEmpty(draft.emergencyContact),
+    highestEducation: toTextOrEmpty(draft.highestEducation),
+    graduationStatus: toTextOrEmpty(draft.graduationStatus),
+    majorCareer: toTextOrEmpty(draft.majorCareer),
+    careerDetail: toTextOrEmpty(draft.careerDetail),
+    projectExperience: toTextOrEmpty(draft.projectExperience),
+    careerGapReason: toTextOrEmpty(draft.careerGapReason),
+    targetJob: toTextOrEmpty(draft.targetJob),
+    skills: toStringArray(draft.skills),
+    certifications: toStringArray(draft.certifications),
+    portfolioUrl: toTextOrEmpty(draft.portfolioUrl),
+    awards: toTextOrEmpty(draft.awards),
+    trainings: toTextOrEmpty(draft.trainings),
+    disabilitySeverity: toTextOrEmpty(draft.disabilitySeverity),
+    disabilityRegisteredYn: toBooleanOrNull(draft.disabilityRegisteredYn),
+    disabilityDescription: toTextOrEmpty(draft.disabilityDescription),
+    assistiveDevices: toTextOrEmpty(draft.assistiveDevices),
+    workSupportRequirements: toTextOrEmpty(draft.workSupportRequirements),
+    workAvailability: toTextOrEmpty(draft.workAvailability),
+    workTypes: toStringArray(draft.workTypes),
+    expectedSalary: toTextOrEmpty(draft.expectedSalary),
+    workTimePreference: toTextOrEmpty(draft.workTimePreference),
+    remoteAvailableYn: toBooleanOrNull(draft.remoteAvailableYn),
+    mobilityRange: toTextOrEmpty(draft.mobilityRange),
+    selfIntroduction: toTextOrEmpty(draft.selfIntroduction),
+    motivation: toTextOrEmpty(draft.motivation),
+    jobFitDescription: toTextOrEmpty(draft.jobFitDescription),
+    careerGoal: toTextOrEmpty(draft.careerGoal),
+    strengthsWeaknesses: toTextOrEmpty(draft.strengthsWeaknesses),
+    militaryService: toTextOrEmpty(draft.militaryService),
+    patrioticVeteranYn: toBooleanOrNull(draft.patrioticVeteranYn),
+    referrer: toTextOrEmpty(draft.referrer),
+    snsUrl: toTextOrEmpty(draft.snsUrl)
   };
 }
 

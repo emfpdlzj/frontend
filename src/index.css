@@ -7602,9 +7602,22 @@ a:hover {
 
 .profile-form-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
   margin-bottom: 16px;
+}
+
+.profile-portfolio-note {
+  margin: -6px 0 14px;
+  color: #526173;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.profile-file-input-hidden {
+  display: none;
 }
 
 .profile-autosave-note {
@@ -7644,6 +7657,10 @@ a:hover {
   border: 1px solid #cbd2dc;
   background: #fff;
   color: #1f2937;
+}
+
+.profile-portfolio-action {
+  margin-right: auto;
 }
 
 .profile-primary-action:disabled,
@@ -7723,6 +7740,46 @@ a:hover {
   border-color: #f2b8b5;
   background: #fff8f8;
   color: #b42318;
+}
+
+.profile-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.profile-confirm-dialog {
+  width: min(460px, 100%);
+  border: 1px solid #d7dee8;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 20px 20px 18px;
+}
+
+.profile-confirm-dialog h2 {
+  margin: 0 0 8px;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 850;
+}
+
+.profile-confirm-dialog p {
+  margin: 0;
+  color: #374151;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.profile-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .profile-tabs {
