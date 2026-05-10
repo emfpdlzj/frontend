@@ -1041,23 +1041,35 @@ a:hover {
   margin-top: 16px;
 }
 
-.home-quick__guide {
+.home-quick__workflow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.home-quick__workflow-item {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #ffffff;
-  padding: 18px 20px;
+  padding: 14px 16px;
 }
 
-.home-quick__guide p {
+.home-quick__workflow-item strong {
+  display: block;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.home-quick__workflow-item span {
+  display: block;
   margin: 0;
+  margin-top: 6px;
   color: #374151;
   font-size: 15px;
   font-weight: 600;
   line-height: 1.5;
-}
-
-.home-quick__guide p + p {
-  margin-top: 4px;
 }
 
 .home-quick__results {
@@ -1065,6 +1077,11 @@ a:hover {
   border-radius: 8px;
   background: #ffffff;
   padding: 20px;
+}
+
+.home-job-card.is-recommended {
+  border-color: #8ec5a5;
+  background: #f8fffb;
 }
 
 .posting-detail-modal {
@@ -1139,6 +1156,10 @@ a:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .home-quick__workflow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .home-accessibility-summary {
     grid-column: 1 / -1;
   }
@@ -1152,7 +1173,8 @@ a:hover {
   .home-overview__actions,
   .home-summary-grid,
   .home-side-rail,
-  .home-empty-guide-list {
+  .home-empty-guide-list,
+  .home-quick__workflow {
     grid-template-columns: 1fr;
     width: 100%;
   }

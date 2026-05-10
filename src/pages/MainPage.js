@@ -474,6 +474,11 @@ export function MainPage() {
     () => profilesState.profiles.find((profile) => getProfileId(profile) === String(selectedProfileId)) || null,
     [profilesState.profiles, selectedProfileId]
   );
+  const orderedProfiles = useMemo(() => {
+    const profiles = [...profilesState.profiles];
+    profiles.sort((left, right) => Number(Boolean(right?.isDefault)) - Number(Boolean(left?.isDefault)));
+    return profiles;
+  }, [profilesState.profiles]);
 
   const baseFilterGroups = useMemo(() => [
     {
@@ -836,18 +841,19 @@ export function MainPage() {
               </div>
             </div>
 
-            <div className="home-quick__guide" role="note" aria-label="퀵 맞춤 일자리 추천 안내">
-              <p>1. AI 직무 적합도 토글 ON</p>
-              <p>- 프론트에서 프로필 1개 선택(기본 프로필 최상단 노출)</p>
-              <p>- Spring → FastAPI: 사용자 선택 프로필만 전달</p>
-              <p>- FastAPI: DB 공고를 최신순 조회 후 직무 적합도만 계산</p>
-              <p>- FastAPI → Spring: 공고별 직무 적합도 포함 결과 반환</p>
-              <p>- Spring → 프론트: 결과 전달</p>
-              <p>- 프론트: 화면 필터 적용, 일정 점수 이상 공고 강조</p>
-              <p>2. AI 직무 적합도 토글 OFF</p>
-              <p>- FastAPI 호출 없음</p>
-              <p>- Spring이 DB 공고 최신순 반환</p>
-              <p>- 프론트가 화면 필터 적용</p>
+            <div className="home-quick__workflow" aria-label="퀵 추천 동작 상태">
+              <div className="home-quick__workflow-item">
+                <strong>프로필</strong>
+                <span>{selectedProfile ? getProfileLabel(selectedProfile) : '프로필 선택 필요'}</span>
+              </div>
+              <div className="home-quick__workflow-item">
+                <strong>AI 직무 적합도</strong>
+                <span>{isAiEnabled ? 'ON · 직무 적합도 계산' : 'OFF · 최신 공고 순'}</span>
+              </div>
+              <div className="home-quick__workflow-item">
+                <strong>필터 적용</strong>
+                <span>{quickState.status === 'success' ? `${filteredQuickJobs.length}건 반영` : '조건 적용 대기'}</span>
+              </div>
             </div>
 
             <aside className="accessibility-map__filter-panel" aria-label="퀵 추천 필터">
@@ -881,10 +887,10 @@ export function MainPage() {
                       <h3>프로필</h3>
                       <SelectFilter
                         label="프로필 선택"
-                        options={profilesState.profiles.length ? profilesState.profiles.map((profile) => getProfileLabel(profile)) : ['프로필 없음']}
-                        value={profilesState.profiles.length ? getProfileLabel(selectedProfile) : '프로필 없음'}
+                        options={orderedProfiles.length ? orderedProfiles.map((profile) => getProfileLabel(profile)) : ['프로필 없음']}
+                        value={orderedProfiles.length ? getProfileLabel(selectedProfile) : '프로필 없음'}
                         onChange={(label) => {
-                          const matched = profilesState.profiles.find((profile) => getProfileLabel(profile) === label);
+                          const matched = orderedProfiles.find((profile) => getProfileLabel(profile) === label);
                           if (matched) {
                             setSelectedProfileId(getProfileId(matched));
                           }
@@ -960,7 +966,10 @@ export function MainPage() {
               {quickState.status === 'success' ? (
                 <div className="home-job-list" aria-label="퀵 추천 공고 목록">
                   {filteredQuickJobs.map((job) => (
-                    <article className="home-job-card" key={job.id}>
+                    <article
+                      className={`home-job-card${appliedAiEnabled && typeof job.fitScore === 'number' && job.fitScore >= 70 ? ' is-recommended' : ''}`}
+                      key={job.id}
+                    >
                       <div className="home-job-card__main">
                         <div className="home-job-card__top">
                           <span className="home-job-company">{job.company}</span>
@@ -974,9 +983,13 @@ export function MainPage() {
                           {job.dueLabel ? <div><dt>마감</dt><dd>{job.dueLabel}</dd></div> : null}
                         </dl>
                         <div className="home-job-tags">
-                          <span className={`home-badge ${job.fitScore && job.fitScore >= 70 ? 'home-badge--match' : 'home-badge--neutral'}`}>
-                            직무 적합도 {job.fitLabel}
-                          </span>
+                          {appliedAiEnabled ? (
+                            <span className={`home-badge ${job.fitScore && job.fitScore >= 70 ? 'home-badge--match' : 'home-badge--neutral'}`}>
+                              직무 적합도 {job.fitLabel}
+                            </span>
+                          ) : (
+                            <span className="home-badge home-badge--neutral">최신 공고 순 정렬</span>
+                          )}
                           <span className="home-badge home-badge--neutral">AI {appliedAiEnabled ? 'ON' : 'OFF'}</span>
                         </div>
                       </div>
