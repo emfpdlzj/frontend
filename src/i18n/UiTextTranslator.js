@@ -24,20 +24,25 @@ function shouldSkipNode(node) {
 }
 
 function translateTextNode(node, locale) {
-  if (!node.nodeValue || !/[가-힣]/.test(node.nodeValue)) {
-    if (locale === 'ko' && originalTextNodes.has(node)) {
-      node.nodeValue = originalTextNodes.get(node);
-    }
+  if (!node.nodeValue) {
     return;
   }
 
   const original = originalTextNodes.get(node) || node.nodeValue;
 
+  if (!/[가-힣]/.test(original)) {
+    return;
+  }
+
   if (!originalTextNodes.has(node)) {
     originalTextNodes.set(node, original);
   }
 
-  node.nodeValue = locale === 'ko' ? original : translateUiText(original, locale);
+  const translated = locale === 'ko' ? original : translateUiText(original, locale);
+
+  if (node.nodeValue !== translated) {
+    node.nodeValue = translated;
+  }
 }
 
 function translateElementAttributes(element, locale) {
@@ -54,7 +59,11 @@ function translateElementAttributes(element, locale) {
       element.setAttribute(originalAttribute, originalValue);
     }
 
-    element.setAttribute(attribute, locale === 'ko' ? originalValue : translateUiText(originalValue, locale));
+    const translated = locale === 'ko' ? originalValue : translateUiText(originalValue, locale);
+
+    if (currentValue !== translated) {
+      element.setAttribute(attribute, translated);
+    }
   });
 }
 
