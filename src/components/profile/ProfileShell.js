@@ -263,6 +263,19 @@ export function ProfileShell() {
     return () => window.clearInterval(timer);
   }, [saveDraftLocally]);
 
+  useEffect(() => {
+    if (!isExtractingPortfolio) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isExtractingPortfolio]);
+
   const handleTabClick = (sectionId) => {
     setActiveSection((current) => (current === sectionId ? '' : sectionId));
   };
@@ -678,6 +691,15 @@ export function ProfileShell() {
                 예
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+      {isExtractingPortfolio ? (
+        <div className="profile-loading-backdrop" role="presentation">
+          <div className="profile-loading-modal" role="dialog" aria-modal="true" aria-labelledby="profile-loading-title">
+            <div className="loading-spinner" aria-hidden="true" />
+            <h2 id="profile-loading-title">PDF 분석 중입니다</h2>
+            <p>분석이 끝날 때까지 잠시만 기다려 주세요.</p>
           </div>
         </div>
       ) : null}
