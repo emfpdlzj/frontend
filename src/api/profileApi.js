@@ -50,5 +50,19 @@ export const profileApi = {
         signal
       })
     );
+  },
+
+  async extractProfileDraftFromPortfolio(accessToken, file, signal) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return unwrapApiResult(
+      await httpRequest('/profiles/ocr/extract', {
+        method: 'POST',
+        token: accessToken,
+        body: formData,
+        signal
+      })
+    );
   }
 };

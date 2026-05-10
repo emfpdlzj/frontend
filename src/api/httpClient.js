@@ -3,7 +3,7 @@ import { authStorage } from '../auth/authStorage';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('http');
-const DEFAULT_REQUEST_TIMEOUT_MS = 15000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
 const RETRY_DELAY_MS = 350;
 
