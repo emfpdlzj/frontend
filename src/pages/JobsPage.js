@@ -9,15 +9,6 @@ function ScrapDeleteConfirmModal({ pending, onConfirm, onClose }) {
       }
     }}>
       <section className="login-modal logout-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="scrap-delete-confirm-title">
-        <button
-          type="button"
-          className="login-modal__close"
-          onClick={onClose}
-          aria-label="스크랩 삭제 확인 창 닫기"
-          disabled={pending}
-        >
-          닫기
-        </button>
         <div className="login-modal__body logout-confirm-modal__body">
           <div className="login-modal__heading">
             <h2 id="scrap-delete-confirm-title" className="login-modal__title">스크랩 삭제 확인</h2>

@@ -1376,6 +1376,10 @@ export function MainPage() {
   }, [callWithAuth, isScrapping, selectedPostingId]);
 
   const isQuickLoading = quickState.status === 'loading' || quickState.status === 'refetching';
+  const isGuestUser = !isAuthenticated;
+  const openLoginModal = useCallback(() => {
+    setIsLoginModalOpen(true);
+  }, []);
 
   return (
     <main className="main-page" aria-labelledby="main-page-title">
@@ -1426,8 +1430,7 @@ export function MainPage() {
           ) : null}
         </section>
 
-        {isAuthenticated ? (
-          <section className="home-quick" aria-labelledby="quick-recommend-title">
+        <section className="home-quick" aria-labelledby="quick-recommend-title">
             <section className="home-overview home-overview--compact" aria-labelledby="quick-recommend-title">
               <div className="home-overview__heading">
                 <h1 id="quick-recommend-title">퀵 맞춤 일자리 추천</h1>
@@ -1449,13 +1452,21 @@ export function MainPage() {
                     type="button"
                     className="accessibility-map__profile-trigger home-quick__profile-trigger"
                     aria-haspopup="listbox"
-                    aria-expanded={isProfileMenuOpen}
-                    onClick={() => setIsProfileMenuOpen((isOpen) => !isOpen)}
+                    aria-expanded={isGuestUser ? false : isProfileMenuOpen}
+                    onClick={() => {
+                      if (isGuestUser) {
+                        openLoginModal();
+                        return;
+                      }
+                      setIsProfileMenuOpen((isOpen) => !isOpen);
+                    }}
                   >
                     <span className="accessibility-map__profile-trigger-main">
                       <img src={profileIcon} alt="프로필 아이콘" />
                       <span className="accessibility-map__profile-option-text">
-                        {isProfileMenuOpen ? (
+                        {isGuestUser ? (
+                          <strong>로그인 후 자신의 프로필을 선택해보세요.</strong>
+                        ) : isProfileMenuOpen ? (
                           <strong>프로필을 선택하세요</strong>
                         ) : (
                           <>
@@ -1467,7 +1478,7 @@ export function MainPage() {
                     </span>
                     <img src={arrowDown} alt="프로필 목록 펼치기 아이콘" />
                   </button>
-                  {isProfileMenuOpen ? (
+                  {isProfileMenuOpen && !isGuestUser ? (
                     <div className="accessibility-map__profile-menu" role="listbox" aria-label="프로필 목록">
                       {orderedProfiles.map((profile) => (
                         <button
@@ -1505,7 +1516,13 @@ export function MainPage() {
                   <button
                     type="button"
                     className="accessibility-map__collapse-button"
-                    onClick={() => setIsQuickFilterCollapsed((prev) => !prev)}
+                    onClick={() => {
+                      if (isGuestUser) {
+                        openLoginModal();
+                        return;
+                      }
+                      setIsQuickFilterCollapsed((prev) => !prev);
+                    }}
                     aria-expanded={!isQuickFilterCollapsed}
                   >
                     {isQuickFilterCollapsed ? '필터 펼치기' : '필터 접기'}
@@ -1524,7 +1541,13 @@ export function MainPage() {
                         role="switch"
                         aria-checked={isAiEnabled}
                         className={isAiEnabled ? 'is-on' : ''}
-                        onClick={() => setIsAiEnabled((prev) => !prev)}
+                        onClick={() => {
+                          if (isGuestUser) {
+                            openLoginModal();
+                            return;
+                          }
+                          setIsAiEnabled((prev) => !prev);
+                        }}
                       >
                         <span className="accessibility-map__ai-toggle-track" aria-hidden="true">
                           <span className="accessibility-map__ai-toggle-thumb" />
@@ -1543,14 +1566,26 @@ export function MainPage() {
                                 <JobCategoryCascadeFilter
                                   categories={group.jobCategories}
                                   value={group.selectedValue}
-                                  onChange={(value) => setDraftFilters((prev) => ({ ...prev, [group.id]: value }))}
+                                  onChange={(value) => {
+                                    if (isGuestUser) {
+                                      openLoginModal();
+                                      return;
+                                    }
+                                    setDraftFilters((prev) => ({ ...prev, [group.id]: value }));
+                                  }}
                                 />
                               ) : group.type === 'select' ? (
                                 <SelectFilter
                                   label={group.title}
                                   options={group.options}
                                   value={group.selectedValue}
-                                  onChange={(value) => setDraftFilters((prev) => ({ ...prev, [group.id]: value }))}
+                                  onChange={(value) => {
+                                    if (isGuestUser) {
+                                      openLoginModal();
+                                      return;
+                                    }
+                                    setDraftFilters((prev) => ({ ...prev, [group.id]: value }));
+                                  }}
                                 />
                               ) : (
                                 <div className="accessibility-map__chip-row accessibility-map__chip-row--expanded">
@@ -1560,7 +1595,13 @@ export function MainPage() {
                                       type="button"
                                       className={`accessibility-map__chip${group.selectedValue === chip ? ' is-selected' : ''}`}
                                       aria-pressed={group.selectedValue === chip}
-                                      onClick={() => setDraftFilters((prev) => ({ ...prev, [group.id]: chip }))}
+                                      onClick={() => {
+                                        if (isGuestUser) {
+                                          openLoginModal();
+                                          return;
+                                        }
+                                        setDraftFilters((prev) => ({ ...prev, [group.id]: chip }));
+                                      }}
                                     >
                                       {chip}
                                     </button>
@@ -1572,34 +1613,46 @@ export function MainPage() {
                         </section>
                       ))}
                     </div>
-
-                    <div className="accessibility-map__filter-actions" aria-label="필터 검색 실행">
-                      <button type="button" className="secondary-button accessibility-map__filter-reset-button" onClick={handleResetQuickFilters}>
-                        초기화
-                      </button>
-                      <button
-                        type="button"
-                        className="primary-button accessibility-map__filter-apply-button"
-                        onClick={handleApplyQuickFilters}
-                        disabled={isQuickLoading || !selectedProfileId}
-                      >
-                        {isQuickLoading ? '로딩 중' : '조건 적용'}
-                      </button>
-                    </div>
                   </>
                 ) : null}
               </aside>
             </div>
 
-            <section className="home-quick__results" aria-label="퀵 추천 결과">
-              {profilesState.status === 'loading' ? <div className="home-feedback" role="status">프로필을 불러오는 중입니다.</div> : null}
-              {profilesState.status === 'error' ? <div className="home-feedback is-error" role="alert">{profilesState.error}</div> : null}
-              {quickState.status === 'idle' ? <div className="home-feedback" role="status">조건 적용을 누르면 퀵 추천 결과를 조회합니다.</div> : null}
-              {quickState.status === 'loading' || quickState.status === 'refetching' ? <div className="home-feedback" role="status">퀵 추천 결과를 계산하는 중입니다.</div> : null}
-              {quickState.status === 'error' ? <div className="home-feedback is-error" role="alert">{quickState.error}</div> : null}
-              {quickState.status === 'empty' ? <div className="home-feedback" role="status">현재 조건에 맞는 공고가 없습니다.</div> : null}
+            <div className="home-quick__actions">
+              <div className="accessibility-map__filter-actions" aria-label="필터 검색 실행">
+                <button
+                  type="button"
+                  className="secondary-button accessibility-map__filter-reset-button"
+                  onClick={isGuestUser ? openLoginModal : handleResetQuickFilters}
+                >
+                  초기화
+                </button>
+                <button
+                  type="button"
+                  className="primary-button accessibility-map__filter-apply-button"
+                  onClick={isGuestUser ? openLoginModal : handleApplyQuickFilters}
+                  disabled={!isGuestUser && (isQuickLoading || !selectedProfileId)}
+                >
+                  {isQuickLoading ? '로딩중' : '검색'}
+                </button>
+              </div>
+            </div>
 
-              {quickState.status === 'success' ? (
+            <section className="home-quick__results" aria-label="퀵 추천 결과">
+              {isGuestUser ? <div className="home-feedback" role="status">로그인 후 퀵 맞춤 일자리 추천 결과를 확인할 수 있습니다.</div> : null}
+              {!isGuestUser && profilesState.status === 'loading' ? <div className="home-feedback" role="status">프로필을 불러오는 중입니다.</div> : null}
+              {!isGuestUser && profilesState.status === 'error' ? <div className="home-feedback is-error" role="alert">{profilesState.error}</div> : null}
+              {!isGuestUser && quickState.status === 'idle' ? <div className="home-feedback" role="status">검색을 누르면 퀵 추천 결과를 조회합니다.</div> : null}
+              {!isGuestUser && (quickState.status === 'loading' || quickState.status === 'refetching') ? (
+                <div className="home-feedback jobs-feedback--animated-dots" role="status" aria-live="polite">
+                  로딩중
+                  <span className="jobs-feedback__dots" aria-hidden="true" />
+                </div>
+              ) : null}
+              {!isGuestUser && quickState.status === 'error' ? <div className="home-feedback is-error" role="alert">{quickState.error}</div> : null}
+              {!isGuestUser && quickState.status === 'empty' ? <div className="home-feedback" role="status">현재 조건에 맞는 공고가 없습니다.</div> : null}
+
+              {!isGuestUser && quickState.status === 'success' ? (
                 <div className="home-job-list" aria-label="퀵 추천 공고 목록">
                   {filteredQuickJobs.map((job) => (
                     <button
@@ -1638,7 +1691,6 @@ export function MainPage() {
               ) : null}
             </section>
           </section>
-        ) : null}
       </div>
 
       {detailModalOpen ? (

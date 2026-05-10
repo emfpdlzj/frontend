@@ -33,7 +33,9 @@ export function TrafficFilterPanel({
   appliedAiEnabled,
   selectedJobId,
   viewState,
+  isGuestUser = false,
   onSelectJob,
+  onRequireLogin,
   onToggleAiScoring,
   onApplyFilters
 }) {
@@ -72,6 +74,10 @@ export function TrafficFilterPanel({
   const orderedFilterItems = useMemo(() => filterItems, [filterItems]);
 
   const handleSelectDraftFilter = (filterId, value) => {
+    if (isGuestUser) {
+      onRequireLogin?.();
+      return;
+    }
     setDraftFilterValues((current) => ({
       ...current,
       [filterId]: value
@@ -79,11 +85,19 @@ export function TrafficFilterPanel({
   };
 
   const handleApplyFilters = () => {
+    if (isGuestUser) {
+      onRequireLogin?.();
+      return;
+    }
     onApplyFilters?.(draftFilterValues);
     setIsFilterCollapsed(true);
   };
 
   const handleResetFilters = () => {
+    if (isGuestUser) {
+      onRequireLogin?.();
+      return;
+    }
     const resetValues = Object.fromEntries(
       filterGroups
         .filter((group) => !group.readonly)
@@ -105,7 +119,13 @@ export function TrafficFilterPanel({
         <button
           type="button"
           className="accessibility-map__collapse-button"
-          onClick={() => setIsFilterCollapsed((prev) => !prev)}
+          onClick={() => {
+            if (isGuestUser) {
+              onRequireLogin?.();
+              return;
+            }
+            setIsFilterCollapsed((prev) => !prev);
+          }}
           aria-expanded={!isFilterCollapsed}
         >
           {isFilterCollapsed ? '필터 펼치기' : '필터 접기'}
@@ -123,7 +143,13 @@ export function TrafficFilterPanel({
               role="switch"
               aria-checked={isAiEnabled}
               className={isAiEnabled ? 'is-on' : ''}
-              onClick={onToggleAiScoring}
+              onClick={() => {
+                if (isGuestUser) {
+                  onRequireLogin?.();
+                  return;
+                }
+                onToggleAiScoring?.();
+              }}
             >
               <span className="accessibility-map__ai-toggle-track" aria-hidden="true">
                 <span className="accessibility-map__ai-toggle-thumb" />
@@ -197,22 +223,22 @@ export function TrafficFilterPanel({
               </section>
             ))}
           </div>
-
-          <div className="accessibility-map__filter-actions" aria-label="필터 검색 실행">
-            <button type="button" className="secondary-button accessibility-map__filter-reset-button" onClick={handleResetFilters}>
-              초기화
-            </button>
-            <button
-              type="button"
-              className="primary-button accessibility-map__filter-apply-button"
-              onClick={handleApplyFilters}
-              disabled={isRecommendationBusy}
-            >
-              {isRecommendationBusy ? '계산 중' : '조건 적용'}
-            </button>
-          </div>
         </>
       ) : null}
+
+      <div className="accessibility-map__filter-actions" aria-label="필터 검색 실행">
+        <button type="button" className="secondary-button accessibility-map__filter-reset-button" onClick={handleResetFilters}>
+          초기화
+        </button>
+        <button
+          type="button"
+          className="primary-button accessibility-map__filter-apply-button"
+          onClick={handleApplyFilters}
+          disabled={!isGuestUser && isRecommendationBusy}
+        >
+          {isRecommendationBusy ? '계산 중' : '검색'}
+        </button>
+      </div>
 
       <div className="accessibility-map__results-header">
         <h3>검색 결과 {resultCount}개{totalJobCount > resultCount ? ` / 전체 ${totalJobCount}개` : ''}</h3>
@@ -233,7 +259,7 @@ export function TrafficFilterPanel({
           </div>
         ) : viewState === 'idle' ? (
           <div className="accessibility-map__empty-panel" role="status">
-            조건 적용을 누르면 회사 공고가 지도와 목록에 표시됩니다.
+            검색을 누르면 회사 공고가 지도와 목록에 표시됩니다.
           </div>
         ) : viewState === 'empty' ? (
           <div className="accessibility-map__empty-panel" role="status">

@@ -1061,6 +1061,10 @@ a:hover {
   gap: 10px;
 }
 
+.home-quick__actions {
+  width: min(880px, 100%);
+}
+
 .home-quick__profile-select {
   position: static;
   top: auto;

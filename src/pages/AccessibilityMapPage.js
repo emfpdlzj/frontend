@@ -2,7 +2,9 @@ import { useCallback, useState } from 'react';
 import { AccessibilityMapCanvas } from '../components/accessibility-map/AccessibilityMapCanvas';
 import { AccessibilityMapDetailPanel } from '../components/accessibility-map/AccessibilityMapDetailPanel';
 import { TrafficFilterPanel } from '../components/accessibility-map/TrafficFilterPanel';
+import { LoginModal } from '../components/auth/LoginModal';
 import { StatusMessage } from '../components/common/StatusMessage';
+import { useAuth } from '../auth/AuthContext';
 import { useAccessibilityMap } from '../hooks/useAccessibilityMap';
 
 function isWithinSouthKoreaBounds(latitude, longitude) {
@@ -25,6 +27,7 @@ function MapLoadingModal({ isOpen }) {
 }
 
 export function AccessibilityMapPage() {
+  const { isAuthenticated } = useAuth();
   const {
     jobs,
     totalJobCount,
@@ -59,6 +62,7 @@ export function AccessibilityMapPage() {
     reloadRecommendations
   } = useAccessibilityMap();
   const [currentLocation, setCurrentLocation] = useState(null);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   const requestCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -92,6 +96,10 @@ export function AccessibilityMapPage() {
       }
     : mapViewport;
   const isLoadingModalOpen = viewState === 'loading' || viewState === 'calculating';
+  const isGuestUser = !isAuthenticated;
+  const openLoginModal = useCallback(() => {
+    setIsLoginModalOpen(true);
+  }, []);
 
   return (
     <main className="accessibility-map">
@@ -107,7 +115,9 @@ export function AccessibilityMapPage() {
           appliedAiEnabled={appliedAiEnabled}
           selectedJobId={selectedJobId}
           viewState={viewState}
+          isGuestUser={isGuestUser}
           onSelectJob={setSelectedJobId}
+          onRequireLogin={openLoginModal}
           onToggleAiScoring={toggleAiScoring}
           onApplyFilters={applyFilters}
         />
@@ -118,6 +128,7 @@ export function AccessibilityMapPage() {
           markers={mapMarkers}
           hasAppliedConditions={hasAppliedConditions}
           showProfileSelect={isAiEnabled}
+          isGuestUser={isGuestUser}
           profiles={profiles}
           selectedProfileId={selectedProfileId}
           supportAgencyCount={supportAgencyCount}
@@ -125,6 +136,7 @@ export function AccessibilityMapPage() {
           viewport={viewport}
           viewState={viewState}
           onSelectProfile={setSelectedProfileId}
+          onRequireLogin={openLoginModal}
           onRequestCurrentLocation={requestCurrentLocation}
           onRetry={reloadRecommendations}
         />
@@ -145,7 +157,7 @@ export function AccessibilityMapPage() {
                 <StatusMessage>선택 가능한 공고가 없어 상세 정보를 표시하지 않습니다.</StatusMessage>
               ) : null}
               {viewState === 'idle' ? (
-                <StatusMessage>조건 적용을 누르면 회사 공고와 접근성 정보를 지도에 표시합니다.</StatusMessage>
+                <StatusMessage>검색을 누르면 회사 공고와 접근성 정보를 지도에 표시합니다.</StatusMessage>
               ) : null}
               {viewState === 'loading' ? (
                 <StatusMessage>지역 접근성 지도 추천을 불러오는 중입니다.</StatusMessage>
@@ -160,6 +172,7 @@ export function AccessibilityMapPage() {
           </aside>
         )}
       </div>
+      {isLoginModalOpen ? <LoginModal onClose={() => setIsLoginModalOpen(false)} /> : null}
     </main>
   );
 }

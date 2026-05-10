@@ -119,6 +119,7 @@ function AccessibilityMapCanvasComponent({
   markers = [],
   hasAppliedConditions = false,
   showProfileSelect = true,
+  isGuestUser = false,
   profiles = [],
   selectedProfileId,
   supportAgencyCount = 0,
@@ -126,6 +127,7 @@ function AccessibilityMapCanvasComponent({
   viewport,
   viewState,
   onSelectProfile,
+  onRequireLogin,
   onRequestCurrentLocation,
   onRetry
 }) {
@@ -369,7 +371,9 @@ function AccessibilityMapCanvasComponent({
   const selectedProfile = profiles.find((profile) => profile.id === String(selectedProfileId)) || null;
   const orderedProfiles = [...profiles].sort((left, right) => Number(Boolean(right?.isDefault)) - Number(Boolean(left?.isDefault)));
   const visibleSelectedProfile = selectedProfile || orderedProfiles[0] || null;
-  const closedProfileLabel = getProfileDisplayName(visibleSelectedProfile);
+  const closedProfileLabel = isGuestUser
+    ? '로그인 후 자신의 프로필을 선택해보세요.'
+    : getProfileDisplayName(visibleSelectedProfile);
 
   if (viewState === 'loading') {
     return (
@@ -439,13 +443,21 @@ function AccessibilityMapCanvasComponent({
             type="button"
             className="accessibility-map__profile-trigger"
             aria-haspopup="listbox"
-            aria-expanded={isProfileMenuOpen}
-            onClick={() => setIsProfileMenuOpen((isOpen) => !isOpen)}
+            aria-expanded={isGuestUser ? false : isProfileMenuOpen}
+            onClick={() => {
+              if (isGuestUser) {
+                onRequireLogin?.();
+                return;
+              }
+              setIsProfileMenuOpen((isOpen) => !isOpen);
+            }}
           >
             <span className="accessibility-map__profile-trigger-main">
               <img src={profileIcon} alt="프로필 아이콘" />
               <span className="accessibility-map__profile-option-text">
-                {isProfileMenuOpen ? (
+                {isGuestUser ? (
+                  <strong>{closedProfileLabel}</strong>
+                ) : isProfileMenuOpen ? (
                   <strong>프로필을 선택하세요</strong>
                 ) : (
                   <>
@@ -457,7 +469,7 @@ function AccessibilityMapCanvasComponent({
             </span>
             <img src={arrowDown} alt="프로필 목록 펼치기 아이콘" />
           </button>
-          {isProfileMenuOpen ? (
+          {isProfileMenuOpen && !isGuestUser ? (
             <div className="accessibility-map__profile-menu" role="listbox" aria-label="프로필 목록">
               {orderedProfiles.map((profile) => (
                 <button

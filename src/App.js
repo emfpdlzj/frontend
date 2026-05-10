@@ -25,6 +25,27 @@ function AppLayout() {
     }
   }, [location.state]);
 
+  useEffect(() => {
+    // 라우트 전환 시 이전 화면 스크롤 위치가 남지 않도록 주요 스크롤 컨테이너를 초기화한다.
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
+    const selectors = [
+      '.app-frame__main',
+      '.accessibility-map__results-body',
+      '.accessibility-map__detail-content',
+      '.jobs-list-panel__list'
+    ];
+
+    selectors.forEach((selector) => {
+      const node = document.querySelector(selector);
+      if (node) {
+        node.scrollTop = 0;
+      }
+    });
+  }, [location.pathname, location.search, location.hash]);
+
   const closeWithdrawalRestoredModal = () => {
     setIsWithdrawalRestoredOpen(false);
     if (location.state?.withdrawalRestored) {
