@@ -27,15 +27,17 @@ function TabIcon({ item, label }) {
 
 function SessionActionTab({ onRequireLogin }) {
   const navigate = useNavigate();
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, currentUser, logout } = useAuth();
   const { localizePath, t } = useLocale();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  // 토큰 재발급 직후처럼 사용자 정보만 먼저 복원된 경우도 로그인 상태로 처리한다.
+  const isSignedIn = isAuthenticated || Boolean(currentUser);
 
-  const label = isAuthenticated ? t('header.logout') : t('header.login');
+  const label = isSignedIn ? t('header.logout') : t('header.login');
 
   const handleClick = () => {
-    if (!isAuthenticated) {
+    if (!isSignedIn) {
       onRequireLogin?.();
       return;
     }
@@ -83,8 +85,9 @@ function SessionActionTab({ onRequireLogin }) {
 }
 
 function TabLink({ item, onRequireLogin }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, currentUser } = useAuth();
   const { localizePath, t } = useLocale();
+  const isSignedIn = isAuthenticated || Boolean(currentUser);
   const label = t(item.labelKey);
 
   if (!item.to) {
@@ -96,7 +99,7 @@ function TabLink({ item, onRequireLogin }) {
     );
   }
 
-  if (!isAuthenticated && item.to !== ROUTE_PATHS.root) {
+  if (!isSignedIn && item.to !== ROUTE_PATHS.root) {
     return (
       <button
         type="button"
