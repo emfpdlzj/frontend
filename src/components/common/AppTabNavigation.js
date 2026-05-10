@@ -27,12 +27,13 @@ function TabIcon({ item, label }) {
 
 function SessionActionTab({ onRequireLogin }) {
   const navigate = useNavigate();
-  const { isAuthenticated, currentUser, logout } = useAuth();
+  const { isAuthenticated, currentUser, tokens, isInitializing, logout } = useAuth();
   const { localizePath, t } = useLocale();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  // 토큰 재발급 직후처럼 사용자 정보만 먼저 복원된 경우도 로그인 상태로 처리한다.
-  const isSignedIn = isAuthenticated || Boolean(currentUser);
+  // 액세스 토큰 재발급 전 구간에도 세션이 살아 있으면 로그아웃 액션을 유지한다.
+  const hasSessionToken = Boolean(tokens?.accessToken || tokens?.refreshToken);
+  const isSignedIn = isAuthenticated || Boolean(currentUser) || hasSessionToken;
 
   const label = isSignedIn ? t('header.logout') : t('header.login');
 
@@ -85,9 +86,10 @@ function SessionActionTab({ onRequireLogin }) {
 }
 
 function TabLink({ item, onRequireLogin }) {
-  const { isAuthenticated, currentUser } = useAuth();
+  const { isAuthenticated, currentUser, tokens, isInitializing } = useAuth();
   const { localizePath, t } = useLocale();
-  const isSignedIn = isAuthenticated || Boolean(currentUser);
+  const hasSessionToken = Boolean(tokens?.accessToken || tokens?.refreshToken);
+  const isSignedIn = isAuthenticated || Boolean(currentUser) || hasSessionToken || isInitializing;
   const label = t(item.labelKey);
 
   if (!item.to) {

@@ -21,7 +21,7 @@ export const MESSAGES = Object.freeze({
       home: '홈',
       map: '접근성 지도',
       jobs: '스크랩 공고',
-      business: '내 정보',
+      business: '프로필 관리',
       profile: '사용자 메뉴',
       settings: '설정',
       loginRequired: '로그인 필요'
@@ -61,7 +61,7 @@ export const MESSAGES = Object.freeze({
       home: '首页',
       map: '无障碍地图',
       jobs: '收藏职位',
-      business: '我的信息',
+      business: '个人资料管理',
       profile: '用户菜单',
       settings: '设置',
       loginRequired: '需要登录'
@@ -101,7 +101,7 @@ export const MESSAGES = Object.freeze({
       home: 'Home',
       map: 'Accessibility Map',
       jobs: 'Saved Jobs',
-      business: 'My Info',
+      business: 'Profile Management',
       profile: 'User menu',
       settings: 'Settings',
       loginRequired: 'Login required'
@@ -141,7 +141,7 @@ export const MESSAGES = Object.freeze({
       home: 'ホーム',
       map: 'アクセシビリティ地図',
       jobs: '保存した求人',
-      business: 'マイ情報',
+      business: 'プロフィール管理',
       profile: 'ユーザーメニュー',
       settings: '設定',
       loginRequired: 'ログインが必要'

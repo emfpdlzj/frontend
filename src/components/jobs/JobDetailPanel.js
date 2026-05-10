@@ -75,7 +75,6 @@ export function JobDetailPanel({
   }
 
   const jobInfo = [
-    ['외부공고 ID', job.externalId],
     ['모집직종', job.occupation],
     ['고용형태', job.employmentType],
     ['입사유형', job.source.enterType],

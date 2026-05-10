@@ -1,9 +1,50 @@
 import { useState } from 'react';
 import { useScrappedJobs } from '../hooks/useScrappedJobs';
 
+function ScrapDeleteConfirmModal({ pending, onConfirm, onClose }) {
+  return (
+    <div className="login-modal-backdrop" onMouseDown={(event) => {
+      if (!pending && event.target === event.currentTarget) {
+        onClose();
+      }
+    }}>
+      <section className="login-modal logout-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="scrap-delete-confirm-title">
+        <button
+          type="button"
+          className="login-modal__close"
+          onClick={onClose}
+          aria-label="스크랩 삭제 확인 창 닫기"
+          disabled={pending}
+        >
+          닫기
+        </button>
+        <div className="login-modal__body logout-confirm-modal__body">
+          <div className="login-modal__heading">
+            <h2 id="scrap-delete-confirm-title" className="login-modal__title">스크랩 삭제 확인</h2>
+            <p>정말 이 스크랩 공고를 삭제하시겠습니까?</p>
+          </div>
+          <div className="logout-confirm-modal__actions">
+            <button type="button" className="logout-confirm-modal__button" onClick={onClose} disabled={pending}>
+              취소
+            </button>
+            <button
+              type="button"
+              className="logout-confirm-modal__button logout-confirm-modal__button--confirm"
+              onClick={onConfirm}
+              disabled={pending}
+            >
+              {pending ? '삭제 중...' : '삭제'}
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function ScrapListPanel({ scraps, selectedPostingId, onSelect }) {
   return (
-    <section className="jobs-list-panel" aria-label="스크랩 공고 목록">
+    <section className="jobs-list-panel jobs-list-panel--scrap" aria-label="스크랩 공고 목록">
       <div className="jobs-list-panel__header">
         <div>
           <h2>스크랩 공고 {scraps.length}건</h2>
@@ -28,7 +69,6 @@ function ScrapListPanel({ scraps, selectedPostingId, onSelect }) {
               </div>
               <div className="jobs-card__headline">
                 <strong className="jobs-card__title">{item.title}</strong>
-                {isSelected ? <em>현재 선택됨</em> : null}
               </div>
               <div className="jobs-card__badges">
                 <span>{item.postingStatus === 'ACTIVE' ? '진행중 공고' : '마감 공고'}</span>
@@ -87,10 +127,6 @@ function ScrapDetailPanel({ detail, detailViewState, detailErrorMessage, onDelet
             <strong>{detail.salary}</strong>
           </div>
           <div>
-            <span>근무지역</span>
-            <strong>{detail.location}</strong>
-          </div>
-          <div>
             <span>고용형태</span>
             <strong>{detail.employmentType}</strong>
           </div>
@@ -139,8 +175,9 @@ export function JobsPage() {
     removeScrap
   } = useScrappedJobs();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
-  const onDelete = async () => {
+  const confirmDelete = async () => {
     if (isDeleting) {
       return;
     }
@@ -148,6 +185,7 @@ export function JobsPage() {
     try {
       setIsDeleting(true);
       await removeScrap();
+      setIsDeleteConfirmOpen(false);
     } finally {
       setIsDeleting(false);
     }
@@ -187,11 +225,19 @@ export function JobsPage() {
               detail={detail}
               detailViewState={detailViewState}
               detailErrorMessage={detailErrorMessage}
-              onDelete={onDelete}
+              onDelete={() => setIsDeleteConfirmOpen(true)}
               isDeleting={isDeleting}
             />
           </div>
         </div>
+      ) : null}
+
+      {isDeleteConfirmOpen ? (
+        <ScrapDeleteConfirmModal
+          pending={isDeleting}
+          onConfirm={confirmDelete}
+          onClose={() => setIsDeleteConfirmOpen(false)}
+        />
       ) : null}
     </main>
   );

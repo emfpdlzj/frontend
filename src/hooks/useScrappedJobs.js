@@ -15,6 +15,25 @@ const parseDateText = (value) => {
   return `${raw.slice(0, 4)}.${raw.slice(4, 6)}.${raw.slice(6, 8)}`;
 };
 
+const parseRegionFromAddress = (value) => {
+  const text = String(value ?? '').trim();
+  if (!text) {
+    return '없음';
+  }
+
+  const tokens = text.split(/\s+/).filter(Boolean);
+  if (!tokens.length) {
+    return '없음';
+  }
+
+  if (tokens.length === 1) {
+    return tokens[0];
+  }
+
+  // 한국 주소 기준으로 시/도 + 시/군/구 단위까지 보여준다.
+  return `${tokens[0]} ${tokens[1]}`;
+};
+
 const getDday = (value) => {
   const raw = String(value ?? '').replace(/\D/g, '');
   if (raw.length !== 8) {
@@ -47,7 +66,7 @@ const normalizeScrapItem = (item) => ({
   postingId: Number(item?.postingId),
   company: toSafeText(item?.companyName),
   title: toSafeText(item?.jobTitle),
-  location: toSafeText(item?.workAddress),
+  location: parseRegionFromAddress(item?.workAddress),
   employmentType: toSafeText(item?.employmentType),
   salary: [item?.salaryType, item?.salary].filter(Boolean).join(' ') || '급여 확인 필요',
   termDate: item?.termDate || '',
@@ -76,7 +95,6 @@ const normalizeDetail = (detail) => {
     postingStatus: detail.postingStatus || 'ACTIVE',
     scrapCount: Number(detail.scrapCount || 0),
     fields: [
-      ['외부공고 ID', toSafeText(detail.externalId)],
       ['모집직종', toSafeText(detail.jobTitle)],
       ['사업장명', toSafeText(detail.companyName)],
       ['근무지 주소', toSafeText(detail.workAddress)],

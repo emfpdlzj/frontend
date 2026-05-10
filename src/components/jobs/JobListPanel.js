@@ -102,10 +102,6 @@ export function JobListPanel({ jobs, totalJobCount, selectedJobId, isAiEnabled, 
                   <div><dt>요구학력</dt><dd>{job.education}</dd></div>
                 </dl>
                 <MatchSummary job={job} isAiEnabled={isAiEnabled} />
-                <span className="jobs-card__source">
-                  <span>외부공고 ID</span>
-                  <strong>{job.externalId}</strong>
-                </span>
               </button>
             );
           })}

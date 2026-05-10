@@ -3,7 +3,7 @@ import basicProfile from '../../assets/profile/basic_profile.png';
 import { BirthDateField } from '../common/BirthDateField';
 import { useSignupOptions } from '../../hooks/useSignupOptions';
 
-const fallbackText = '확인 필요';
+const fallbackText = '없음';
 const MAX_JOB_SELECTIONS = 5;
 
 const genderOptions = [
@@ -98,7 +98,14 @@ const booleanOptions = [
 
 const text = (value) => String(value ?? '').trim();
 
-export function ProfileSectionPanel({ activeSection, profile, onChange, validationErrors = {}, onFieldBlur = () => {} }) {
+export function ProfileSectionPanel({
+  activeSection,
+  profile,
+  onChange,
+  validationErrors = {},
+  onFieldBlur = () => {},
+  isReadOnly = false
+}) {
   if (!activeSection) {
     return null;
   }
@@ -114,7 +121,17 @@ export function ProfileSectionPanel({ activeSection, profile, onChange, validati
     extra: <ExtraPanel {...props} />
   };
 
-  return <section className={`profile-section-panel profile-section-panel--${activeSection}`}>{panels[activeSection]}</section>;
+  return (
+    <section className={`profile-section-panel profile-section-panel--${activeSection}`}>
+      {isReadOnly ? (
+        <fieldset className="profile-section-panel__fieldset" disabled>
+          {panels[activeSection]}
+        </fieldset>
+      ) : (
+        panels[activeSection]
+      )}
+    </section>
+  );
 }
 
 function BasicInfoPanel({ profile, onChange, validationErrors, onFieldBlur }) {
@@ -123,7 +140,7 @@ function BasicInfoPanel({ profile, onChange, validationErrors, onFieldBlur }) {
       <div className="profile-photo-field">
         <h2>프로필 사진</h2>
         <div className="profile-photo-preview">
-          <img src={profile.profileImageUrl || basicProfile} alt="프로필 사진" />
+          <img src={basicProfile} alt="프로필 사진" />
         </div>
       </div>
       <div className="profile-two-column">
@@ -170,9 +187,6 @@ function BasicInfoPanel({ profile, onChange, validationErrors, onFieldBlur }) {
           showAgeHint={false}
           className="profile-birth-date-picker"
         />
-        <Field label="거주 지역" required>
-          <Input value={profile.residenceRegion} onChange={(value) => onChange('residenceRegion', value)} placeholder="예) SEOUL" />
-        </Field>
         <Field label="거주지 상세 주소" required hint="동·읍·면 단위까지 입력하면 통근 시간 계산이 정확해져요">
           <Input value={profile.detailAddress} onChange={(value) => onChange('detailAddress', value)} />
         </Field>
@@ -261,17 +275,11 @@ function JobPanel({ profile, onChange }) {
           />
         )}
       </div>
-      <div className="profile-form-grid profile-form-grid--work">
-        <Field label="희망 직무">
-          <Input value={profile.desiredJob} onChange={(value) => onChange('desiredJob', value)} />
-        </Field>
-      </div>
-      <Divider />
       <Field label="보유 기술 / 역량" required hint="Enter 또는 추가 버튼으로 항목을 추가합니다.">
         <ChipEditor value={profile.skills} onChange={(value) => onChange('skills', value)} placeholder="예) 엑셀" />
       </Field>
       <Divider />
-      <div className="profile-form-grid profile-form-grid--intro-optional">
+      <div className="profile-form-grid profile-form-grid--job-extra">
         <Field label="자격증">
           <ChipEditor value={profile.certifications} onChange={(value) => onChange('certifications', value)} placeholder="예) 컴퓨터활용능력 2급" />
         </Field>
@@ -460,7 +468,7 @@ function DisabilityPanel({ profile, onChange }) {
         <Field label="상세 장애 설명">
           <TextArea value={profile.disabilityDescription} onChange={(value) => onChange('disabilityDescription', value)} rows={5} />
         </Field>
-        <div>
+        <div className="profile-disability-support-column">
           <Field label="보조기기">
             <Input value={profile.assistiveDevices} onChange={(value) => onChange('assistiveDevices', value)} />
           </Field>
@@ -481,9 +489,9 @@ function WorkConditionPanel({ profile, onChange }) {
     <>
       <h2>근무 조건</h2>
       <div className="profile-form-grid profile-form-grid--work-top">
-        <Field label="근무 가능 시점" required>
+        <Field label="근무 가능 시점">
           <RadioGroup
-            options={workAvailabilityOptions}
+            options={[...workAvailabilityOptions, { value: null, label: '미선택' }]}
             selected={profile.workAvailability}
             onChange={(value) => onChange('workAvailability', value)}
           />
@@ -523,13 +531,10 @@ function WorkConditionPanel({ profile, onChange }) {
             onChange={(value) => onChange('remoteAvailableYn', value)}
           />
         </Field>
-        <Field label="이동 가능 범위">
-          <Input value={profile.mobilityRange} onChange={(value) => onChange('mobilityRange', value)} placeholder="예) 대중교통 50분 이내" />
+        <Field label="통근 범위">
+          <Input value={profile.commuteRange} onChange={(value) => onChange('commuteRange', value)} placeholder="예) 대중교통 50분 이내" />
         </Field>
       </div>
-      <Field label="통근 범위">
-        <TextArea value={profile.commuteRange} onChange={(value) => onChange('commuteRange', value)} rows={4} />
-      </Field>
     </>
   );
 }
@@ -572,13 +577,10 @@ function ExtraPanel({ profile, onChange }) {
         </Field>
         <Field label="국가유공자 여부">
           <RadioGroup
-            options={[...booleanOptions, { value: null, label: '확인 필요' }]}
+            options={[...booleanOptions, { value: null, label: '미선택' }]}
             selected={profile.patrioticVeteranYn}
             onChange={(value) => onChange('patrioticVeteranYn', value)}
           />
-        </Field>
-        <Field label="추천인">
-          <Input value={profile.referrer} onChange={(value) => onChange('referrer', value)} />
         </Field>
       </div>
       <Field label="SNS / 개인 웹사이트">
@@ -710,6 +712,9 @@ function PillGroup({ options, selected, onChange }) {
 }
 
 function ChipEditor({ value = [], onChange, placeholder }) {
+  const [inputValue, setInputValue] = useState('');
+  const [isComposing, setIsComposing] = useState(false);
+
   const addValue = (rawValue) => {
     const nextValue = text(rawValue);
 
@@ -728,17 +733,18 @@ function ChipEditor({ value = [], onChange, placeholder }) {
     if (event.key !== 'Enter') {
       return;
     }
+    if (isComposing || event.nativeEvent?.isComposing) {
+      return;
+    }
 
     event.preventDefault();
-    addValue(event.currentTarget.value);
-    event.currentTarget.value = '';
+    addValue(inputValue);
+    setInputValue('');
   };
 
-  const handleAddClick = (event) => {
-    const input = event.currentTarget.parentElement.querySelector('input');
-    addValue(input.value);
-    input.value = '';
-    input.focus();
+  const handleAddClick = () => {
+    addValue(inputValue);
+    setInputValue('');
   };
 
   return (
@@ -756,7 +762,15 @@ function ChipEditor({ value = [], onChange, placeholder }) {
         )}
       </div>
       <div className="profile-chip-input-row">
-        <input className="profile-input" placeholder={placeholder} onKeyDown={handleKeyDown} />
+        <input
+          className="profile-input"
+          placeholder={placeholder}
+          value={inputValue}
+          onChange={(event) => setInputValue(event.target.value)}
+          onKeyDown={handleKeyDown}
+          onCompositionStart={() => setIsComposing(true)}
+          onCompositionEnd={() => setIsComposing(false)}
+        />
         <button type="button" onClick={handleAddClick}>
           추가
         </button>

@@ -28,6 +28,15 @@ function translateTextNode(node, locale) {
     return;
   }
 
+  // 한국어 기본 모드에서는 현재 UI 텍스트를 그대로 유지한다.
+  // (동적 라벨 변경 시 과거 원문으로 되돌아가는 현상 방지)
+  if (locale === 'ko') {
+    if (/[가-힣]/.test(node.nodeValue)) {
+      originalTextNodes.set(node, node.nodeValue);
+    }
+    return;
+  }
+
   const original = originalTextNodes.get(node) || node.nodeValue;
 
   if (!/[가-힣]/.test(original)) {

@@ -210,7 +210,7 @@ const detailProfileGroups = [
   },
   {
     label: '희망 근무조건',
-    fields: ['expectedSalary', 'workTimePreference', 'remoteAvailableYn', 'mobilityRange']
+    fields: ['expectedSalary', 'workTimePreference', 'remoteAvailableYn']
   },
   {
     label: '소개 보강',

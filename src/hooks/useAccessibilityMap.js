@@ -442,7 +442,7 @@ const normalizeProfiles = (profiles, selectedProfile) =>
     return {
       ...profile,
       id,
-      name: profile?.fullName || profile?.name || `프로필 ${id}`,
+      name: profile?.profileName || profile?.fullName || `프로필 ${id}`,
       description: [detail?.disabilityType, detail?.disabilitySeverity].filter(Boolean).join(' · ') || '설정된 정보 확인 필요',
       personaKey: getPersonaFromProfile(detail)
     };

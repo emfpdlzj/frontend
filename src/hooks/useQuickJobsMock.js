@@ -543,7 +543,7 @@ const buildExplainPayload = ({ job, profileId }) => {
 
 const getProfileId = (profile) => String(profile?.profileId ?? profile?.id ?? '');
 
-const getProfileLabel = (profile) => profile?.fullName || profile?.name || `프로필 ${getProfileId(profile)}`;
+const getProfileLabel = (profile) => profile?.profileName || profile?.fullName || profile?.name || `프로필 ${getProfileId(profile)}`;
 
 const getProfileRole = (profile) => profile?.targetJob || profile?.desiredJob || '희망 직무 확인 필요';
 
@@ -568,7 +568,7 @@ const getProfileCompletionRate = (profile) => {
   }
 
   const checks = [
-    profile.fullName || profile.name,
+    profile.profileName || profile.fullName || profile.name,
     profile.targetJob || profile.desiredJob,
     Array.isArray(profile.skills) && profile.skills.length > 0,
     profile.disabilityType,

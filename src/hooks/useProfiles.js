@@ -40,6 +40,7 @@ export function useProfiles() {
   const { callWithAuth, isAuthenticated } = useAuth();
   const [state, setState] = useState(initialState);
   const selectedProfileIdRef = useRef(readSelectedProfilePreference());
+  const isInitialLoadRef = useRef(true);
 
   useEffect(() => {
     selectedProfileIdRef.current = state.selectedProfileId;
@@ -66,11 +67,14 @@ export function useProfiles() {
       try {
         const profiles = sortProfiles(await callWithAuth((accessToken) => profileApi.getProfiles(accessToken, signal)));
         const fallbackProfileId = getProfileId(profiles.find((profile) => profile?.isDefault) || profiles[0]);
+        const candidateProfileId = isInitialLoadRef.current ? fallbackProfileId : String(preferredProfileId || '');
         const nextSelectedProfileId =
-          profiles.some((profile) => getProfileId(profile) === String(preferredProfileId))
-            ? String(preferredProfileId)
+          profiles.some((profile) => getProfileId(profile) === candidateProfileId)
+            ? candidateProfileId
             : fallbackProfileId;
         writeSelectedProfilePreference(nextSelectedProfileId);
+        selectedProfileIdRef.current = nextSelectedProfileId;
+        isInitialLoadRef.current = false;
 
         setState((prev) => ({
           ...prev,

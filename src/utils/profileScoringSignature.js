@@ -19,7 +19,6 @@ const SCORING_PROFILE_FIELDS = [
   'expectedSalary',
   'workTimePreference',
   'remoteAvailableYn',
-  'mobilityRange',
   'commuteRange',
   'selfIntroduction',
   'motivation',

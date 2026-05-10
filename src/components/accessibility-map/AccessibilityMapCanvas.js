@@ -77,6 +77,14 @@ function canRenderMap(viewState) {
   return viewState !== 'loading' && viewState !== 'calculating' && viewState !== 'error';
 }
 
+function getProfileDisplayName(profile) {
+  if (!profile) {
+    return '';
+  }
+
+  return profile.profileName || profile.fullName || (profile.id ? `프로필 ${profile.id}` : '');
+}
+
 function getMarkerGridDecimals(zoom) {
   const normalizedZoom = Number(zoom);
   const [, decimals] = MARKER_GRID_DECIMALS_BY_ZOOM.find(([minZoom]) => normalizedZoom >= minZoom) ||
@@ -359,6 +367,9 @@ function AccessibilityMapCanvasComponent({
   };
 
   const selectedProfile = profiles.find((profile) => profile.id === String(selectedProfileId)) || null;
+  const orderedProfiles = [...profiles].sort((left, right) => Number(Boolean(right?.isDefault)) - Number(Boolean(left?.isDefault)));
+  const visibleSelectedProfile = selectedProfile || orderedProfiles[0] || null;
+  const closedProfileLabel = getProfileDisplayName(visibleSelectedProfile);
 
   if (viewState === 'loading') {
     return (
@@ -431,26 +442,41 @@ function AccessibilityMapCanvasComponent({
             aria-expanded={isProfileMenuOpen}
             onClick={() => setIsProfileMenuOpen((isOpen) => !isOpen)}
           >
-            <span>{selectedProfile ? selectedProfile.name : '프로필을 선택하세요'}</span>
+            <span className="accessibility-map__profile-trigger-main">
+              <img src={profileIcon} alt="프로필 아이콘" />
+              <span className="accessibility-map__profile-option-text">
+                {isProfileMenuOpen ? (
+                  <strong>프로필을 선택하세요</strong>
+                ) : (
+                  <>
+                    <strong>{closedProfileLabel || '기본 프로필'}</strong>
+                    {visibleSelectedProfile?.isDefault ? <small className="accessibility-map__profile-default-badge">기본 프로필</small> : null}
+                  </>
+                )}
+              </span>
+            </span>
             <img src={arrowDown} alt="프로필 목록 펼치기 아이콘" />
           </button>
           {isProfileMenuOpen ? (
             <div className="accessibility-map__profile-menu" role="listbox" aria-label="프로필 목록">
-              {profiles.map((profile) => (
+              {orderedProfiles.map((profile) => (
                 <button
                   key={profile.id}
                   type="button"
-                  className="accessibility-map__profile-option"
+                  className={`accessibility-map__profile-option${profile.id === String(selectedProfileId) ? ' is-selected' : ''}`}
                   role="option"
                   aria-selected={profile.id === String(selectedProfileId)}
-                  onClick={() => {
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
                     onSelectProfile?.(profile.id);
                     setIsProfileMenuOpen(false);
                   }}
                 >
                   <img src={profileIcon} alt="프로필 아이콘" />
-                  <span>
-                    <strong>{profile.name}</strong>
+                  <span className="accessibility-map__profile-option-text">
+                    <strong>{getProfileDisplayName(profile)}</strong>
+                    {profile?.isDefault ? <small className="accessibility-map__profile-default-badge">기본 프로필</small> : null}
                   </span>
                 </button>
               ))}

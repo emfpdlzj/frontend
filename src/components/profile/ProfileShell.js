@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import arrowDownIcon from '../../assets/profile/arrow-down.png';
 import arrowUpWhiteIcon from '../../assets/profile/arrow_up_white.png';
 import editIcon from '../../assets/profile/edit_icon.png';
-import moreIcon from '../../assets/profile/more_icon.png';
 import plusIcon from '../../assets/profile/plus_icon.png';
 import { profileApi } from '../../api/profileApi';
 import { useAuth } from '../../auth/AuthContext';
@@ -33,6 +32,15 @@ const PROFILE_DRAFT_AUTOSAVE_INTERVAL_MS = 60000;
 const PROFILE_DRAFT_CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_PORTFOLIO_PDF_SIZE_BYTES = 10 * 1024 * 1024;
 const MAX_PORTFOLIO_PDF_SIZE_LABEL = '10MB';
+const HIGHEST_EDUCATION_LABEL_MAP = {
+  HIGH_SCHOOL_OR_BELOW: '고졸 이하',
+  HIGH_SCHOOL: '고졸',
+  COLLEGE: '전문대졸',
+  BACHELOR: '대졸',
+  MASTER: '석사',
+  DOCTOR: '박사',
+  OTHER: '기타'
+};
 const SAFE_PROFILE_DRAFT_FIELDS = [
   'desiredJob',
   'commuteRange',
@@ -52,8 +60,7 @@ const SAFE_PROFILE_DRAFT_FIELDS = [
   'workTypes',
   'expectedSalary',
   'workTimePreference',
-  'remoteAvailableYn',
-  'mobilityRange'
+  'remoteAvailableYn'
 ];
 
 export function ProfileShell() {
@@ -78,6 +85,7 @@ export function ProfileShell() {
   const [activeSection, setActiveSection] = useState('basic');
   const [draftProfile, setDraftProfile] = useState(null);
   const [isCreateMode, setIsCreateMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [formError, setFormError] = useState('');
   const [formatValidationVisible, setFormatValidationVisible] = useState({});
   const [draftToast, setDraftToast] = useState(null);
@@ -96,9 +104,7 @@ export function ProfileShell() {
   const isEmpty = status === 'empty';
   const isUnavailable = status === 'disabled' || status === 'error';
   const visibleProfile = isCreateMode ? draftProfile : draftProfile || selectedProfile;
-  const currentProfileTitle = isCreateMode
-    ? '새 프로필'
-    : visibleProfile?.fullName || visibleProfile?.targetJob || '프로필 상세';
+  const currentProfileTitle = isCreateMode ? '프로필 추가' : isEditMode ? '프로필 수정' : '프로필 상세';
   const hasDraftChanges = useMemo(
     () =>
       Boolean(
@@ -137,6 +143,7 @@ export function ProfileShell() {
   const selectedProfileForToggle = isCreateMode ? null : selectedProfile || selectedProfileSummary;
   const isDefaultProfileSelected = Boolean(selectedProfileForToggle?.isDefault);
   const canDeleteProfile = Boolean(selectedProfile) && !isCreateMode && !selectedProfile.isDefault && profiles.length > 1 && !isMutating;
+  const isReadOnlyMode = !isCreateMode && !isEditMode;
 
   const showDraftToast = useCallback((message, kind = 'info') => {
     setDraftToast({
@@ -297,6 +304,7 @@ export function ProfileShell() {
     }
 
     setIsCreateMode(true);
+    setIsEditMode(true);
     const storageKey = getProfileDraftStorageKey('create');
     const cachedDraft = readProfileDraftCache(storageKey);
 
@@ -327,6 +335,7 @@ export function ProfileShell() {
   const handleSelectProfile = (profileId) => {
     saveDraftLocally('작성 중인 내용이 임시저장되었습니다.');
     setIsCreateMode(false);
+    setIsEditMode(false);
     setFormError('');
     setLastAutosavedAt('');
     loadedDraftKeyRef.current = '';
@@ -338,6 +347,7 @@ export function ProfileShell() {
   const handleCancelCreate = () => {
     clearProfileDraftCache(getProfileDraftStorageKey('create'));
     setIsCreateMode(false);
+    setIsEditMode(false);
     setDraftProfile(selectedProfile ? toDraftProfile(selectedProfile) : null);
     setLastAutosavedAt('');
     loadedDraftKeyRef.current = '';
@@ -347,6 +357,9 @@ export function ProfileShell() {
   };
 
   const updateDraft = (field, value) => {
+    if (!isCreateMode && !isEditMode) {
+      return;
+    }
     setFormError('');
     const nextValue = field === 'contactPhone' ? formatPhoneNumber(value) : value;
     setDraftProfile((prev) => ({
@@ -364,6 +377,11 @@ export function ProfileShell() {
   };
 
   const handleSave = async () => {
+    if (!isCreateMode && !isEditMode) {
+      setIsEditMode(true);
+      return;
+    }
+
     if (!draftProfile || isMutating || isExtractingPortfolio) {
       return;
     }
@@ -394,6 +412,7 @@ export function ProfileShell() {
         loadedDraftKeyRef.current = '';
         lastAutosavedSnapshotRef.current = savedDraftSnapshot;
         setIsCreateMode(false);
+        setIsEditMode(false);
         return;
       }
 
@@ -404,6 +423,7 @@ export function ProfileShell() {
       setLastAutosavedAt('');
       loadedDraftKeyRef.current = '';
       lastAutosavedSnapshotRef.current = savedDraftSnapshot;
+      setIsEditMode(false);
     } catch (error) {
       setFormError(error.message || '프로필 저장에 실패했습니다.');
     }
@@ -579,18 +599,52 @@ export function ProfileShell() {
             className="profile-file-input-hidden"
             onChange={handlePortfolioFileSelected}
           />
-          <button type="button" className="profile-delete-button" disabled={!canDeleteProfile} onClick={handleDelete}>
-            프로필 삭제
-          </button>
+          <div className="profile-top-actions">
+            {!isCreateMode && isReadOnlyMode ? (
+              <button
+                type="button"
+                className="profile-primary-action profile-top-edit-button"
+                onClick={() => {
+                  setFormError('');
+                  setIsEditMode(true);
+                }}
+                disabled={isMutating || isExtractingPortfolio || detailStatus !== 'success'}
+              >
+                수정하기
+              </button>
+            ) : null}
+            <button type="button" className="profile-delete-button" disabled={!canDeleteProfile} onClick={handleDelete}>
+              프로필 삭제
+            </button>
+          </div>
 
           <header className="profile-heading">
             <div>
               <h1 id="profile-title">
                 {currentProfileTitle}
-                <button type="button" aria-label="프로필 이름 수정" className="profile-edit-button" onClick={() => setActiveSection('basic')}>
+                <span className="profile-edit-button is-static" aria-hidden="true">
                   <img src={editIcon} alt="수정 아이콘" />
-                </button>
+                </span>
               </h1>
+              {(isCreateMode || (detailStatus === 'success' && visibleProfile)) ? (
+                <div className="profile-title-name-field">
+                  <label htmlFor="profile-name-title-input" className="profile-title-name-field__label">
+                    프로필 이름
+                    <em aria-label="필수">*</em>
+                  </label>
+                  <span className="profile-input-wrap">
+                    <input
+                      id="profile-name-title-input"
+                      className="profile-input"
+                      value={visibleProfile?.profileName || ''}
+                      onChange={(event) => updateDraft('profileName', event.target.value)}
+                      placeholder="예) 기본 생성 프로필, 나의 프로필"
+                      disabled={isReadOnlyMode}
+                      aria-required="true"
+                    />
+                  </span>
+                </div>
+              ) : null}
               <label className="profile-default-toggle">
                 <input
                   type="checkbox"
@@ -629,34 +683,57 @@ export function ProfileShell() {
             {(isCreateMode || (detailStatus === 'success' && visibleProfile)) ? (
               <>
                 <div className="profile-form-actions">
-                  <button
-                    type="button"
-                    className="profile-secondary-action profile-portfolio-action"
-                    onClick={handlePortfolioExtractClick}
-                    disabled={isMutating || isExtractingPortfolio}
-                  >
-                    {isExtractingPortfolio ? 'PDF 분석 중...' : '내 포트폴리오 pdf 파일로 생성하기'}
-                  </button>
                   {isCreateMode ? (
-                    <button
-                      type="button"
-                      className="profile-secondary-action"
-                      onClick={handleCancelCreate}
-                      disabled={isMutating || isExtractingPortfolio}
-                    >
-                      취소
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="profile-primary-action"
-                    onClick={handleSave}
-                    disabled={isMutating || isExtractingPortfolio || (!isCreateMode && !hasDraftChanges)}
-                  >
-                    {isMutating ? '저장 중...' : isCreateMode ? '프로필 추가 완료' : '변경사항 저장'}
-                  </button>
+                    <>
+                      <button
+                        type="button"
+                        className="profile-secondary-action profile-portfolio-action"
+                        onClick={handlePortfolioExtractClick}
+                        disabled={isMutating || isExtractingPortfolio}
+                      >
+                        {isExtractingPortfolio ? 'PDF 분석 중...' : '내 포트폴리오 pdf 파일로 생성하기'}
+                      </button>
+                      <button
+                        type="button"
+                        className="profile-secondary-action"
+                        onClick={handleCancelCreate}
+                        disabled={isMutating || isExtractingPortfolio}
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="button"
+                        className="profile-primary-action"
+                        onClick={handleSave}
+                        disabled={isMutating || isExtractingPortfolio}
+                      >
+                        {isMutating ? '저장 중...' : '프로필 추가 완료'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="profile-secondary-action profile-portfolio-action"
+                        onClick={handlePortfolioExtractClick}
+                        disabled={isMutating || isExtractingPortfolio || detailStatus !== 'success'}
+                      >
+                        {isExtractingPortfolio ? 'PDF 분석 중...' : '내 포트폴리오 pdf 파일로 생성하기'}
+                      </button>
+                      {!isReadOnlyMode ? (
+                        <button
+                          type="button"
+                          className="profile-primary-action"
+                          onClick={handleSave}
+                          disabled={isMutating || isExtractingPortfolio || !hasDraftChanges}
+                        >
+                          {isMutating ? '저장 중...' : '변경사항 저장'}
+                        </button>
+                      ) : null}
+                    </>
+                  )}
                 </div>
-                <p className="profile-portfolio-note">업로드 가능: PDF, 최대 {MAX_PORTFOLIO_PDF_SIZE_LABEL}</p>
+                {!isReadOnlyMode ? <p className="profile-portfolio-note">업로드 가능: PDF, 최대 {MAX_PORTFOLIO_PDF_SIZE_LABEL}</p> : null}
                 <ProfileTabs rows={visibleTopRows} activeSection={activeSection} onTabClick={handleTabClick} />
                 <ProfileSectionPanel
                   activeSection={activeSection}
@@ -664,6 +741,7 @@ export function ProfileShell() {
                   onChange={updateDraft}
                   validationErrors={getVisibleValidationErrors(visibleProfile, formatValidationVisible)}
                   onFieldBlur={showFormatValidation}
+                  isReadOnly={isReadOnlyMode}
                 />
                 {showBottomRow ? (
                   <ProfileTabs rows={[sectionRows[1]]} activeSection={activeSection} onTabClick={handleTabClick} compact />
@@ -708,12 +786,12 @@ export function ProfileShell() {
 }
 
 const requiredFields = [
+  ['profileName', '프로필 이름'],
   ['fullName', '이름'],
   ['contactPhone', '연락처'],
   ['contactEmail', '이메일'],
   ['birthDate', '생년월일'],
   ['genderType', '성별'],
-  ['residenceRegion', '거주 지역'],
   ['detailAddress', '상세 주소'],
   ['highestEducation', '최종 학력'],
   ['graduationStatus', '졸업 상태'],
@@ -721,7 +799,6 @@ const requiredFields = [
   ['targetJob', '지원 직무'],
   ['disabilityType', '장애 유형'],
   ['disabilitySeverity', '장애 정도'],
-  ['workAvailability', '근무 가능 시점'],
   ['selfIntroduction', '자기소개']
 ];
 
@@ -736,13 +813,13 @@ function createEmptyProfileDraft() {
     careerSummary: '',
     educationSummary: '',
     employmentTypeSummary: '',
+    profileName: '',
     fullName: '',
     contactPhone: '',
     contactEmail: '',
     birthDate: '',
     genderType: '',
     ageGroup: '',
-    residenceRegion: '',
     detailAddress: '',
     emergencyContact: '',
     highestEducation: '',
@@ -767,7 +844,6 @@ function createEmptyProfileDraft() {
     expectedSalary: '',
     workTimePreference: '',
     remoteAvailableYn: null,
-    mobilityRange: '',
     selfIntroduction: '',
     motivation: '',
     jobFitDescription: '',
@@ -775,15 +851,17 @@ function createEmptyProfileDraft() {
     strengthsWeaknesses: '',
     militaryService: '',
     patrioticVeteranYn: null,
-    referrer: '',
     snsUrl: ''
   };
 }
 
 function toDraftProfile(profile) {
+  const { referrer: _referrer, ...profileWithoutReferrer } = profile || {};
+
   return {
     ...createEmptyProfileDraft(),
-    ...profile,
+    ...profileWithoutReferrer,
+    educationSummary: normalizeEducationSummary(profileWithoutReferrer?.educationSummary, profileWithoutReferrer?.highestEducation),
     preferredWorkEnvironments: profile?.preferredWorkEnvironments || [],
     avoidedWorkEnvironments: profile?.avoidedWorkEnvironments || [],
     requiredSupports: profile?.requiredSupports || [],
@@ -836,15 +914,15 @@ function toExtractedDraft(draft) {
     requiredSupports: toStringArray(draft.requiredSupports),
     disabilityType: toTextOrEmpty(draft.disabilityType),
     careerSummary: toTextOrEmpty(draft.careerSummary),
-    educationSummary: toTextOrEmpty(draft.educationSummary),
+    educationSummary: normalizeEducationSummary(toTextOrEmpty(draft.educationSummary), toTextOrEmpty(draft.highestEducation)),
     employmentTypeSummary: toTextOrEmpty(draft.employmentTypeSummary),
+    profileName: toTextOrEmpty(draft.profileName),
     fullName: toTextOrEmpty(draft.fullName),
     contactPhone: toTextOrEmpty(draft.contactPhone),
     contactEmail: toTextOrEmpty(draft.contactEmail),
     birthDate: toTextOrEmpty(draft.birthDate),
     genderType: toTextOrEmpty(draft.genderType),
     ageGroup: toTextOrEmpty(draft.ageGroup),
-    residenceRegion: toTextOrEmpty(draft.residenceRegion),
     detailAddress: toTextOrEmpty(draft.detailAddress),
     emergencyContact: toTextOrEmpty(draft.emergencyContact),
     highestEducation: toTextOrEmpty(draft.highestEducation),
@@ -869,7 +947,6 @@ function toExtractedDraft(draft) {
     expectedSalary: toTextOrEmpty(draft.expectedSalary),
     workTimePreference: toTextOrEmpty(draft.workTimePreference),
     remoteAvailableYn: toBooleanOrNull(draft.remoteAvailableYn),
-    mobilityRange: toTextOrEmpty(draft.mobilityRange),
     selfIntroduction: toTextOrEmpty(draft.selfIntroduction),
     motivation: toTextOrEmpty(draft.motivation),
     jobFitDescription: toTextOrEmpty(draft.jobFitDescription),
@@ -877,7 +954,6 @@ function toExtractedDraft(draft) {
     strengthsWeaknesses: toTextOrEmpty(draft.strengthsWeaknesses),
     militaryService: toTextOrEmpty(draft.militaryService),
     patrioticVeteranYn: toBooleanOrNull(draft.patrioticVeteranYn),
-    referrer: toTextOrEmpty(draft.referrer),
     snsUrl: toTextOrEmpty(draft.snsUrl)
   };
 }
@@ -900,40 +976,71 @@ function compactPayload(payload) {
 
 function toProfilePayload(profile) {
   const payload = {
-    ...profile,
+    profileName: trimValue(profile.profileName),
     desiredJob: trimValue(profile.desiredJob) || trimValue(profile.targetJob),
+    commuteRange: trimValue(profile.commuteRange),
+    preferredWorkEnvironments: toStringArray(profile.preferredWorkEnvironments),
+    avoidedWorkEnvironments: toStringArray(profile.avoidedWorkEnvironments),
+    requiredSupports: toStringArray(profile.requiredSupports),
+    disabilityType: trimValue(profile.disabilityType),
     careerSummary: trimValue(profile.careerSummary) || trimValue(profile.majorCareer),
-    educationSummary: trimValue(profile.educationSummary) || trimValue(profile.highestEducation),
+    educationSummary: normalizeEducationSummary(trimValue(profile.educationSummary), trimValue(profile.highestEducation)),
     employmentTypeSummary: trimValue(profile.employmentTypeSummary) || profile.workTypes.join(', '),
     fullName: trimValue(profile.fullName),
     contactPhone: trimValue(profile.contactPhone),
     contactEmail: trimValue(profile.contactEmail),
     birthDate: normalizeBirthDate(profile.birthDate),
     genderType: trimValue(profile.genderType),
-    residenceRegion: trimValue(profile.residenceRegion),
+    ageGroup: trimValue(profile.ageGroup),
     detailAddress: trimValue(profile.detailAddress),
+    emergencyContact: trimValue(profile.emergencyContact),
     highestEducation: trimValue(profile.highestEducation),
     graduationStatus: trimValue(profile.graduationStatus),
     majorCareer: trimValue(profile.majorCareer),
+    careerDetail: trimValue(profile.careerDetail),
+    projectExperience: trimValue(profile.projectExperience),
+    careerGapReason: trimValue(profile.careerGapReason),
     targetJob: trimValue(profile.targetJob),
-    disabilityType: trimValue(profile.disabilityType),
+    skills: toStringArray(profile.skills),
+    certifications: toStringArray(profile.certifications),
+    portfolioUrl: trimValue(profile.portfolioUrl),
+    awards: trimValue(profile.awards),
+    trainings: trimValue(profile.trainings),
     disabilitySeverity: trimValue(profile.disabilitySeverity),
-    disabilityRegisteredYn: Boolean(profile.disabilityRegisteredYn),
+    disabilityRegisteredYn: toBooleanOrNull(profile.disabilityRegisteredYn),
+    disabilityDescription: trimValue(profile.disabilityDescription),
+    assistiveDevices: trimValue(profile.assistiveDevices),
+    workSupportRequirements: trimValue(profile.workSupportRequirements),
     workAvailability: trimValue(profile.workAvailability),
-    workTypes: profile.workTypes,
-    selfIntroduction: trimValue(profile.selfIntroduction)
+    workTypes: toStringArray(profile.workTypes),
+    expectedSalary: trimValue(profile.expectedSalary),
+    workTimePreference: trimValue(profile.workTimePreference),
+    remoteAvailableYn: toBooleanOrNull(profile.remoteAvailableYn),
+    selfIntroduction: trimValue(profile.selfIntroduction),
+    motivation: trimValue(profile.motivation),
+    jobFitDescription: trimValue(profile.jobFitDescription),
+    careerGoal: trimValue(profile.careerGoal),
+    strengthsWeaknesses: trimValue(profile.strengthsWeaknesses),
+    militaryService: trimValue(profile.militaryService),
+    patrioticVeteranYn: toBooleanOrNull(profile.patrioticVeteranYn),
+    snsUrl: trimValue(profile.snsUrl)
   };
 
-  delete payload.profileId;
-  delete payload.userId;
-  delete payload.isDefault;
-  delete payload.aiJobTags;
-  delete payload.aiEnvironmentTags;
-  delete payload.aiSupportTags;
-  delete payload.profileImageUrl;
-  delete payload.updatedAt;
-
   return compactPayload(payload);
+}
+
+function normalizeEducationSummary(summary, highestEducation) {
+  const trimmedSummary = trimValue(summary);
+  if (trimmedSummary.length > 0) {
+    return HIGHEST_EDUCATION_LABEL_MAP[trimmedSummary] || trimmedSummary;
+  }
+
+  const educationCode = trimValue(highestEducation);
+  if (!educationCode) {
+    return '';
+  }
+
+  return HIGHEST_EDUCATION_LABEL_MAP[educationCode] || educationCode;
 }
 
 function getProfileDraftStorageKey(profileId) {
@@ -1098,7 +1205,7 @@ function getValidationMessage(profile) {
 }
 
 function ProfileCard({ profile, selected = false, hasDraft = false, onSelect }) {
-  const title = profile.fullName || profile.targetJob || `프로필 ${profile.profileId}`;
+  const title = profile.profileName || profile.fullName || profile.targetJob || `프로필 ${profile.profileId}`;
   const updatedAtText = formatDate(profile.updatedAt);
 
   return (
@@ -1114,15 +1221,12 @@ function ProfileCard({ profile, selected = false, hasDraft = false, onSelect }) 
         <h3>{title}</h3>
         <p>{hasDraft ? '5분 이내 임시저장 내용 있음' : updatedAtText ? `최종 수정일 ${updatedAtText}` : '최종 수정일 확인 필요'}</p>
       </div>
-      <span className="profile-card__more" aria-hidden="true">
-        <img src={moreIcon} alt="더보기 아이콘" />
-      </span>
     </button>
   );
 }
 
 function DraftProfileCard({ profile, savedAt, onSelect }) {
-  const title = profile?.fullName?.trim() || profile?.targetJob?.trim() || '현재 작성중';
+  const title = profile?.profileName?.trim() || profile?.fullName?.trim() || profile?.targetJob?.trim() || '현재 작성중';
   const savedAtText = formatAutosaveTime(savedAt);
   const content = (
     <>
