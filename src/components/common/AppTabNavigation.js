@@ -114,6 +114,7 @@ function TabLink({ item, onRequireLogin }) {
   return (
     <NavLink
       to={localizePath(item.to)}
+      end={item.to === ROUTE_PATHS.root}
       className={({ isActive }) => `app-tab-nav__link${isActive ? ' is-active' : ''}`}
       aria-label={label}
       title={label}
