@@ -1,39 +1,16 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import logo from '../../assets/header/logo.png';
 import logoText from '../../assets/header/logo-text.png';
 import searchIcon from '../../assets/header/search.png';
-import { useAuth } from '../../auth/AuthContext';
-import { LoginModal } from '../auth/LoginModal';
 import { accessibilityMapMockData } from '../../config/accessibilityMapMockData';
-import { ROUTE_PATHS } from '../../config/routes';
 import { useLocale } from '../../i18n/LocaleContext';
 
 const BRIDGEWORK_HOME_URL = 'https://www.bridgework.cloud/';
 
 export function AppHeader({ showMapSearch = false }) {
-  const navigate = useNavigate();
-  const { isAuthenticated, isInitializing, logout } = useAuth();
-  const { locale, supportedLocales, localizePath, switchLocale, t } = useLocale();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const { locale, supportedLocales, switchLocale, t } = useLocale();
 
   const handleSearchSubmit = (event) => {
     event.preventDefault();
-  };
-
-  const handleLogout = async () => {
-    if (isLoggingOut) {
-      return;
-    }
-
-    try {
-      setIsLoggingOut(true);
-      await logout();
-      navigate(localizePath(ROUTE_PATHS.root), { replace: true });
-    } finally {
-      setIsLoggingOut(false);
-    }
   };
 
   return (
@@ -64,7 +41,7 @@ export function AppHeader({ showMapSearch = false }) {
         </form>
       ) : null}
 
-      <div className="app-header__actions" aria-label={t('header.userMenuLabel')}>
+      <div className="app-header__actions" aria-label={t('common.languageSelect')}>
         <label className="sr-only" htmlFor="app-header-locale">
           {t('common.languageSelect')}
         </label>
@@ -81,28 +58,7 @@ export function AppHeader({ showMapSearch = false }) {
             </option>
           ))}
         </select>
-        {isAuthenticated ? (
-          <button
-            className="app-header__auth-button app-header__auth-button--logout"
-            type="button"
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-          >
-            {isLoggingOut ? t('header.loggingOut') : t('header.logout')}
-          </button>
-        ) : (
-          <button
-            className="app-header__auth-button app-header__auth-button--login"
-            type="button"
-            onClick={() => setIsLoginModalOpen(true)}
-            disabled={isInitializing}
-          >
-            {t('header.login')}
-          </button>
-        )}
       </div>
-
-      {isLoginModalOpen ? <LoginModal onClose={() => setIsLoginModalOpen(false)} /> : null}
     </header>
   );
 }

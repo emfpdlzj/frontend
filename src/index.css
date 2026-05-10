@@ -1733,6 +1733,53 @@ a:hover {
   line-height: 1.5;
 }
 
+.logout-confirm-modal__body {
+  gap: 22px;
+}
+
+.logout-confirm-modal__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.logout-confirm-modal__button {
+  appearance: none;
+  min-height: 46px;
+  border: 1px solid #d4dbe4;
+  border-radius: 12px;
+  background: #fff;
+  color: #1f2937;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.logout-confirm-modal__button:hover:not(:disabled) {
+  border-color: #c7d0dc;
+  background: #f8fafc;
+}
+
+.logout-confirm-modal__button:focus-visible {
+  outline: 3px solid rgba(13, 99, 243, 0.24);
+  outline-offset: 2px;
+}
+
+.logout-confirm-modal__button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.logout-confirm-modal__button--confirm {
+  border-color: #e7ebf1;
+  background: #f3f5f8;
+  color: #4b5563;
+}
+
 .page-shell {
   width: min(980px, 100% - 24px);
   margin: 28px auto 24px;

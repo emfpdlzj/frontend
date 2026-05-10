@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import homeIcon from '../../assets/tab/home_icon.png';
 import mapIcon from '../../assets/tab/map_icon.png';
@@ -10,6 +10,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { ROUTE_PATHS } from '../../config/routes';
 import { useLocale } from '../../i18n/LocaleContext';
 import { LoginModal } from '../auth/LoginModal';
+import { LogoutConfirmModal } from '../auth/LogoutConfirmModal';
 
 const primaryTabs = [
   { id: 'home', labelKey: 'nav.home', icon: homeIcon, to: ROUTE_PATHS.root },
@@ -18,120 +19,31 @@ const primaryTabs = [
   { id: 'business', labelKey: 'nav.business', icon: businesscardIcon, to: ROUTE_PATHS.profile }
 ];
 
-const secondaryTabs = [
-  { id: 'profile', labelKey: 'nav.profile', icon: profileIcon, type: 'user-menu' },
-  { id: 'settings', labelKey: 'nav.settings', icon: settingIcon, to: ROUTE_PATHS.settings }
-];
+const secondaryTabs = [{ id: 'settings', labelKey: 'nav.settings', icon: settingIcon, to: ROUTE_PATHS.settings }];
 
 function TabIcon({ item, label }) {
   return <img src={item.icon} alt={`${label} 아이콘`} />;
 }
 
-function UserMenuTab({ item, onRequireLogin }) {
+function SessionActionTab({ onRequireLogin }) {
   const navigate = useNavigate();
   const { isAuthenticated, logout } = useAuth();
   const { localizePath, t } = useLocale();
-  const label = t(item.labelKey);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ left: 80, top: 0 });
-  const wrapperRef = useRef(null);
-  const triggerRef = useRef(null);
-  const closeTimerRef = useRef(null);
 
-  const updateMenuPosition = () => {
-    const triggerRect = triggerRef.current?.getBoundingClientRect();
+  const label = isAuthenticated ? t('header.logout') : t('header.login');
 
-    if (!triggerRect) {
-      return;
-    }
-
-    setMenuPosition({
-      left: triggerRect.right + 16,
-      top: triggerRect.top + triggerRect.height / 2
-    });
-  };
-
-  const openMenu = () => {
-    if (!isAuthenticated) {
-      return;
-    }
-
-    if (closeTimerRef.current) {
-      window.clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-
-    updateMenuPosition();
-    setIsMenuOpen(true);
-  };
-
-  const handleTriggerClick = () => {
+  const handleClick = () => {
     if (!isAuthenticated) {
       onRequireLogin?.();
       return;
     }
 
-    openMenu();
+    setIsLogoutModalOpen(true);
   };
 
-  const scheduleCloseMenu = () => {
-    if (closeTimerRef.current) {
-      window.clearTimeout(closeTimerRef.current);
-    }
-
-    closeTimerRef.current = window.setTimeout(() => {
-      setIsMenuOpen(false);
-      closeTimerRef.current = null;
-    }, 180);
-  };
-
-  useEffect(() => {
-    if (!isMenuOpen) {
-      return undefined;
-    }
-
-    updateMenuPosition();
-
-    const handlePointerDown = (event) => {
-      if (!wrapperRef.current?.contains(event.target)) {
-        setIsMenuOpen(false);
-      }
-    };
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        setIsMenuOpen(false);
-      }
-    };
-
-    const handleLayoutChange = () => {
-      updateMenuPosition();
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('resize', handleLayoutChange);
-    window.addEventListener('scroll', handleLayoutChange, true);
-
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('resize', handleLayoutChange);
-      window.removeEventListener('scroll', handleLayoutChange, true);
-    };
-  }, [isMenuOpen]);
-
-  useEffect(
-    () => () => {
-      if (closeTimerRef.current) {
-        window.clearTimeout(closeTimerRef.current);
-      }
-    },
-    []
-  );
-
-  const handleLogout = async () => {
+  const handleLogoutConfirm = async () => {
     if (isLoggingOut) {
       return;
     }
@@ -142,53 +54,31 @@ function UserMenuTab({ item, onRequireLogin }) {
       navigate(localizePath(ROUTE_PATHS.root), { replace: true });
     } finally {
       setIsLoggingOut(false);
-      setIsMenuOpen(false);
+      setIsLogoutModalOpen(false);
     }
   };
 
   return (
-    <div
-      ref={wrapperRef}
-      className="app-tab-nav__user-menu"
-      onMouseEnter={openMenu}
-      onMouseLeave={scheduleCloseMenu}
-      onFocus={openMenu}
-    >
+    <>
       <button
-        ref={triggerRef}
         type="button"
-        className={`app-tab-nav__link${isMenuOpen ? ' is-active' : ''}`}
+        className={`app-tab-nav__link${isLogoutModalOpen ? ' is-active' : ''}`}
         aria-label={label}
-        aria-expanded={isMenuOpen}
-        aria-haspopup="menu"
         title={label}
-        onClick={handleTriggerClick}
+        onClick={handleClick}
+        disabled={isLoggingOut}
       >
-        <TabIcon item={item} label={label} />
+        <TabIcon item={{ icon: profileIcon }} label={label} />
         <span className="app-tab-nav__label">{label}</span>
       </button>
-
-      {isMenuOpen ? (
-        <div
-          className="app-tab-nav__logout-popover"
-          role="menu"
-          aria-label={label}
-          style={{ left: menuPosition.left, top: menuPosition.top }}
-          onMouseEnter={openMenu}
-          onMouseLeave={scheduleCloseMenu}
-        >
-          <button
-            type="button"
-            className="app-tab-nav__logout-button"
-            role="menuitem"
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-          >
-            {isLoggingOut ? t('header.loggingOut') : t('header.logout')}
-          </button>
-        </div>
+      {isLogoutModalOpen ? (
+        <LogoutConfirmModal
+          onClose={() => setIsLogoutModalOpen(false)}
+          onConfirm={handleLogoutConfirm}
+          pending={isLoggingOut}
+        />
       ) : null}
-    </div>
+    </>
   );
 }
 
@@ -196,10 +86,6 @@ function TabLink({ item, onRequireLogin }) {
   const { isAuthenticated } = useAuth();
   const { localizePath, t } = useLocale();
   const label = t(item.labelKey);
-
-  if (item.type === 'user-menu') {
-    return <UserMenuTab item={item} onRequireLogin={onRequireLogin} />;
-  }
 
   if (!item.to) {
     return (
@@ -263,6 +149,7 @@ export function AppTabNavigation() {
           ))}
         </div>
         <div className="app-tab-nav__group app-tab-nav__group--bottom">
+          <SessionActionTab onRequireLogin={() => setIsLoginModalOpen(true)} />
           {secondaryTabs.map((item) => (
             <TabLink key={item.id} item={item} onRequireLogin={() => setIsLoginModalOpen(true)} />
           ))}
