@@ -1,72 +1,44 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { postingApi } from '../api/postingApi';
 import { profileApi } from '../api/profileApi';
 import { fetchQuickJobRecommendations, fetchRecommendTaskStatus } from '../api/recommendApi';
 import { useAuth } from '../auth/AuthContext';
-import {
-  getCachedRecommendation,
-  getRecommendationCacheKey,
-  setCachedRecommendation
-} from '../cache/recommendationCache';
-import { NAVER_MAP_CONFIG } from '../config/appConfig';
-import { ROUTE_PATHS } from '../config/routes';
+import { getCachedRecommendation, getRecommendationCacheKey, setCachedRecommendation } from '../cache/recommendationCache';
+import { useJobFilterOptions } from '../hooks/useJobFilterOptions';
 import { useLocale } from '../i18n/LocaleContext';
 import { getProfileScoringSignature } from '../utils/profileScoringSignature';
-import { loadNaverMapScript } from '../utils/naverMapSdk';
+import { filterAccessibilityMapJobs } from '../hooks/useAccessibilityMap';
+import { LoginModal } from '../components/auth/LoginModal';
 
-const NAVER_MAP_SCRIPT_ID = 'bridgework-naver-map-sdk';
-const NAVER_MAP_READY_CALLBACK = '__bridgeworkNaverMapReady__';
+const FILTER_ALL_VALUE = '전체';
 const RECOMMEND_TASK_POLL_INTERVAL_MS = 2500;
 
-const shortcuts = [
-  { id: 'quick', icon: '↗', label: '퀵 맞춤 추천', href: '#recommended-jobs-title' },
-  { id: 'map', icon: '⌖', label: '접근성 지도 추천', to: ROUTE_PATHS.accessibilityMap },
-  { id: 'help', icon: '?', label: '고객센터', to: ROUTE_PATHS.settings }
-];
-
-const loggedOutPreviewJobs = [
-  {
-    id: 'logged-out-preview-1',
-    company: '프로필 기반 추천',
-    title: '로그인하면 내 조건에 맞는 공고를 바로 비교할 수 있습니다.',
-    role: '희망 직무 · 근무조건 · 접근성 기준 반영',
-    meta: ['직무 적합도 표시', '마감일 비교', '접근성 지도 연계']
-  },
-  {
-    id: 'logged-out-preview-2',
-    company: '접근성 참고 정보',
-    title: '지도 좌표가 있는 공고는 접근성 지도에서 이어서 확인합니다.',
-    role: '근무지 좌표 · 대중교통 · 지원기관 정보 참고',
-    meta: ['위치 데이터 확인', '상세 접근성 확인 필요', '지원 전 기업 확인']
-  },
-  {
-    id: 'logged-out-preview-3',
-    company: '지원 전 체크',
-    title: '추천 점수는 참고용으로 보고 상세 조건을 함께 확인하세요.',
-    role: '급여 · 고용형태 · 요구경력 · 마감일',
-    meta: ['조건 비교', '저장 후 검토', '지원 전 확인']
-  }
-];
-
-const getProfileId = (profile) => profile?.profileId ?? profile?.id ?? '';
+const delay = (ms) =>
+  new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 
 const unwrapApiResult = (payload) => payload?.result || payload?.data || payload;
 
-function parseDateText(value) {
+const toSafeText = (value, fallback = '확인 필요') => {
+  const text = String(value ?? '').trim();
+  return text || fallback;
+};
+
+const parseDateText = (value) => {
   const raw = String(value ?? '').replace(/\D/g, '');
   if (raw.length !== 8) {
     return '';
   }
-
   return `${raw.slice(0, 4)}.${raw.slice(4, 6)}.${raw.slice(6, 8)}`;
-}
+};
 
-function getDateNumber(value) {
+const getDateNumber = (value) => {
   const raw = String(value ?? '').replace(/\D/g, '');
   return raw.length === 8 ? Number(raw) : 0;
-}
+};
 
-function getDday(value) {
+const getDday = (value) => {
   const raw = String(value ?? '').replace(/\D/g, '');
   if (raw.length !== 8) {
     return '';
@@ -74,243 +46,155 @@ function getDday(value) {
 
   const deadline = new Date(Number(raw.slice(0, 4)), Number(raw.slice(4, 6)) - 1, Number(raw.slice(6, 8)));
   const today = new Date();
-  const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const diff = Math.ceil((deadline - normalizedToday) / 86400000);
+  today.setHours(0, 0, 0, 0);
+  deadline.setHours(0, 0, 0, 0);
 
-  if (Number.isNaN(diff)) {
+  const diffDays = Math.ceil((deadline.getTime() - today.getTime()) / 86400000);
+  if (Number.isNaN(diffDays)) {
     return '';
   }
 
-  if (diff < 0) {
+  if (diffDays < 0) {
     return '마감';
   }
-
-  if (diff === 0) {
+  if (diffDays === 0) {
     return '오늘 마감';
   }
+  return `D-${diffDays}`;
+};
 
-  return `D-${diff}`;
-}
+const getProfileId = (profile) => String(profile?.profileId ?? profile?.id ?? '');
 
-function getFitMap(aiResponse) {
-  const results = aiResponse?.result?.results ?? aiResponse?.results ?? [];
-
-  if (!Array.isArray(results)) {
-    return new Map();
+const getProfileLabel = (profile) => {
+  if (!profile) {
+    return '기본 프로필';
   }
+  const baseName = profile.fullName || profile.name || `프로필 ${getProfileId(profile)}`;
+  const targetJob = profile.targetJob || profile.desiredJob;
+  return targetJob ? `${baseName} · ${targetJob}` : baseName;
+};
 
-  return new Map(
-    results
-      .map((item) => [
-        item?.job?.external_id || item?.job?.externalId || item?.job?.externalId,
-        item?.job_fit_score ??
-          item?.jobFitScore ??
-          item?.score_detail?.job_fit_score ??
-          item?.scoreDetail?.jobFitScore ??
-          item?.total_score ??
-          item?.totalScore ??
-          item?.score
-      ])
-      .filter(([externalId]) => externalId)
-  );
-}
+const uniqueOptions = (options) => {
+  const seen = new Set();
 
-function buildHomeRecommendationState(result, profile) {
-  const fitMap = getFitMap(result?.aiResponse);
-  const jobs = Array.isArray(result?.jobs)
-    ? result.jobs.map((job) => normalizeRecommendJob(job, fitMap))
-    : [];
-
-  return {
-    status: jobs.length ? 'success' : 'empty',
-    error: '',
-    profile,
-    jobs,
-    aiEnabled: Boolean(result?.aiEnabled ?? true)
-  };
-}
-
-function normalizeRecommendJob(job, fitMap) {
-  const externalId = job?.externalId || job?.external_id || job?.id || '';
-  const fitScore = fitMap.get(externalId);
-  const location = job?.compAddr || job?.workAddress || job?.location || '근무지역 확인 필요';
-  const latitude = Number(job?.geoLatitude);
-  const longitude = Number(job?.geoLongitude);
-  const hasGeo = Number.isFinite(latitude) && Number.isFinite(longitude);
-  const registeredAt = job?.offerregDt || job?.regDt || job?.registeredAt;
-
-  return {
-    id: String(externalId || `${job?.busplaName}-${job?.jobNm}`),
-    company: job?.busplaName || job?.companyName || '기업명 확인 필요',
-    title: job?.jobNm || job?.jobTitle || '공고명 확인 필요',
-    role: job?.jobNm || job?.jobTitle || '직무 확인 필요',
-    location,
-    salary: [job?.salaryType, job?.salary].filter(Boolean).join(' ') || '급여 확인 필요',
-    employmentType: job?.empType || '고용형태 확인 필요',
-    enterType: job?.enterType || '',
-    dueLabel: getDday(job?.termDate),
-    deadlineText: parseDateText(job?.termDate),
-    deadlineValue: getDateNumber(job?.termDate),
-    registeredValue: getDateNumber(registeredAt),
-    fitScore,
-    fitLabel: fitScore ? `직무 적합도 ${fitScore}점` : '적합도 확인 필요',
-    hasGeo,
-    latitude: hasGeo ? latitude : null,
-    longitude: hasGeo ? longitude : null,
-    accessNotes: [
-      hasGeo ? '근무지 좌표 확인됨' : '근무지 위치 확인 필요',
-      '접근성 상세는 지도에서 확인'
-    ],
-    raw: job
-  };
-}
-
-function HomeNaverMapPreview({ job }) {
-  const mapElementRef = useRef(null);
-  const mapInstanceRef = useRef(null);
-  const markerRef = useRef(null);
-  const [status, setStatus] = useState(() => (NAVER_MAP_CONFIG.clientId ? 'idle' : 'missing-client-id'));
-
-  const hasPosition = Boolean(job?.hasGeo && job?.latitude && job?.longitude);
-
-  useEffect(() => {
-    if (!hasPosition) {
-      setStatus(NAVER_MAP_CONFIG.clientId ? 'no-position' : 'missing-client-id');
-      return undefined;
+  return (Array.isArray(options) ? options : []).filter((option) => {
+    if (!option?.label || seen.has(option.label)) {
+      return false;
     }
-
-    if (!NAVER_MAP_CONFIG.clientId) {
-      setStatus('missing-client-id');
-      return undefined;
-    }
-
-    let isMounted = true;
-    setStatus('loading');
-
-    loadNaverMapScript({
-      clientId: NAVER_MAP_CONFIG.clientId,
-      scriptId: NAVER_MAP_SCRIPT_ID,
-      callbackName: NAVER_MAP_READY_CALLBACK
-    })
-      .then(() => {
-        if (isMounted) {
-          setStatus('ready');
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setStatus('error');
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [hasPosition]);
-
-  useEffect(() => {
-    if (status !== 'ready' || !mapElementRef.current || !hasPosition || !window.naver?.maps) {
-      return undefined;
-    }
-
-    const position = new window.naver.maps.LatLng(job.latitude, job.longitude);
-
-    if (!mapInstanceRef.current) {
-      mapInstanceRef.current = new window.naver.maps.Map(mapElementRef.current, {
-        center: position,
-        zoom: 15,
-        mapTypeId: window.naver.maps.MapTypeId.NORMAL,
-        zoomControl: false,
-        scrollWheel: false,
-        draggable: false,
-        disableDoubleClickZoom: true
-      });
-    } else {
-      mapInstanceRef.current.setCenter(position);
-    }
-
-    if (!markerRef.current) {
-      markerRef.current = new window.naver.maps.Marker({
-        position,
-        map: mapInstanceRef.current,
-        title: job.title
-      });
-    } else {
-      markerRef.current.setPosition(position);
-      markerRef.current.setMap(mapInstanceRef.current);
-    }
-
-    return undefined;
-  }, [hasPosition, job, status]);
-
-  useEffect(
-    () => () => {
-      if (markerRef.current) {
-        markerRef.current.setMap(null);
-      }
-      if (mapElementRef.current) {
-        mapElementRef.current.innerHTML = '';
-      }
-      markerRef.current = null;
-      mapInstanceRef.current = null;
-    },
-    []
-  );
-
-  if (status === 'missing-client-id') {
-    return (
-      <div className="home-map-thumb is-feedback" role="status">
-        네이버 지도 Client ID가 설정되지 않았습니다.
-      </div>
-    );
-  }
-
-  if (status === 'no-position') {
-    return (
-      <div className="home-map-thumb is-feedback" role="status">
-        추천 공고에 지도 좌표가 없어 미니맵을 표시하지 않습니다.
-      </div>
-    );
-  }
-
-  if (status === 'loading' || status === 'idle') {
-    return (
-      <div className="home-map-thumb is-feedback" role="status">
-        네이버 지도를 불러오는 중입니다.
-      </div>
-    );
-  }
-
-  if (status === 'error') {
-    return (
-      <div className="home-map-thumb is-feedback" role="alert">
-        네이버 지도를 표시하지 못했습니다.
-      </div>
-    );
-  }
-
-  return (
-    <div className="home-map-thumb" aria-label={`${job.location} 근무지 미니 지도`}>
-      <div ref={mapElementRef} className="home-map-naver" />
-    </div>
-  );
-}
-
-function getProfileSummary(profile) {
-  const targetJob = profile?.targetJob || profile?.desiredJob || '기본 프로필';
-  const skills = Array.isArray(profile?.skills) ? profile.skills.filter(Boolean) : [];
-
-  if (skills.length) {
-    return `${targetJob} · ${skills.slice(0, 2).join(', ')}`;
-  }
-
-  return targetJob;
-}
-
-const delay = (ms) =>
-  new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
+    seen.add(option.label);
+    return true;
   });
+};
+
+const getPopularPostingSummary = (item) => ({
+  postingId: Number(item?.postingId),
+  companyName: toSafeText(item?.companyName),
+  jobTitle: toSafeText(item?.jobTitle),
+  workAddress: toSafeText(item?.workAddress),
+  employmentType: toSafeText(item?.employmentType),
+  salaryText: [item?.salaryType, item?.salary].filter(Boolean).join(' ') || '급여 확인 필요',
+  termDate: item?.termDate || '',
+  dueLabel: getDday(item?.termDate),
+  registeredDateText: parseDateText(item?.registeredAt),
+  scrapCount: Number(item?.scrapCount || 0)
+});
+
+const normalizePostingDetail = (detail) => ({
+  postingId: detail?.postingId,
+  externalId: toSafeText(detail?.externalId),
+  companyName: toSafeText(detail?.companyName),
+  jobTitle: toSafeText(detail?.jobTitle),
+  workAddress: toSafeText(detail?.workAddress),
+  contactNumber: toSafeText(detail?.contactNumber),
+  employmentType: toSafeText(detail?.employmentType),
+  enterType: toSafeText(detail?.enterType),
+  salaryType: toSafeText(detail?.salaryType),
+  salary: toSafeText(detail?.salary),
+  salaryText: [detail?.salaryType, detail?.salary].filter(Boolean).join(' ') || '급여 확인 필요',
+  termDate: detail?.termDate || '',
+  dueLabel: getDday(detail?.termDate),
+  offerRegisteredAt: parseDateText(detail?.offerRegisteredAt),
+  registeredAt: parseDateText(detail?.registeredAt),
+  requiredCareer: toSafeText(detail?.requiredCareer),
+  requiredEducation: toSafeText(detail?.requiredEducation),
+  requiredMajor: toSafeText(detail?.requiredMajor),
+  requiredLicenses: toSafeText(detail?.requiredLicenses),
+  agencyName: toSafeText(detail?.agencyName),
+  postingStatus: detail?.postingStatus || 'ACTIVE',
+  scrapCount: Number(detail?.scrapCount || 0),
+  scrappedByMe: Boolean(detail?.scrappedByMe)
+});
+
+const getQuickFitScore = (item) => {
+  const score = item?.job_fit_score ?? item?.jobFitScore ?? item?.score;
+  return typeof score === 'number' && Number.isFinite(score) ? score : null;
+};
+
+const normalizeQuickJob = (item, index) => {
+  const job = item?.job || item;
+  const externalId = job?.external_id || job?.externalId || `${job?.company_name || job?.companyName}-${index}`;
+  const companyName = toSafeText(job?.company_name || job?.companyName);
+  const jobTitle = toSafeText(job?.job_title || job?.jobTitle);
+  const workAddress = toSafeText(job?.work_address || job?.workAddress);
+  const employmentType = toSafeText(job?.employment_type || job?.employmentType);
+  const salaryType = toSafeText(job?.salary_type || job?.salaryType, '');
+  const salary = toSafeText(job?.salary, '');
+  const termDate = job?.term_date || job?.termDate || '';
+  const registeredAt = job?.registered_at || job?.registeredAt || '';
+  const fitScore = getQuickFitScore(item);
+
+  return {
+    id: String(externalId || `${companyName}-${jobTitle}-${index}`),
+    externalId: externalId || '',
+    company: companyName,
+    title: jobTitle,
+    location: workAddress,
+    employmentType,
+    salaryType: salaryType || '확인 필요',
+    salary: [salaryType, salary].filter(Boolean).join(' ') || '급여 확인 필요',
+    dueLabel: getDday(termDate),
+    termDate,
+    registeredAt,
+    registeredDateText: parseDateText(registeredAt),
+    fitScore,
+    fitLabel: typeof fitScore === 'number' ? `${fitScore}점` : '확인 필요',
+    source: {
+      reqMajor: job?.required_major || job?.requiredMajor,
+      reqLicens: job?.required_licenses || job?.requiredLicenses,
+      enterType: job?.enter_type || job?.enterType,
+      empType: job?.employment_type || job?.employmentType,
+      salaryType: job?.salary_type || job?.salaryType,
+      compAddr: job?.work_address || job?.workAddress
+    },
+    region: workAddress.split(' ')[0] || '지역 확인 필요',
+    companyInfo: {
+      address: workAddress
+    }
+  };
+};
+
+const parseQuickJobsFromResult = (result) => {
+  const rows = Array.isArray(result?.results) ? result.results : [];
+  return rows.map((item, index) => normalizeQuickJob(item, index));
+};
+
+const sortQuickJobs = (jobs, aiEnabled) => {
+  const sorted = [...jobs];
+
+  sorted.sort((left, right) => {
+    if (aiEnabled) {
+      const rightScore = typeof right.fitScore === 'number' ? right.fitScore : -1;
+      const leftScore = typeof left.fitScore === 'number' ? left.fitScore : -1;
+      if (rightScore !== leftScore) {
+        return rightScore - leftScore;
+      }
+    }
+
+    return getDateNumber(right.registeredAt) - getDateNumber(left.registeredAt);
+  });
+
+  return sorted;
+};
 
 async function waitForRecommendTask(callWithAuth, requestId, signal) {
   let lastPayload = null;
@@ -331,214 +215,6 @@ async function waitForRecommendTask(callWithAuth, requestId, signal) {
   return lastPayload;
 }
 
-function useHomeRecommendations() {
-  const { callWithAuth, isAuthenticated, isInitializing } = useAuth();
-  const [state, setState] = useState({
-    status: 'idle',
-    error: '',
-    profile: null,
-    jobs: [],
-    aiEnabled: true
-  });
-
-  useEffect(() => {
-    if (isInitializing) {
-      return undefined;
-    }
-
-    if (!isAuthenticated) {
-      setState({
-        status: 'disabled',
-        error: '로그인 후 추천 공고를 확인할 수 있습니다.',
-        profile: null,
-        jobs: [],
-        aiEnabled: true
-      });
-      return undefined;
-    }
-
-    const controller = new AbortController();
-
-    const loadHome = async () => {
-      setState((prev) => ({
-        ...prev,
-        status: prev.jobs.length ? 'refetching' : 'loading',
-        error: ''
-      }));
-
-      try {
-        const profiles = await callWithAuth((accessToken) => profileApi.getProfiles(accessToken, controller.signal));
-        const defaultProfile = profiles.find((profile) => profile?.isDefault) ?? profiles[0] ?? null;
-        const profileId = getProfileId(defaultProfile);
-        const profileSignature = getProfileScoringSignature(defaultProfile);
-
-        if (!profileId) {
-          setState({
-            status: 'emptyProfile',
-            error: '',
-            profile: null,
-            jobs: [],
-            aiEnabled: true
-          });
-          return;
-        }
-
-        const cacheKey = getRecommendationCacheKey({ profileId, profileSignature });
-        const cachedPayload = getCachedRecommendation(cacheKey);
-
-        if (cachedPayload) {
-          setState(buildHomeRecommendationState(cachedPayload, defaultProfile));
-          return;
-        }
-
-        const taskPayload = await callWithAuth((accessToken) =>
-          fetchQuickJobRecommendations(accessToken, {
-            aiEnabled: true,
-            profileId,
-            signal: controller.signal
-          })
-        );
-        const taskResult = unwrapApiResult(taskPayload);
-
-        if (taskResult?.status === 'FAILED') {
-          setState((prev) => ({
-            ...prev,
-            status: 'error',
-            error: taskResult.errorMessage || '추천 공고를 불러오지 못했습니다.'
-          }));
-          return;
-        }
-
-        if (taskResult?.status === 'COMPLETED' && taskResult?.result) {
-          setCachedRecommendation(cacheKey, taskResult.result);
-          setState(buildHomeRecommendationState(taskResult.result, defaultProfile));
-          return;
-        }
-
-        if (!taskResult?.requestId) {
-          setState((prev) => ({
-            ...prev,
-            status: 'error',
-            error: '추천 요청 상태를 확인할 수 없습니다.'
-          }));
-          return;
-        }
-
-        setState((prev) => ({
-          ...prev,
-          status: 'loading',
-          error: ''
-        }));
-
-        const completedTask = await waitForRecommendTask(callWithAuth, taskResult.requestId, controller.signal);
-        if (!completedTask || completedTask.status === 'FAILED') {
-          setState((prev) => ({
-            ...prev,
-            status: 'error',
-            error: completedTask?.errorMessage || '추천 공고를 불러오지 못했습니다.'
-          }));
-          return;
-        }
-
-        const completedResult = completedTask.result;
-        setCachedRecommendation(cacheKey, completedResult);
-        setState(buildHomeRecommendationState(completedResult, defaultProfile));
-      } catch (error) {
-        if (error.name === 'AbortError') {
-          return;
-        }
-
-        setState((prev) => ({
-          ...prev,
-          status: 'error',
-          error: error.message || '추천 공고를 불러오지 못했습니다.'
-        }));
-      }
-    };
-
-    loadHome();
-
-    return () => {
-      controller.abort();
-    };
-  }, [callWithAuth, isAuthenticated, isInitializing]);
-
-  return state;
-}
-
-function StatusBadge({ children, tone = 'neutral' }) {
-  return <span className={`home-badge home-badge--${tone}`}>{children}</span>;
-}
-
-function ShortcutLink({ shortcut }) {
-  const { localizePath } = useLocale();
-  const content = (
-    <>
-      <span aria-hidden="true">{shortcut.icon}</span>
-      <strong>{shortcut.label}</strong>
-    </>
-  );
-
-  if (shortcut.href) {
-    return (
-      <a className="home-shortcut" href={shortcut.href}>
-        {content}
-      </a>
-    );
-  }
-
-  return (
-    <Link className="home-shortcut" to={localizePath(shortcut.to)}>
-      {content}
-    </Link>
-  );
-}
-
-function HomeFeedback({ status, error, variant = 'block' }) {
-  const { localizePath } = useLocale();
-
-  if (status === 'loading' || status === 'refetching') {
-    return <div className="home-feedback" role="status">내 프로필 기준 추천 공고를 불러오는 중입니다.</div>;
-  }
-
-  if (status === 'disabled') {
-    return (
-      <div className={`home-feedback${variant === 'inline' ? ' is-inline' : ''}`} role="status">
-        <span>로그인하면 프로필 기반 추천 공고를 확인할 수 있습니다.</span>
-        <Link className="home-feedback__link" to={localizePath(ROUTE_PATHS.login)}>
-          로그인하기
-        </Link>
-      </div>
-    );
-  }
-
-  if (status === 'emptyProfile') {
-    return (
-      <div className="home-feedback" role="status">
-        추천 정확도를 높이려면 프로필을 먼저 입력해주세요.
-      </div>
-    );
-  }
-
-  if (status === 'empty') {
-    return (
-      <div className="home-feedback" role="status">
-        현재 조건에 맞는 추천 공고가 없습니다. 프로필 또는 조건을 조금 넓혀보세요.
-      </div>
-    );
-  }
-
-  if (status === 'error') {
-    return (
-      <div className="home-feedback is-error" role="alert">
-        {error || '추천 공고를 불러오지 못했습니다.'}
-      </div>
-    );
-  }
-
-  return null;
-}
-
 function HomeLoadingModal({ isOpen }) {
   if (!isOpen) {
     return null;
@@ -548,262 +224,794 @@ function HomeLoadingModal({ isOpen }) {
     <div className="home-loading-modal" role="status" aria-live="polite" aria-label="추천 결과를 준비하고 있습니다.">
       <div className="home-loading-modal__panel">
         <strong>추천 결과를 준비하고 있습니다.</strong>
-        <p>페이지를 이동했다가 다시 들어와도 완료될 때까지 자동으로 이어집니다.</p>
+        <p>요청이 끝날 때까지 페이지를 다시 열어도 진행 상태가 이어집니다.</p>
       </div>
     </div>
   );
 }
 
+function PopularPostingDetailModal({ detail, loading, error, onClose, onScrap }) {
+  return (
+    <div className="login-modal-backdrop" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) {
+        onClose();
+      }
+    }}>
+      <section className="login-modal posting-detail-modal" role="dialog" aria-modal="true" aria-labelledby="popular-posting-detail-title">
+        <button type="button" className="login-modal__close" onClick={onClose} aria-label="공고 상세 창 닫기">
+          닫기
+        </button>
+        <div className="login-modal__body posting-detail-modal__body">
+          {loading ? <div className="jobs-feedback" role="status">공고 상세를 불러오는 중입니다.</div> : null}
+          {error ? <div className="jobs-feedback is-error" role="alert">{error}</div> : null}
+
+          {detail ? (
+            <>
+              <div className="login-modal__heading">
+                <h2 id="popular-posting-detail-title" className="login-modal__title">{detail.jobTitle}</h2>
+                <p>{detail.companyName}</p>
+              </div>
+              <div className="posting-detail-modal__summary">
+                <span>{detail.postingStatus === 'ACTIVE' ? '진행중' : '마감'}</span>
+                <span>스크랩 {detail.scrapCount}건</span>
+                {detail.dueLabel ? <span>{detail.dueLabel}</span> : null}
+              </div>
+              <dl className="jobs-detail__definition-grid">
+                <div><dt>외부공고 ID</dt><dd>{detail.externalId}</dd></div>
+                <div><dt>근무지 주소</dt><dd>{detail.workAddress}</dd></div>
+                <div><dt>연락처</dt><dd>{detail.contactNumber}</dd></div>
+                <div><dt>고용형태</dt><dd>{detail.employmentType}</dd></div>
+                <div><dt>입사유형</dt><dd>{detail.enterType}</dd></div>
+                <div><dt>임금</dt><dd>{detail.salaryText}</dd></div>
+                <div><dt>모집마감일</dt><dd>{parseDateText(detail.termDate) || '확인 필요'}</dd></div>
+                <div><dt>공고등록일</dt><dd>{detail.offerRegisteredAt || detail.registeredAt || '확인 필요'}</dd></div>
+                <div><dt>요구경력</dt><dd>{detail.requiredCareer}</dd></div>
+                <div><dt>요구학력</dt><dd>{detail.requiredEducation}</dd></div>
+                <div><dt>요구전공</dt><dd>{detail.requiredMajor}</dd></div>
+                <div><dt>요구자격증</dt><dd>{detail.requiredLicenses}</dd></div>
+                <div><dt>담당기관</dt><dd>{detail.agencyName}</dd></div>
+              </dl>
+              <div className="posting-detail-modal__actions">
+                <button
+                  type="button"
+                  className="primary-button"
+                  disabled={detail.scrappedByMe || detail.postingStatus !== 'ACTIVE'}
+                  onClick={onScrap}
+                >
+                  {detail.scrappedByMe ? '스크랩 완료' : '공고 스크랩'}
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ScrapConfirmModal({ pending, onConfirm, onClose }) {
+  return (
+    <div className="login-modal-backdrop" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) {
+        onClose();
+      }
+    }}>
+      <section className="login-modal logout-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="scrap-confirm-title">
+        <button type="button" className="login-modal__close" onClick={onClose} aria-label="스크랩 확인 창 닫기" disabled={pending}>
+          닫기
+        </button>
+        <div className="login-modal__body logout-confirm-modal__body">
+          <div className="login-modal__heading">
+            <h2 id="scrap-confirm-title" className="login-modal__title">스크랩 확인</h2>
+            <p>이 공고를 스크랩하시겠습니까?</p>
+          </div>
+          <div className="logout-confirm-modal__actions">
+            <button type="button" className="logout-confirm-modal__button" onClick={onClose} disabled={pending}>
+              취소
+            </button>
+            <button
+              type="button"
+              className="logout-confirm-modal__button logout-confirm-modal__button--confirm"
+              onClick={onConfirm}
+              disabled={pending}
+            >
+              {pending ? '처리 중' : '스크랩'}
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function JobCategoryCascadeFilter({ categories, value, onChange }) {
+  const safeCategories = useMemo(() => (Array.isArray(categories) ? categories : []), [categories]);
+  const selectedPath = useMemo(() => {
+    if (!value || value === FILTER_ALL_VALUE) {
+      return { primary: '', secondary: '' };
+    }
+
+    for (const category of safeCategories) {
+      if (category.label === value) {
+        return { primary: category.label, secondary: '' };
+      }
+
+      for (const group of category.groups) {
+        if (group.label === value) {
+          return { primary: category.label, secondary: group.label };
+        }
+
+        if (group.jobs.includes(value)) {
+          return { primary: category.label, secondary: group.label };
+        }
+      }
+    }
+
+    return { primary: '', secondary: '' };
+  }, [safeCategories, value]);
+
+  const [primaryValue, setPrimaryValue] = useState(selectedPath.primary);
+  const [secondaryValue, setSecondaryValue] = useState(selectedPath.secondary);
+  const primaryCategory = safeCategories.find((category) => category.label === primaryValue) || null;
+  const secondaryGroup = primaryCategory?.groups.find((group) => group.label === secondaryValue) || null;
+
+  useEffect(() => {
+    setPrimaryValue(selectedPath.primary);
+    setSecondaryValue(selectedPath.secondary);
+  }, [selectedPath.primary, selectedPath.secondary]);
+
+  const handlePrimaryChange = (nextPrimary) => {
+    setPrimaryValue(nextPrimary);
+    setSecondaryValue('');
+    onChange(nextPrimary || FILTER_ALL_VALUE);
+  };
+
+  const handleSecondaryChange = (nextSecondary) => {
+    setSecondaryValue(nextSecondary);
+    onChange(nextSecondary || primaryValue || FILTER_ALL_VALUE);
+  };
+
+  const handleJobChange = (nextJob) => {
+    onChange(nextJob === FILTER_ALL_VALUE ? secondaryValue || primaryValue || FILTER_ALL_VALUE : nextJob);
+  };
+
+  return (
+    <div className="accessibility-map__cascade-filter" aria-label="희망 직무 1차, 2차, 3차 선택">
+      <label>
+        <span>1차</span>
+        <select value={primaryValue} onChange={(event) => handlePrimaryChange(event.target.value)}>
+          <option value="">전체</option>
+          {safeCategories.map((category) => (
+            <option key={category.label} value={category.label}>
+              {category.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span>2차</span>
+        <select value={secondaryValue} disabled={!primaryCategory} onChange={(event) => handleSecondaryChange(event.target.value)}>
+          <option value="">전체</option>
+          {primaryCategory?.groups.map((group) => (
+            <option key={group.label} value={group.label}>
+              {group.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span>3차</span>
+        <select value={value && value !== FILTER_ALL_VALUE ? value : FILTER_ALL_VALUE} disabled={!secondaryGroup} onChange={(event) => handleJobChange(event.target.value)}>
+          <option value={FILTER_ALL_VALUE}>전체</option>
+          {secondaryGroup?.jobs.map((job) => (
+            <option key={job} value={job}>
+              {job}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+function SelectFilter({ label, options, value, onChange }) {
+  return (
+    <label className="accessibility-map__select-field">
+      <span className="sr-only">{label}</span>
+      <select value={value || FILTER_ALL_VALUE} onChange={(event) => onChange(event.target.value)}>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export function MainPage() {
   const { localizePath } = useLocale();
-  const { status, error, profile, jobs, aiEnabled } = useHomeRecommendations();
-  const visibleJobs = useMemo(() => jobs.slice(0, 5), [jobs]);
-  const isLoggedOut = status === 'disabled';
-  const deadlineSoonCount = jobs.filter((job) => job.dueLabel.startsWith('D-') && Number(job.dueLabel.slice(2)) <= 7).length;
-  const geoReadyCount = jobs.filter((job) => job.hasGeo).length;
-  const recentJobs = visibleJobs.slice(0, 3);
-  const topJob = visibleJobs[0];
-  const canShowJobs = status === 'success' || status === 'refetching';
-  const isModalLoading = status === 'loading' || status === 'refetching';
+  const { isAuthenticated, isInitializing, callWithAuth } = useAuth();
+  const filterOptions = useJobFilterOptions();
 
-  const summaryItems = useMemo(
-    () => [
-      {
-        id: 'profile',
-        title: profile ? `추천 기준 ${getProfileSummary(profile)}` : '추천 기준 프로필',
-        text: profile ? '기본 프로필 기준으로 공고를 정렬했습니다.' : '로그인 후 프로필을 선택하면 맞춤 추천을 볼 수 있습니다.'
-      },
-      {
-        id: 'recommended',
-        title: profile ? `추천 공고 ${jobs.length}건` : '추천 공고 미리보기',
-        text: profile ? (aiEnabled ? 'AI 직무 적합도를 함께 표시합니다.' : '최신 공고 순으로 확인합니다.') : '홈 구조는 로그인 후 실제 추천 결과로 채워집니다.'
-      },
-      {
-        id: 'deadline',
-        title: profile ? `마감 임박 ${deadlineSoonCount}건` : '마감일 비교',
-        text: profile ? '지원 전 근무조건과 마감일을 확인하세요.' : '추천 공고에서 마감 임박 공고를 먼저 확인할 수 있습니다.'
-      },
-      {
-        id: 'map',
-        title: profile ? `지도 확인 ${geoReadyCount}건` : '접근성 지도 연계',
-        text: profile ? '좌표가 있는 공고는 접근성 지도에서 이어서 볼 수 있습니다.' : '좌표가 있는 공고는 지도에서 이어서 탐색합니다.'
-      }
-    ],
-    [aiEnabled, deadlineSoonCount, geoReadyCount, jobs.length, profile]
+  const [popularState, setPopularState] = useState({ status: 'loading', error: '', items: [] });
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailState, setDetailState] = useState({ status: 'idle', error: '', data: null });
+  const [selectedPostingId, setSelectedPostingId] = useState(null);
+
+  const [scrapConfirmOpen, setScrapConfirmOpen] = useState(false);
+  const [isScrapping, setIsScrapping] = useState(false);
+
+  const [profilesState, setProfilesState] = useState({ status: 'idle', error: '', profiles: [] });
+  const [selectedProfileId, setSelectedProfileId] = useState('');
+
+  const [isAiEnabled, setIsAiEnabled] = useState(true);
+  const [appliedAiEnabled, setAppliedAiEnabled] = useState(true);
+  const [draftFilters, setDraftFilters] = useState({
+    jobCategory: FILTER_ALL_VALUE,
+    region: FILTER_ALL_VALUE,
+    employmentType: FILTER_ALL_VALUE,
+    salaryType: FILTER_ALL_VALUE
+  });
+  const [appliedFilters, setAppliedFilters] = useState({
+    jobCategory: FILTER_ALL_VALUE,
+    region: FILTER_ALL_VALUE,
+    employmentType: FILTER_ALL_VALUE,
+    salaryType: FILTER_ALL_VALUE
+  });
+
+  const [quickState, setQuickState] = useState({
+    status: 'idle',
+    error: '',
+    rawJobs: []
+  });
+
+  const autoRequestedRef = useRef(false);
+
+  const selectedProfile = useMemo(
+    () => profilesState.profiles.find((profile) => getProfileId(profile) === String(selectedProfileId)) || null,
+    [profilesState.profiles, selectedProfileId]
   );
+
+  const baseFilterGroups = useMemo(() => [
+    {
+      id: 'jobCategory',
+      title: '희망 직무',
+      type: 'jobCategoryCascade',
+      jobCategories: filterOptions.jobCategories,
+      selectedValue: draftFilters.jobCategory
+    },
+    {
+      id: 'region',
+      title: '근무지역',
+      type: 'select',
+      options: [FILTER_ALL_VALUE, ...uniqueOptions(filterOptions.regions).map((option) => option.label)],
+      selectedValue: draftFilters.region
+    },
+    {
+      id: 'employmentType',
+      title: '고용형태',
+      type: 'chips',
+      chips: [FILTER_ALL_VALUE, ...uniqueOptions(filterOptions.employmentTypes).map((option) => option.label)],
+      selectedValue: draftFilters.employmentType
+    },
+    {
+      id: 'salaryType',
+      title: '급여 방식',
+      type: 'chips',
+      chips: [FILTER_ALL_VALUE, ...uniqueOptions(filterOptions.salaryTypes).map((option) => option.label)],
+      selectedValue: draftFilters.salaryType
+    }
+  ], [draftFilters, filterOptions]);
+
+  const filteredQuickJobs = useMemo(() => {
+    const filtered = filterAccessibilityMapJobs(
+      quickState.rawJobs,
+      appliedFilters,
+      filterOptions.jobCategories
+    );
+    return sortQuickJobs(filtered, appliedAiEnabled);
+  }, [quickState.rawJobs, appliedFilters, filterOptions.jobCategories, appliedAiEnabled]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadPopular = async () => {
+      setPopularState((prev) => ({ ...prev, status: 'loading', error: '' }));
+      try {
+        const list = await postingApi.getPopularPostings({ limit: 20, signal: controller.signal });
+        setPopularState({
+          status: 'success',
+          error: '',
+          items: list.map(getPopularPostingSummary)
+        });
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          return;
+        }
+        setPopularState({
+          status: 'error',
+          error: error.message || '인기 공고를 불러오지 못했습니다.',
+          items: []
+        });
+      }
+    };
+
+    loadPopular();
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isInitializing) {
+      return undefined;
+    }
+
+    if (!isAuthenticated) {
+      setProfilesState({ status: 'disabled', error: '', profiles: [] });
+      setSelectedProfileId('');
+      autoRequestedRef.current = false;
+      return undefined;
+    }
+
+    const controller = new AbortController();
+
+    const loadProfiles = async () => {
+      setProfilesState((prev) => ({ ...prev, status: 'loading', error: '' }));
+
+      try {
+        const profiles = await callWithAuth((accessToken) => profileApi.getProfiles(accessToken, controller.signal));
+        const nextProfiles = Array.isArray(profiles) ? profiles : [];
+        const defaultProfile = nextProfiles.find((profile) => profile?.isDefault) || nextProfiles[0] || null;
+
+        setProfilesState({ status: 'success', error: '', profiles: nextProfiles });
+        setSelectedProfileId(defaultProfile ? getProfileId(defaultProfile) : '');
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          return;
+        }
+        setProfilesState({ status: 'error', error: error.message || '프로필을 불러오지 못했습니다.', profiles: [] });
+      }
+    };
+
+    loadProfiles();
+
+    return () => {
+      controller.abort();
+    };
+  }, [callWithAuth, isAuthenticated, isInitializing]);
+
+  const runQuickRecommendation = useCallback(async ({ profileId, aiEnabled, filters, signal }) => {
+    if (!profileId) {
+      setQuickState({ status: 'empty', error: '', rawJobs: [] });
+      return;
+    }
+
+    setQuickState((prev) => ({
+      ...prev,
+      status: prev.rawJobs.length ? 'refetching' : 'loading',
+      error: ''
+    }));
+
+    const selectedProfileObject = profilesState.profiles.find((profile) => getProfileId(profile) === String(profileId)) || null;
+    const profileSignature = getProfileScoringSignature(selectedProfileObject);
+    const cacheKey = getRecommendationCacheKey({
+      profileId,
+      aiEnabled,
+      scope: 'quick-home',
+      profileSignature
+    });
+
+    const cached = getCachedRecommendation(cacheKey);
+    if (cached) {
+      const cachedJobs = parseQuickJobsFromResult(cached);
+      setAppliedAiEnabled(aiEnabled);
+      setAppliedFilters(filters);
+      setQuickState({ status: cachedJobs.length ? 'success' : 'empty', error: '', rawJobs: cachedJobs });
+      return;
+    }
+
+    const taskPayload = await callWithAuth((accessToken) =>
+      fetchQuickJobRecommendations(accessToken, {
+        aiEnabled,
+        profileId,
+        signal
+      })
+    );
+    const taskResult = unwrapApiResult(taskPayload);
+
+    if (taskResult?.status === 'FAILED') {
+      setQuickState({ status: 'error', error: taskResult.errorMessage || '퀵 추천을 불러오지 못했습니다.', rawJobs: [] });
+      return;
+    }
+
+    if (taskResult?.status === 'COMPLETED' && taskResult?.result) {
+      setCachedRecommendation(cacheKey, taskResult.result);
+      const jobs = parseQuickJobsFromResult(taskResult.result);
+      setAppliedAiEnabled(aiEnabled);
+      setAppliedFilters(filters);
+      setQuickState({ status: jobs.length ? 'success' : 'empty', error: '', rawJobs: jobs });
+      return;
+    }
+
+    if (!taskResult?.requestId) {
+      setQuickState({ status: 'error', error: '퀵 추천 요청 상태를 확인할 수 없습니다.', rawJobs: [] });
+      return;
+    }
+
+    const completed = await waitForRecommendTask(callWithAuth, taskResult.requestId, signal);
+    if (!completed || completed.status === 'FAILED') {
+      setQuickState({ status: 'error', error: completed?.errorMessage || '퀵 추천을 불러오지 못했습니다.', rawJobs: [] });
+      return;
+    }
+
+    setCachedRecommendation(cacheKey, completed.result);
+    const jobs = parseQuickJobsFromResult(completed.result);
+    setAppliedAiEnabled(aiEnabled);
+    setAppliedFilters(filters);
+    setQuickState({ status: jobs.length ? 'success' : 'empty', error: '', rawJobs: jobs });
+  }, [callWithAuth, profilesState.profiles]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !selectedProfileId || autoRequestedRef.current) {
+      return undefined;
+    }
+
+    autoRequestedRef.current = true;
+    const controller = new AbortController();
+
+    runQuickRecommendation({
+      profileId: selectedProfileId,
+      aiEnabled: isAiEnabled,
+      filters: draftFilters,
+      signal: controller.signal
+    }).catch((error) => {
+      if (error?.name === 'AbortError') {
+        return;
+      }
+      setQuickState({
+        status: 'error',
+        error: error.message || '퀵 추천을 불러오지 못했습니다.',
+        rawJobs: []
+      });
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, [draftFilters, isAiEnabled, isAuthenticated, runQuickRecommendation, selectedProfileId]);
+
+  const handleOpenPopularPosting = useCallback(async (postingId) => {
+    if (!isAuthenticated) {
+      setIsLoginModalOpen(true);
+      return;
+    }
+
+    setSelectedPostingId(postingId);
+    setDetailModalOpen(true);
+    setDetailState({ status: 'loading', error: '', data: null });
+
+    try {
+      const detail = await callWithAuth((accessToken) => postingApi.getPostingDetail(postingId, { accessToken }));
+      setDetailState({ status: 'success', error: '', data: normalizePostingDetail(detail) });
+    } catch (error) {
+      setDetailState({ status: 'error', error: error.message || '공고 상세를 불러오지 못했습니다.', data: null });
+    }
+  }, [callWithAuth, isAuthenticated]);
+
+  const handleApplyQuickFilters = useCallback(async () => {
+    if (!selectedProfileId || quickState.status === 'loading' || quickState.status === 'refetching') {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    try {
+      await runQuickRecommendation({
+        profileId: selectedProfileId,
+        aiEnabled: isAiEnabled,
+        filters: draftFilters,
+        signal: controller.signal
+      });
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        return;
+      }
+      setQuickState({ status: 'error', error: error.message || '퀵 추천을 불러오지 못했습니다.', rawJobs: [] });
+    }
+  }, [draftFilters, isAiEnabled, quickState.status, runQuickRecommendation, selectedProfileId]);
+
+  const handleResetQuickFilters = useCallback(() => {
+    setDraftFilters({
+      jobCategory: FILTER_ALL_VALUE,
+      region: FILTER_ALL_VALUE,
+      employmentType: FILTER_ALL_VALUE,
+      salaryType: FILTER_ALL_VALUE
+    });
+  }, []);
+
+  const handleScrapConfirm = useCallback(async () => {
+    if (!selectedPostingId || isScrapping) {
+      return;
+    }
+
+    try {
+      setIsScrapping(true);
+      await callWithAuth((accessToken) => postingApi.scrapPosting(accessToken, selectedPostingId));
+
+      setDetailState((prev) => {
+        if (!prev.data) {
+          return prev;
+        }
+        return {
+          ...prev,
+          data: {
+            ...prev.data,
+            scrappedByMe: true,
+            scrapCount: prev.data.scrapCount + 1
+          }
+        };
+      });
+
+      setPopularState((prev) => ({
+        ...prev,
+        items: prev.items.map((item) =>
+          item.postingId === selectedPostingId
+            ? { ...item, scrapCount: item.scrapCount + 1 }
+            : item
+        )
+      }));
+
+      setScrapConfirmOpen(false);
+    } catch (error) {
+      setDetailState((prev) => ({
+        ...prev,
+        error: error.message || '스크랩 처리에 실패했습니다.'
+      }));
+    } finally {
+      setIsScrapping(false);
+    }
+  }, [callWithAuth, isScrapping, selectedPostingId]);
+
+  const isQuickLoading = quickState.status === 'loading' || quickState.status === 'refetching';
 
   return (
     <main className="main-page" aria-labelledby="main-page-title">
-      <HomeLoadingModal isOpen={isModalLoading} />
+      <HomeLoadingModal isOpen={isQuickLoading} />
       <div className="main-page__inner">
         <section className="home-overview" aria-labelledby="main-page-title">
           <div className="home-overview__heading">
             <p className="home-eyebrow">Home</p>
-            <h1 id="main-page-title">지원 가능한 최신형 맞춤 공고</h1>
-            <p>BridgeWork에서 내 프로필에 맞는 공고를 먼저 비교하고, 접근성 정보는 참고용으로 함께 확인하세요.</p>
-          </div>
-          <div className="home-overview__actions" aria-label="주요 행동">
-            <a className="home-button home-button--primary" href="#recommended-jobs-title">
-              추천 공고 보기
-            </a>
-            <Link className="home-button home-button--ghost" to={localizePath(ROUTE_PATHS.accessibilityMap)}>
-              지도에서 탐색
-            </Link>
+            <h1 id="main-page-title">현재 인기 공고</h1>
+            <p>인기순으로 정렬된 공고를 가로 스크롤로 확인하고, 상세 조회 후 바로 스크랩할 수 있습니다.</p>
           </div>
         </section>
 
-        <section className="home-summary-grid" aria-label="내 추천 현황 요약">
-          {summaryItems.map((item) => (
-            <article className="home-summary-item" key={item.id}>
-              <strong>{item.title}</strong>
-              <p>{item.text}</p>
-            </article>
-          ))}
+        <section className="home-popular" aria-labelledby="popular-postings-title">
+          <div className="home-section-head">
+            <div>
+              <h2 id="popular-postings-title">인기 공고 TOP 20</h2>
+              <p className="home-popular__caption">정렬: 스크랩 수 높은순, 동률 시 최신 공고 우선</p>
+            </div>
+          </div>
+
+          {popularState.status === 'loading' ? <div className="home-feedback" role="status">인기 공고를 불러오는 중입니다.</div> : null}
+          {popularState.status === 'error' ? <div className="home-feedback is-error" role="alert">{popularState.error}</div> : null}
+
+          {popularState.status === 'success' ? (
+            <div className="home-popular__scroller" aria-label="인기 공고 목록">
+              {popularState.items.map((item) => (
+                <button
+                  key={item.postingId}
+                  type="button"
+                  className="home-popular__card"
+                  onClick={() => handleOpenPopularPosting(item.postingId)}
+                >
+                  <div className="home-popular__card-top">
+                    <strong>{item.companyName}</strong>
+                    <span>스크랩 {item.scrapCount}건</span>
+                  </div>
+                  <h3>{item.jobTitle}</h3>
+                  <p>{item.workAddress}</p>
+                  <div className="home-popular__card-meta">
+                    <span>{item.employmentType}</span>
+                    <span>{item.salaryText}</span>
+                    {item.dueLabel ? <span>{item.dueLabel}</span> : null}
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : null}
         </section>
 
-        <div className="home-layout">
-          <section className="home-recommendations" aria-labelledby="recommended-jobs-title">
+        {isAuthenticated ? (
+          <section className="home-quick" aria-labelledby="quick-recommend-title">
             <div className="home-section-head">
               <div>
-                <p className="home-section-kicker">추천 → 비교 → 지원</p>
-                <h2 id="recommended-jobs-title">내 프로필 기반 추천 공고</h2>
-              </div>
-              <div className="home-section-actions">
-                <span className="home-section-count">
-                  {isLoggedOut ? '로그인 필요' : `${jobs.length}건 중 ${visibleJobs.length}건`}
-                </span>
-                <Link className="home-more-link" to={localizePath(isLoggedOut ? ROUTE_PATHS.login : ROUTE_PATHS.jobs)}>
-                  더보기
-                </Link>
+                <h2 id="quick-recommend-title">기능 2. 퀵 맞춤 일자리 추천 (최신 + 직무 적합)</h2>
               </div>
             </div>
 
-            <HomeFeedback status={status} error={error} variant={isLoggedOut ? 'inline' : 'block'} />
+            <div className="home-quick__guide" role="note" aria-label="퀵 맞춤 일자리 추천 안내">
+              <p>1. AI 직무 적합도 토글 ON</p>
+              <p>- 프론트에서 프로필 1개 선택(기본 프로필 최상단 노출)</p>
+              <p>- Spring → FastAPI: 사용자 선택 프로필만 전달</p>
+              <p>- FastAPI: DB 공고를 최신순 조회 후 직무 적합도만 계산</p>
+              <p>- FastAPI → Spring: 공고별 직무 적합도 포함 결과 반환</p>
+              <p>- Spring → 프론트: 결과 전달</p>
+              <p>- 프론트: 화면 필터 적용, 일정 점수 이상 공고 강조</p>
+              <p>2. AI 직무 적합도 토글 OFF</p>
+              <p>- FastAPI 호출 없음</p>
+              <p>- Spring이 DB 공고 최신순 반환</p>
+              <p>- 프론트가 화면 필터 적용</p>
+            </div>
 
-            {canShowJobs ? (
-              <div className="home-job-list" aria-label="추천 공고 목록">
-                {visibleJobs.map((job) => (
-                  <article className="home-job-card" key={job.id}>
-                    <div className="home-job-card__main">
-                      <div className="home-job-card__top">
-                        <span className="home-job-company">{job.company}</span>
-                      </div>
-                      <h3>{job.title}</h3>
-                      <p className="home-job-role">{job.role}</p>
+            <aside className="accessibility-map__filter-panel" aria-label="퀵 추천 필터">
+              <header className="accessibility-map__filter-header">
+                <h2>퀵 추천 필터</h2>
+                <p>접근성 지도와 동일한 필터로 추천 결과를 조회합니다.</p>
+              </header>
 
-                      <dl className="home-job-meta" aria-label={`${job.title} 공고 기본 정보`}>
-                        <div className="home-job-meta__salary">
-                          <dt>급여</dt>
-                          <dd>{job.salary}</dd>
-                        </div>
-                        <div>
-                          <dt>지역</dt>
-                          <dd>{job.location}</dd>
-                        </div>
-                        <div>
-                          <dt>고용형태</dt>
-                          <dd>{job.employmentType}</dd>
-                        </div>
-                        {job.dueLabel ? (
-                          <div>
-                            <dt>마감</dt>
-                            <dd>{job.dueLabel}</dd>
-                          </div>
-                        ) : null}
-                      </dl>
-
-                      <div className="home-job-tags" aria-label="공고 평가 정보">
-                        <StatusBadge tone={job.fitScore ? 'match' : 'neutral'}>{job.fitLabel}</StatusBadge>
-                        {job.enterType ? <StatusBadge tone="workplace">{job.enterType}</StatusBadge> : null}
-                        {job.deadlineText ? <StatusBadge tone="neutral">마감일 {job.deadlineText}</StatusBadge> : null}
-                      </div>
-
-                      <div className="home-access-summary">
-                        <strong>접근성 참고</strong>
-                        <ul aria-label="접근성 핵심 요약">
-                          {job.accessNotes.map((note) => (
-                            <li key={note}>{note}</li>
-                          ))}
-                        </ul>
-                        <span>상세에서 확인</span>
-                      </div>
-                    </div>
-
-                    <div className="home-job-card__actions">
-                      {job.dueLabel ? <StatusBadge tone="deadline">{job.dueLabel}</StatusBadge> : null}
-                      <button type="button" className="home-apply-button">
-                        지원하기
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : null}
-
-            {isLoggedOut ? (
-              <div className="home-preview-list" aria-label="로그인 전 추천 공고 안내">
-                {loggedOutPreviewJobs.map((item) => (
-                  <article className="home-preview-card" key={item.id}>
-                    <span>{item.company}</span>
-                    <h3>{item.title}</h3>
-                    <p>{item.role}</p>
-                    <div>
-                      {item.meta.map((meta) => (
-                        <StatusBadge key={meta} tone="neutral">{meta}</StatusBadge>
-                      ))}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : null}
-
-            {canShowJobs && jobs.length > visibleJobs.length ? (
-              <div className="home-more-row">
-                <Link className="home-button home-button--secondary" to={localizePath(ROUTE_PATHS.jobs)}>
-                  추천 공고 더보기
-                </Link>
-              </div>
-            ) : null}
-          </section>
-
-          <aside className="home-side-rail" aria-label="홈 보조 정보">
-            <section className="home-shortcuts" aria-labelledby="shortcuts-title">
-              <div className="home-section-head home-section-head--compact">
-                <h2 id="shortcuts-title">빠른 이동</h2>
-              </div>
-              <div className="home-shortcut-grid">
-                {shortcuts.map((shortcut) => (
-                  <ShortcutLink shortcut={shortcut} key={shortcut.id} />
-                ))}
-              </div>
-            </section>
-
-            <section className="home-map-preview" aria-labelledby="map-preview-title">
-              <div className="home-section-head home-section-head--compact">
+              <section className="accessibility-map__ai-toggle" aria-label="AI 스코어링 설정">
                 <div>
-                  <h2 id="map-preview-title">접근성 지도</h2>
-                  <p>{isLoggedOut ? '로그인 후 추천 공고 좌표 기준으로 표시됩니다.' : `${topJob?.location ?? '추천 지역'} 좌표 기준으로 지도에서 이어서 확인합니다.`}</p>
+                  <strong>AI 직무 적합도</strong>
+                  <span>{isAiEnabled ? '프로필 기반 직무 적합도 계산' : '최신 공고만 조회'}</span>
                 </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isAiEnabled}
+                  className={isAiEnabled ? 'is-on' : ''}
+                  onClick={() => setIsAiEnabled((prev) => !prev)}
+                >
+                  <span aria-hidden="true" />
+                  {isAiEnabled ? 'ON' : 'OFF'}
+                </button>
+              </section>
+
+              <div className="accessibility-map__filter-list">
+                <section className="accessibility-map__filter-group">
+                  <div className="accessibility-map__filter-title-row">
+                    <span className="accessibility-map__filter-priority">1</span>
+                    <div>
+                      <h3>프로필</h3>
+                      <SelectFilter
+                        label="프로필 선택"
+                        options={profilesState.profiles.length ? profilesState.profiles.map((profile) => getProfileLabel(profile)) : ['프로필 없음']}
+                        value={profilesState.profiles.length ? getProfileLabel(selectedProfile) : '프로필 없음'}
+                        onChange={(label) => {
+                          const matched = profilesState.profiles.find((profile) => getProfileLabel(profile) === label);
+                          if (matched) {
+                            setSelectedProfileId(getProfileId(matched));
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                {baseFilterGroups.map((group, index) => (
+                  <section key={group.id} className="accessibility-map__filter-group">
+                    <div className="accessibility-map__filter-title-row">
+                      <span className="accessibility-map__filter-priority">{index + 2}</span>
+                      <div>
+                        <h3>{group.title}</h3>
+                        {group.type === 'jobCategoryCascade' ? (
+                          <JobCategoryCascadeFilter
+                            categories={group.jobCategories}
+                            value={group.selectedValue}
+                            onChange={(value) => setDraftFilters((prev) => ({ ...prev, [group.id]: value }))}
+                          />
+                        ) : group.type === 'select' ? (
+                          <SelectFilter
+                            label={group.title}
+                            options={group.options}
+                            value={group.selectedValue}
+                            onChange={(value) => setDraftFilters((prev) => ({ ...prev, [group.id]: value }))}
+                          />
+                        ) : (
+                          <div className="accessibility-map__chip-row accessibility-map__chip-row--expanded">
+                            {group.chips.map((chip) => (
+                              <button
+                                key={chip}
+                                type="button"
+                                className={`accessibility-map__chip${group.selectedValue === chip ? ' is-selected' : ''}`}
+                                aria-pressed={group.selectedValue === chip}
+                                onClick={() => setDraftFilters((prev) => ({ ...prev, [group.id]: chip }))}
+                              >
+                                {chip}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                ))}
               </div>
-              {isLoggedOut ? (
-                <div className="home-map-thumb is-feedback" role="status">
-                  로그인 후 추천 공고의 근무지 좌표로 미니맵을 표시합니다.
+
+              <div className="accessibility-map__filter-actions" aria-label="필터 검색 실행">
+                <button type="button" className="secondary-button accessibility-map__filter-reset-button" onClick={handleResetQuickFilters}>
+                  초기화
+                </button>
+                <button
+                  type="button"
+                  className="primary-button accessibility-map__filter-apply-button"
+                  onClick={handleApplyQuickFilters}
+                  disabled={isQuickLoading || !selectedProfileId}
+                >
+                  {isQuickLoading ? '로딩 중' : '조건 적용'}
+                </button>
+              </div>
+            </aside>
+
+            <section className="home-quick__results" aria-label="퀵 추천 결과">
+              {profilesState.status === 'loading' ? <div className="home-feedback" role="status">프로필을 불러오는 중입니다.</div> : null}
+              {profilesState.status === 'error' ? <div className="home-feedback is-error" role="alert">{profilesState.error}</div> : null}
+              {quickState.status === 'idle' ? <div className="home-feedback" role="status">조건 적용을 누르면 퀵 추천 결과를 조회합니다.</div> : null}
+              {quickState.status === 'loading' || quickState.status === 'refetching' ? <div className="home-feedback" role="status">퀵 추천 결과를 계산하는 중입니다.</div> : null}
+              {quickState.status === 'error' ? <div className="home-feedback is-error" role="alert">{quickState.error}</div> : null}
+              {quickState.status === 'empty' ? <div className="home-feedback" role="status">현재 조건에 맞는 공고가 없습니다.</div> : null}
+
+              {quickState.status === 'success' ? (
+                <div className="home-job-list" aria-label="퀵 추천 공고 목록">
+                  {filteredQuickJobs.map((job) => (
+                    <article className="home-job-card" key={job.id}>
+                      <div className="home-job-card__main">
+                        <div className="home-job-card__top">
+                          <span className="home-job-company">{job.company}</span>
+                        </div>
+                        <h3>{job.title}</h3>
+                        <p className="home-job-role">{job.location}</p>
+                        <dl className="home-job-meta" aria-label={`${job.title} 공고 정보`}>
+                          <div><dt>급여</dt><dd>{job.salary}</dd></div>
+                          <div><dt>고용형태</dt><dd>{job.employmentType}</dd></div>
+                          <div><dt>등록일</dt><dd>{job.registeredDateText || '확인 필요'}</dd></div>
+                          {job.dueLabel ? <div><dt>마감</dt><dd>{job.dueLabel}</dd></div> : null}
+                        </dl>
+                        <div className="home-job-tags">
+                          <span className={`home-badge ${job.fitScore && job.fitScore >= 70 ? 'home-badge--match' : 'home-badge--neutral'}`}>
+                            직무 적합도 {job.fitLabel}
+                          </span>
+                          <span className="home-badge home-badge--neutral">AI {appliedAiEnabled ? 'ON' : 'OFF'}</span>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
                 </div>
-              ) : (
-                <HomeNaverMapPreview job={topJob} />
-              )}
-              <div className="home-map-legend" aria-label="지도 범례">
-                <span><i className="is-good" /> 접근 양호</span>
-                <span><i className="is-caution" /> 확인 필요</span>
-                <span><i className="is-agency" /> 지원기관</span>
-              </div>
-              <Link className="home-button home-button--secondary home-button--wide" to={localizePath(ROUTE_PATHS.accessibilityMap)}>
-                지도에서 자세히 보기
-              </Link>
+              ) : null}
             </section>
-
-            <section className="home-accessibility-summary" aria-labelledby="accessibility-summary-title">
-              <div className="home-section-head home-section-head--compact">
-                <h2 id="accessibility-summary-title">접근성 요약</h2>
-              </div>
-              <p className="home-safe-note">추천 공고의 위치 데이터 기준 참고용 정보입니다.</p>
-              <ul>
-                <li>{isLoggedOut ? '로그인 후 지도 좌표 공고 확인 가능' : `지도 좌표 확인 공고 ${geoReadyCount}건`}</li>
-                <li>상세 접근성은 지도에서 확인 필요</li>
-                <li>기업 내부 편의시설은 지원 전 확인 필요</li>
-              </ul>
-            </section>
-          </aside>
-        </div>
-
-        <section className="home-lower-grid" aria-label="최근 활동과 안내">
-          <div className="home-activity">
-            <div className="home-section-head home-section-head--compact">
-              <h2 id="recent-activity-title">최근 확인한 추천 공고</h2>
-            </div>
-            <ul className="home-activity-list">
-              {!isLoggedOut && recentJobs.length ? recentJobs.map((job) => (
-                <li key={job.id}>
-                  <span>{job.company}</span>
-                  <strong>{job.title}</strong>
-                  <em>{[job.location, job.dueLabel].filter(Boolean).join(' · ')}</em>
-                </li>
-              )) : (
-                <li>
-                  <span>추천 공고</span>
-                  <strong>{isLoggedOut ? '로그인 후 최근 확인한 추천 공고가 표시됩니다.' : '표시할 공고가 없습니다.'}</strong>
-                  <em>{isLoggedOut ? '프로필 기반 추천과 저장 공고를 이어서 볼 수 있습니다.' : '프로필 또는 로그인 상태를 확인해주세요.'}</em>
-                </li>
-              )}
-            </ul>
-          </div>
-
-          <div className="home-inline-notices">
-            <p>추천 공고는 현재 기본 프로필 기준으로 표시됩니다.</p>
-            <p>추천 점수와 접근성 정보는 참고용이며, 지원 전 상세 조건 확인이 필요합니다.</p>
-          </div>
-        </section>
+          </section>
+        ) : null}
       </div>
+
+      {detailModalOpen ? (
+        <PopularPostingDetailModal
+          detail={detailState.data}
+          loading={detailState.status === 'loading'}
+          error={detailState.status === 'error' ? detailState.error : ''}
+          onClose={() => {
+            setDetailModalOpen(false);
+            setSelectedPostingId(null);
+            setDetailState({ status: 'idle', error: '', data: null });
+          }}
+          onScrap={() => setScrapConfirmOpen(true)}
+        />
+      ) : null}
+
+      {scrapConfirmOpen ? (
+        <ScrapConfirmModal
+          pending={isScrapping}
+          onConfirm={handleScrapConfirm}
+          onClose={() => setScrapConfirmOpen(false)}
+        />
+      ) : null}
+
+      {isLoginModalOpen ? <LoginModal onClose={() => setIsLoginModalOpen(false)} /> : null}
     </main>
   );
 }
