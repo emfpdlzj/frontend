@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { mapApi } from '../api/mapApi';
-import { explainRecommendation, fetchMapJobRecommendations } from '../api/recommendApi';
+import { explainRecommendation, fetchMapJobRecommendations, fetchRecommendTaskStatus } from '../api/recommendApi';
 import { useAuth } from '../auth/AuthContext';
 import {
   clearRecommendationCache,
@@ -15,6 +15,7 @@ import { useJobFilterOptions } from './useJobFilterOptions';
 import { useProfiles } from './useProfiles';
 
 const MAP_RECOMMEND_REQUEST_TIMEOUT_MS = 3 * 60 * 1000;
+const MAP_RECOMMEND_POLL_INTERVAL_MS = 2500;
 const FILTER_ALL_VALUE = '전체';
 const VALID_TABS = ['accessibility', 'job', 'company'];
 const REGION_ALIASES = {
@@ -38,6 +39,30 @@ const REGION_ALIASES = {
 };
 
 const DATE_PATTERN = /(\d{4})\D?(\d{2})\D?(\d{2})/g;
+
+const delay = (ms) =>
+  new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+
+async function waitForRecommendTask(callWithAuth, requestId, signal) {
+  let lastPayload = null;
+
+  while (!signal?.aborted) {
+    const payload = await callWithAuth((accessToken) =>
+      fetchRecommendTaskStatus(accessToken, requestId, { signal })
+    );
+    lastPayload = payload;
+
+    if (payload?.status === 'COMPLETED' || payload?.status === 'FAILED') {
+      return payload;
+    }
+
+    await delay(MAP_RECOMMEND_POLL_INTERVAL_MS);
+  }
+
+  return lastPayload;
+}
 
 const extractDateValues = (value) => {
   if (!value) {
@@ -818,7 +843,7 @@ export function useAccessibilityMap() {
       }));
 
       try {
-        const payload = await callWithAuth((accessToken) =>
+        const taskPayload = await callWithAuth((accessToken) =>
           fetchMapJobRecommendations(accessToken, {
             aiEnabled: appliedAiEnabled,
             profileId: appliedAiEnabled ? selectedProfileId : undefined,
@@ -827,13 +852,59 @@ export function useAccessibilityMap() {
             timeoutMs: MAP_RECOMMEND_REQUEST_TIMEOUT_MS
           })
         );
-        const nextState = buildRecommendationStateFromPayload(payload, appliedAiEnabled);
+
+        const taskResult = taskPayload;
+        if (taskResult?.status === 'FAILED') {
+          if (!isCurrentRequest) {
+            return;
+          }
+          setRecommendationState({
+            status: 'error',
+            error: taskResult.errorMessage || '지역 접근성 지도 추천을 불러오지 못했습니다.',
+            payload: null,
+            jobs: []
+          });
+          return;
+        }
+
+        let completedPayload = null;
+        if (taskResult?.status === 'COMPLETED' && taskResult?.result) {
+          completedPayload = taskResult.result;
+        } else if (taskResult?.requestId) {
+          const completedTask = await waitForRecommendTask(callWithAuth, taskResult.requestId, controller.signal);
+          if (!completedTask || completedTask.status === 'FAILED') {
+            if (!isCurrentRequest) {
+              return;
+            }
+            setRecommendationState({
+              status: 'error',
+              error: completedTask?.errorMessage || '지역 접근성 지도 추천을 불러오지 못했습니다.',
+              payload: null,
+              jobs: []
+            });
+            return;
+          }
+          completedPayload = completedTask.result;
+        } else {
+          if (!isCurrentRequest) {
+            return;
+          }
+          setRecommendationState({
+            status: 'error',
+            error: '추천 요청 상태를 확인할 수 없습니다.',
+            payload: null,
+            jobs: []
+          });
+          return;
+        }
+
+        const nextState = buildRecommendationStateFromPayload(completedPayload, appliedAiEnabled);
 
         if (!isCurrentRequest) {
           return;
         }
 
-        setCachedRecommendation(cacheKey, payload);
+        setCachedRecommendation(cacheKey, completedPayload);
         activeRecommendationCacheKeyRef.current = cacheKey;
         setRecommendationState(nextState);
       } catch (error) {

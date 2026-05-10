@@ -363,6 +363,42 @@ a:hover {
   color: #be123c;
 }
 
+.home-loading-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(12, 22, 39, 0.36);
+}
+
+.home-loading-modal__panel {
+  min-width: min(460px, calc(100vw - 40px));
+  max-width: 560px;
+  padding: 22px 24px;
+  border: 1px solid #dbe5f3;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(11, 47, 91, 0.2);
+}
+
+.home-loading-modal__panel strong {
+  display: block;
+  color: #0b2f5b;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.home-loading-modal__panel p {
+  margin: 8px 0 0;
+  color: #445a78;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
 .home-preview-list {
   display: grid;
   gap: 12px;
@@ -1186,6 +1222,13 @@ a:hover {
   padding: 24px 8px 28px;
   overflow-y: auto;
   background: #0b2f5b;
+  transition: width 220ms ease, padding 220ms ease, box-shadow 220ms ease;
+}
+
+.app-tab-nav.is-expanded {
+  width: 224px;
+  padding: 24px 12px 28px;
+  box-shadow: 12px 0 28px rgba(10, 34, 69, 0.18);
 }
 
 .app-tab-nav__group {
@@ -1201,19 +1244,22 @@ a:hover {
 }
 
 .app-tab-nav__link {
-  width: 48px;
+  width: 100%;
   height: 48px;
   border: 0;
   border-radius: 8px;
-  padding: 0;
+  padding: 0 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   flex: 0 0 auto;
   background: transparent;
   color: #fff;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .app-tab-nav__link:hover {
@@ -1224,6 +1270,7 @@ a:hover {
 .app-tab-nav__link:focus-visible,
 .app-tab-nav__link.is-active {
   background: #304565;
+  transform: translateX(2px);
 }
 
 .app-tab-nav__link:focus-visible {
@@ -1235,6 +1282,30 @@ a:hover {
   width: 24px;
   height: 24px;
   object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.app-tab-nav__label {
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  color: #dbe8ff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  transition:
+    width 220ms ease,
+    opacity 180ms ease;
+}
+
+.app-tab-nav.is-expanded .app-tab-nav__link {
+  justify-content: flex-start;
+}
+
+.app-tab-nav.is-expanded .app-tab-nav__label {
+  width: 132px;
+  opacity: 1;
 }
 
 .app-tab-nav__user-menu {
