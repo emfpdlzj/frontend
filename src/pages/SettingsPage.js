@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authApi } from '../api/authApi';
 import { useAccessibilityPreferences } from '../accessibility/AccessibilityPreferencesContext';
 import { useAuth } from '../auth/AuthContext';
 import { authStorage } from '../auth/authStorage';
-import basicProfileImage from '../assets/settings/img.png';
 import kakaoLogo from '../assets/settings/kakao-logo.png';
 import naverLogo from '../assets/settings/naver-logo.png';
 import {
@@ -128,6 +127,20 @@ const normalizeProvider = (value) => {
   return null;
 };
 
+const findProviderInText = (value) => {
+  if (!value) {
+    return null;
+  }
+  const normalized = String(value).toUpperCase();
+  if (normalized.includes('KAKAO')) {
+    return 'KAKAO';
+  }
+  if (normalized.includes('NAVER')) {
+    return 'NAVER';
+  }
+  return null;
+};
+
 const decodeJwtPayload = (token) => {
   if (!token || !token.includes('.')) {
     return null;
@@ -177,7 +190,11 @@ const findProviderInObject = (value) => {
     }
   }
 
-  return null;
+  try {
+    return findProviderInText(JSON.stringify(value));
+  } catch (error) {
+    return null;
+  }
 };
 
 function AccountField({ id, label, type, value, readOnly = false }) {
@@ -189,29 +206,12 @@ function AccountField({ id, label, type, value, readOnly = false }) {
   );
 }
 
-function SettingsSummaryCard({ title, value, description, href, provider, logo }) {
-  return (
-    <a className="settings-summary-card" href={href}>
-      <span>{title}</span>
-      <strong>{value}</strong>
-      <small>{description}</small>
-      {logo ? (
-        <span className={`settings-summary-card__provider settings-summary-card__provider--${provider.toLowerCase()}`}>
-          <img src={logo} alt={`${provider} 로그인 제공자 로고`} />
-        </span>
-      ) : null}
-    </a>
-  );
-}
-
 export function SettingsPage() {
   const { callWithAuth, clearSession, currentUser, isAuthenticated, tokens } = useAuth();
   const { localizePath } = useLocale();
   const {
     preferences,
-    savedPreferences,
-    updatePreference,
-    persistPreferences
+    updatePreference
   } = useAccessibilityPreferences();
   const {
     status: profileStatus,
@@ -241,7 +241,6 @@ export function SettingsPage() {
     return defaultProfileSummary;
   }, [defaultProfileSummary, selectedProfile]);
   const isProfileLoading = isAuthenticated && ['idle', 'loading'].includes(profileStatus);
-  const isProfileRefetching = isAuthenticated && profileStatus === 'refetching';
   const isProfileDetailLoading =
     isAuthenticated &&
     Boolean(defaultProfileSummary) &&
@@ -263,29 +262,23 @@ export function SettingsPage() {
       provider:
         findProviderInObject(currentUser) ||
         normalizeProvider(authStorage.readAuthProvider()) ||
-        findProviderInObject(decodeJwtPayload(tokens?.accessToken))
+        findProviderInObject(decodeJwtPayload(tokens?.accessToken)) ||
+        findProviderInText(tokens?.accessToken)
     }),
     [currentUser, defaultProfile, isAuthenticated, tokens]
   );
-  const accountProfileStatusText = hasNoProfile
-    ? '기본 프로필 없음'
-    : hasProfileLoadError
-      ? '기본 프로필 확인 필요'
-      : isProfileLoading || isProfileDetailLoading
-        ? '기본 프로필 불러오는 중'
-        : isProfileRefetching
-          ? '기본 프로필 새로고침 중'
-          : defaultProfile
-            ? '기본 프로필 연동'
-            : '기본 프로필';
-  const accountProfileStatusTone = hasProfileLoadError || hasNoProfile ? 'warning' : defaultProfile ? 'success' : 'neutral';
-  const accountSummary = isAuthenticated ? '로그인됨' : '로그인 필요';
-  const accountProvider = account.provider || 'SOCIAL';
+  const accountProvider = account.provider || '확인 필요';
+  const accountProviderLabel = account.provider === 'KAKAO'
+    ? 'Kakao'
+    : account.provider === 'NAVER'
+      ? 'Naver'
+      : '확인 필요';
   const accountProviderLogo = account.provider === 'KAKAO' ? kakaoLogo : account.provider === 'NAVER' ? naverLogo : null;
-  const accountDescription = isAuthenticated ? `${accountProvider} 계정` : '계정 정보는 로그인 후 표시';
-  const accessibilitySummary = preferences.screenReaderMode ? '읽기 순서 최적화' : '표시 환경 조정';
-  const accessibilityDescription = preferences.screenReaderMode ? '스크린리더 최적화 사용' : '지도 대체 정보 설정 가능';
-  const [saveState, setSaveState] = useState('idle');
+  const accountProviderLogoClass = account.provider === 'KAKAO'
+    ? 'is-kakao'
+    : account.provider === 'NAVER'
+      ? 'is-naver'
+      : '';
   const [isWithdrawalOpen, setIsWithdrawalOpen] = useState(false);
   const [isWithdrawalConfirmed, setIsWithdrawalConfirmed] = useState(false);
   const [withdrawalState, setWithdrawalState] = useState({
@@ -293,22 +286,8 @@ export function SettingsPage() {
     message: ''
   });
 
-  const hasChanges = useMemo(() => {
-    return JSON.stringify(preferences) !== JSON.stringify(savedPreferences);
-  }, [preferences, savedPreferences]);
-
   const handlePreferenceChange = (key, value) => {
-    setSaveState('idle');
     updatePreference(key, value);
-  };
-
-  const savePreferences = () => {
-    try {
-      persistPreferences();
-      setSaveState('success');
-    } catch (error) {
-      setSaveState('error');
-    }
   };
 
   const resetWithdrawalDialog = () => {
@@ -362,15 +341,6 @@ export function SettingsPage() {
     window.history.replaceState(null, '', `#${targetId}`);
   };
 
-  useEffect(() => {
-    if (saveState !== 'success') {
-      return undefined;
-    }
-
-    const timer = window.setTimeout(() => setSaveState('idle'), 2400);
-    return () => window.clearTimeout(timer);
-  }, [saveState]);
-
   return (
     <main className="settings-page settings-page--refined" aria-labelledby="settings-page-title">
       <header className="settings-page__header settings-hero">
@@ -402,50 +372,24 @@ export function SettingsPage() {
         </aside>
 
         <div className="settings-page__content settings-page__content--refined">
-          <section className="settings-overview" aria-label="주요 설정 요약">
-            <SettingsSummaryCard
-              title="계정"
-              value={accountSummary}
-              description={accountDescription}
-              href="#account"
-              provider={accountProvider}
-              logo={accountProviderLogo}
-            />
-            <SettingsSummaryCard title="접근성" value={accessibilitySummary} description={accessibilityDescription} href="#accessibility" />
-          </section>
-
           <SettingsSection
             id="account"
-            title="계정 설정"
+            title="계정 정보"
             description="로그인, 연락처, 기본 프로필로 이어지는 핵심 계정 정보입니다."
             tone="primary"
-            actions={
-              <button
-                type="button"
-                className="settings-button settings-button--primary"
-                disabled={!hasChanges || saveState === 'success'}
-                onClick={savePreferences}
-              >
-                {saveState === 'success' ? '저장 완료' : saveState === 'error' ? '저장 실패' : '변경사항 저장'}
-              </button>
-            }
           >
             <div className="settings-account-layout">
-              <div className="settings-profile-card" aria-label="계정 요약">
-                <img className="settings-profile-card__avatar" src={basicProfileImage} alt="기본 프로필 이미지" />
+              <div className="settings-profile-card settings-profile-card--social" aria-label="소셜 로그인 계정">
                 <div className="settings-profile-card__copy">
-                  <strong>{account.name}</strong>
-                  <span>{account.email}</span>
-                  <div className="settings-profile-card__badges">
-                    <SettingsStatusBadge tone={isAuthenticated ? 'success' : 'neutral'}>
-                      {isAuthenticated ? '로그인 확인' : '로그인 필요'}
-                    </SettingsStatusBadge>
-                    {currentUser?.signupCompleted === false ? (
-                      <SettingsStatusBadge tone="warning">가입 완료 필요</SettingsStatusBadge>
-                    ) : (
-                      <SettingsStatusBadge tone={accountProfileStatusTone}>{accountProfileStatusText}</SettingsStatusBadge>
-                    )}
-                  </div>
+                  <strong>소셜 로그인 계정</strong>
+                  <span className="settings-profile-card__provider">
+                    {accountProviderLogo ? (
+                      <span className={`settings-profile-card__provider-logo ${accountProviderLogoClass}`}>
+                        <img src={accountProviderLogo} alt={`${accountProvider} 로고`} />
+                      </span>
+                    ) : null}
+                    {accountProviderLabel}
+                  </span>
                 </div>
               </div>
 

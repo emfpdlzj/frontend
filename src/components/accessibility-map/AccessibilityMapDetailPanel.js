@@ -26,7 +26,7 @@ function formatScoreLabel(score) {
 }
 
 function openNaverMapSearch(address) {
-  if (!address || address === '근무지 확인 필요') {
+  if (!address || address === '-') {
     return;
   }
 
@@ -126,7 +126,11 @@ export function AccessibilityMapDetailPanel({
         {selectedTab === 'company' ? (
           <>
             <div className="accessibility-map__company-card">
-              <div className="accessibility-map__company-initial" aria-hidden="true">{job.companyInfo.initial}</div>
+              {job.companyInfo.logoUrl ? (
+                <img className="accessibility-map__company-logo" src={job.companyInfo.logoUrl} alt={`${job.companyInfo.name} 로고`} />
+              ) : (
+                <div className="accessibility-map__company-logo-fallback" aria-hidden="true" />
+              )}
               <div>
                 <strong>{job.companyInfo.name}</strong>
                 <p>{job.companyInfo.type}</p>
@@ -195,7 +199,10 @@ export function AccessibilityMapDetailPanel({
             <section className="accessibility-map__detail-section">
               <h3>추천 설명</h3>
               {explanationViewState === 'loading' ? (
-                <div className="accessibility-map__muted-box" role="status">추천 이유를 불러오는 중입니다.</div>
+                <div className="accessibility-map__muted-box jobs-feedback--animated-dots" role="status" aria-live="polite">
+                  로딩중
+                  <span className="jobs-feedback__dots" aria-hidden="true" />
+                </div>
               ) : null}
               {explanationViewState === 'error' ? (
                 <div className="accessibility-map__muted-box" role="alert">
@@ -203,17 +210,13 @@ export function AccessibilityMapDetailPanel({
                 </div>
               ) : null}
               {explanationViewState === 'success' ? (
-                <div className="accessibility-map__info-card">
+                <div className="jobs-detail__explanation-card">
                   <strong>{shortSummary || '추천 설명을 확인했습니다.'}</strong>
-                  <ul className="accessibility-map__accessibility-list">
+                  <ul className="jobs-detail__status-list">
                     {[...recommendationReasons, ...cautionPoints, ...checklist].map((item, index) => (
                       <li key={`${item}-${index}`}>
-                        <img className="accessibility-map__warning-icon" src={warningIcon} alt="확인 필요 아이콘" />
-                        <div>
-                          <strong>{index < recommendationReasons.length ? '추천 이유' : index < recommendationReasons.length + cautionPoints.length ? '주의점' : '체크리스트'}</strong>
-                          <p>{item}</p>
-                        </div>
-                        <DetailStatusBadge label={index < recommendationReasons.length ? '접근 양호' : '확인 필요'} />
+                        <span>{index < recommendationReasons.length ? '추천 이유' : index < recommendationReasons.length + cautionPoints.length ? '주의점' : '체크리스트'}</span>
+                        <p>{item}</p>
                       </li>
                     ))}
                   </ul>
@@ -252,7 +255,7 @@ export function AccessibilityMapDetailPanel({
         <button
           type="button"
           className="secondary-button accessibility-map__route-button"
-          disabled={!job.companyInfo.address || job.companyInfo.address === '근무지 확인 필요'}
+          disabled={!job.companyInfo.address || job.companyInfo.address === '-'}
           onClick={() => openNaverMapSearch(job.companyInfo.address)}
         >
           경로 안내

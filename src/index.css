@@ -1678,6 +1678,11 @@ a:hover {
   background: #fff;
 }
 
+.app-header__map-search.is-disabled {
+  background: #f8fafc;
+  border-color: #d7dee8;
+}
+
 .app-header__map-search input {
   min-width: 0;
   flex: 1 1 auto;
@@ -1688,6 +1693,11 @@ a:hover {
   font: inherit;
   font-size: 1rem;
   font-weight: 500;
+}
+
+.app-header__map-search input:disabled {
+  color: #6b7280;
+  cursor: not-allowed;
 }
 
 .app-header__map-search input::placeholder {
@@ -1707,6 +1717,11 @@ a:hover {
   border-radius: 8px;
   background: transparent;
   cursor: pointer;
+}
+
+.app-header__search-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .app-header__search-button:hover {
@@ -3759,7 +3774,7 @@ a:hover {
 .jobs-workspace {
   flex: 0 1 auto;
   display: grid;
-  grid-template-columns: 304px minmax(0, 1fr);
+  grid-template-columns: 368px minmax(0, 1fr);
   align-items: start;
   gap: 12px;
 }
@@ -5157,6 +5172,7 @@ a:hover {
 
 .accessibility-map__filter-header {
   flex: 0 0 auto;
+  margin-bottom: 12px;
 }
 
 .accessibility-map__filter-header h2 {
@@ -5182,6 +5198,7 @@ a:hover {
   align-self: flex-start;
   min-height: 34px;
   margin-top: 6px;
+  margin-bottom: 8px;
   border: 1px solid #cbd3de;
   border-radius: 8px;
   background: #fff;
@@ -5206,6 +5223,7 @@ a:hover {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
+  margin-top: 12px;
   margin-bottom: 12px;
   border: 1px solid #d9e2ef;
   border-radius: 8px;
@@ -5534,6 +5552,45 @@ a:hover {
   cursor: pointer;
 }
 
+.accessibility-map__sort {
+  position: relative;
+}
+
+.accessibility-map__sort-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 190px;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #c8d0da;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.15);
+  z-index: 20;
+}
+
+.accessibility-map__sort-option {
+  min-height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #293241;
+  text-align: left;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.accessibility-map__sort-option:hover,
+.accessibility-map__sort-option.is-selected {
+  background: #edf4ff;
+  color: #1168e8;
+}
+
 .accessibility-map__results-body {
   flex: 0 0 auto;
   margin: 0 -20px -18px;
@@ -5579,17 +5636,8 @@ a:hover {
 }
 
 .accessibility-map__job-card.is-selected .accessibility-map__job-company::before {
-  content: "선택됨";
-  display: inline-flex;
-  align-items: center;
-  margin-right: 7px;
-  padding: 3px 7px;
-  border-radius: 999px;
-  background: #2f6efb;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 800;
-  line-height: 1.2;
+  content: "";
+  display: none;
 }
 
 .accessibility-map__job-card-top,
@@ -5675,6 +5723,11 @@ a:hover {
   line-height: 1.6;
 }
 
+.accessibility-map__empty-panel .jobs-feedback__dots {
+  display: inline-block;
+  margin-left: 2px;
+}
+
 .accessibility-map__map-panel {
   position: relative;
   display: block;
@@ -5684,6 +5737,33 @@ a:hover {
   height: var(--accessibility-map-height);
   min-height: 0;
   border-right: 1px solid #c8d0da;
+}
+
+.accessibility-map__map-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(1px);
+  z-index: 18;
+  pointer-events: none;
+}
+
+.accessibility-map__map-loading-message {
+  min-width: 140px;
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  border: 1px solid #c8d0da;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #17376c;
+  font-size: 16px;
+  font-weight: 800;
 }
 
 .accessibility-map__map-panel.is-feedback {
@@ -5898,6 +5978,34 @@ a:hover {
   height: 135px;
   object-fit: contain;
   filter: drop-shadow(0 8px 18px rgba(15, 23, 42, 0.12));
+}
+
+.accessibility-map__support-agency-toggle {
+  position: absolute;
+  right: 18px;
+  top: 160px;
+  z-index: 4;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid #cfd8e6;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #17376c;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+  user-select: none;
+  cursor: pointer;
+}
+
+.accessibility-map__support-agency-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #2f7df6;
+  cursor: pointer;
 }
 
 .accessibility-map__legend strong {
@@ -6341,18 +6449,22 @@ a:hover {
   font-size: 16px;
 }
 
-.accessibility-map__company-initial {
+.accessibility-map__company-logo,
+.accessibility-map__company-logo-fallback {
   width: 50px;
   height: 50px;
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   border-radius: 8px;
-  background: #f4f6fa;
-  color: #1766ff;
-  font-size: 18px;
-  font-weight: 800;
+  border: 1px solid #dbe2ea;
+  background: #fff;
+}
+
+.accessibility-map__company-logo {
+  object-fit: contain;
+}
+
+.accessibility-map__company-logo-fallback {
+  display: inline-block;
 }
 
 .accessibility-map__detail-section {
@@ -9550,7 +9662,7 @@ a:hover {
 .settings-profile-card {
   min-height: 188px;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 14px;
   padding: 20px;
@@ -9589,6 +9701,82 @@ a:hover {
   word-break: break-word;
 }
 
+.settings-profile-card--social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-profile-card--social .settings-profile-card__copy {
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+}
+
+.settings-profile-card--social .settings-profile-card__copy strong {
+  color: #4b5563;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.settings-profile-card__provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #111827;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.settings-profile-card--social .settings-profile-card__provider {
+  width: 100%;
+  justify-content: center;
+  gap: 14px;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.settings-profile-card__provider-logo {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid #dbe3ef;
+  background: #fff;
+  flex: 0 0 auto;
+}
+
+.settings-profile-card--social .settings-profile-card__provider-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+}
+
+.settings-profile-card__provider-logo.is-kakao {
+  border-color: #f2d211;
+  background: #fee500;
+}
+
+.settings-profile-card__provider-logo.is-naver {
+  border-color: #02b853;
+  background: #03c75a;
+}
+
+.settings-profile-card__provider-logo img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.settings-profile-card--social .settings-profile-card__provider-logo img {
+  width: 34px;
+  height: 34px;
+}
+
 .settings-profile-card__badges {
   display: flex;
   flex-wrap: wrap;
@@ -9605,12 +9793,57 @@ a:hover {
 .settings-account-panel {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   gap: 14px;
   padding: 18px;
   border: 1px solid #e1e7f0;
   border-radius: 10px;
   background: #fff;
+}
+
+.settings-account-status-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #dbe5f3;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.settings-account-status-box__item {
+  min-height: 58px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid #e4ebf6;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.settings-account-status-box__item > span {
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.settings-account-status-box__provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.settings-account-status-box__provider img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
 }
 
 .settings-field--compact small {
@@ -10249,6 +10482,7 @@ a:hover {
 
   .settings-provider-grid,
   .settings-overview,
+  .settings-account-status-box,
   .settings-support-priority {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -10261,6 +10495,7 @@ a:hover {
 
   .settings-page__menu--refined,
   .settings-overview,
+  .settings-account-status-box,
   .settings-provider-grid,
   .settings-consent-grid,
   .settings-support-priority,

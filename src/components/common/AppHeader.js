@@ -1,28 +1,39 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import logo from '../../assets/header/logo.png';
 import logoText from '../../assets/header/logo-text.png';
 import searchIcon from '../../assets/header/search.png';
-import { accessibilityMapMockData } from '../../config/accessibilityMapMockData';
+import { useMapSearch } from '../../accessibility/MapSearchContext';
+import { ROUTE_PATHS } from '../../config/routes';
 import { useLocale } from '../../i18n/LocaleContext';
 
-const BRIDGEWORK_HOME_URL = 'https://www.bridgework.cloud/';
-
 export function AppHeader({ showMapSearch = false }) {
-  const { locale, supportedLocales, switchLocale, t } = useLocale();
+  const { locale, supportedLocales, switchLocale, localizePath, t } = useLocale();
+  const { searchEnabled, submittedQuery, submitQuery } = useMapSearch();
+  const [searchInput, setSearchInput] = useState('');
+
+  useEffect(() => {
+    setSearchInput(submittedQuery);
+  }, [submittedQuery]);
 
   const handleSearchSubmit = (event) => {
     event.preventDefault();
+    if (!searchEnabled) {
+      return;
+    }
+    submitQuery(searchInput);
   };
 
   return (
     <header className="app-header">
-      <a className="app-header__brand" href={BRIDGEWORK_HOME_URL} aria-label={t('header.brandLabel')}>
+      <Link className="app-header__brand" to={localizePath(ROUTE_PATHS.root)} aria-label={t('header.brandLabel')}>
         <img className="app-header__logo" src={logo} alt="Bridgework 로고 아이콘" />
         <img className="app-header__logo-text" src={logoText} alt="Bridgework" />
-      </a>
+      </Link>
 
       {showMapSearch ? (
         <form
-          className="app-header__map-search"
+          className={`app-header__map-search${searchEnabled ? '' : ' is-disabled'}`}
           role="search"
           aria-label={t('header.searchLabel')}
           onSubmit={handleSearchSubmit}
@@ -33,9 +44,17 @@ export function AppHeader({ showMapSearch = false }) {
           <input
             id="app-header-map-search"
             type="search"
-            placeholder={accessibilityMapMockData.searchPlaceholder}
+            placeholder={searchEnabled ? '검색 결과 내 주소/회사/직무를 검색하세요.' : '검색을 먼저 해주세요.'}
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            disabled={!searchEnabled}
           />
-          <button className="app-header__search-button" type="submit" aria-label={t('header.searchButtonLabel')}>
+          <button
+            className="app-header__search-button"
+            type="submit"
+            aria-label={t('header.searchButtonLabel')}
+            disabled={!searchEnabled}
+          >
             <img src={searchIcon} alt="검색 아이콘" />
           </button>
         </form>

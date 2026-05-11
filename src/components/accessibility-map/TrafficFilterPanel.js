@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import infoIcon from '../../assets/accessibility-map/info-icon.png';
 import triangleDownBlue from '../../assets/accessibility-map/triangle-down-blue.png';
 
@@ -10,7 +10,7 @@ const STATUS_CLASS_BY_BADGE = {
   표준사업장: 'workplace'
 };
 
-const formatCommuteMinutes = (value) => (typeof value === 'number' ? `${value}분` : value || '확인 필요');
+const formatCommuteMinutes = (value) => (typeof value === 'number' ? `${value}분` : value || '-');
 
 const getFilterValueSnapshot = (filterGroups) =>
   Object.fromEntries(
@@ -31,17 +31,21 @@ export function TrafficFilterPanel({
   totalJobCount,
   isAiEnabled,
   appliedAiEnabled,
+  sortMode = 'score_desc',
   selectedJobId,
   viewState,
   isGuestUser = false,
   onSelectJob,
   onRequireLogin,
   onToggleAiScoring,
+  onChangeSortMode,
   onApplyFilters
 }) {
   const [draftFilterValues, setDraftFilterValues] = useState(() => getFilterValueSnapshot(filterGroups));
   const [isFilterCollapsed, setIsFilterCollapsed] = useState(false);
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [visibleJobCount, setVisibleJobCount] = useState(INITIAL_VISIBLE_MAP_JOB_COUNT);
+  const sortMenuRef = useRef(null);
   const isRecommendationBusy = viewState === 'loading' || viewState === 'calculating';
   const resultCount = viewState === 'empty' || isRecommendationBusy ? 0 : jobs.length;
   const visibleJobs = useMemo(() => jobs.slice(0, visibleJobCount), [jobs, visibleJobCount]);
@@ -54,6 +58,32 @@ export function TrafficFilterPanel({
   useEffect(() => {
     setVisibleJobCount(INITIAL_VISIBLE_MAP_JOB_COUNT);
   }, [jobs]);
+
+  useEffect(() => {
+    if (!isSortMenuOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event) => {
+      if (!sortMenuRef.current?.contains(event.target)) {
+        setIsSortMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsSortMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSortMenuOpen]);
 
   const filterItems = useMemo(
     () => [
@@ -236,26 +266,63 @@ export function TrafficFilterPanel({
           onClick={handleApplyFilters}
           disabled={!isGuestUser && isRecommendationBusy}
         >
-          {isRecommendationBusy ? '계산 중' : '검색'}
+          {isRecommendationBusy ? (
+            <>
+              로딩중
+              <span className="jobs-feedback__dots" aria-hidden="true" />
+            </>
+          ) : '검색'}
         </button>
       </div>
 
       <div className="accessibility-map__results-header">
         <h3>검색 결과 {resultCount}개{totalJobCount > resultCount ? ` / 전체 ${totalJobCount}개` : ''}</h3>
-        <button type="button" className="accessibility-map__sort-button" disabled>
-          {appliedAiEnabled ? '접근성 점수 높은순' : '최신순'}
-          <img src={triangleDownBlue} alt="정렬 옵션 펼치기 아이콘" />
-        </button>
+        <div ref={sortMenuRef} className={`accessibility-map__sort${isSortMenuOpen ? ' is-open' : ''}`}>
+          <button
+            type="button"
+            className="accessibility-map__sort-button"
+            onClick={() => setIsSortMenuOpen((prev) => !prev)}
+            aria-expanded={isSortMenuOpen}
+            aria-haspopup="listbox"
+          >
+            {sortMode === 'latest_desc' ? '최신순' : '접근성 점수 높은순'}
+            <img src={triangleDownBlue} alt="정렬 옵션 펼치기 아이콘" />
+          </button>
+          {isSortMenuOpen ? (
+            <div className="accessibility-map__sort-menu" role="listbox" aria-label="정렬 방식">
+              {[
+                ['score_desc', '접근성 점수 높은순'],
+                ['latest_desc', '최신순']
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`accessibility-map__sort-option${sortMode === value ? ' is-selected' : ''}`}
+                  role="option"
+                  aria-selected={sortMode === value}
+                  onClick={() => {
+                    onChangeSortMode?.(value);
+                    setIsSortMenuOpen(false);
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="accessibility-map__results-body">
         {viewState === 'loading' ? (
           <div className="accessibility-map__empty-panel" role="status">
-            지역 접근성 지도 추천을 불러오는 중입니다.
+            로딩중
+            <span className="jobs-feedback__dots" aria-hidden="true" />
           </div>
         ) : viewState === 'calculating' ? (
           <div className="accessibility-map__empty-panel" role="status">
-            선택한 프로필 기준으로 접근성 점수를 다시 계산하고 있습니다.
+            로딩중
+            <span className="jobs-feedback__dots" aria-hidden="true" />
           </div>
         ) : viewState === 'idle' ? (
           <div className="accessibility-map__empty-panel" role="status">

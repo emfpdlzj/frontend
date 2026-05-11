@@ -138,6 +138,11 @@ const getDateNumber = (value) => {
   return raw.length === 8 ? Number(raw) : 0;
 };
 
+const getRegionFromAddress = (address) => {
+  const tokens = String(address ?? '').trim().split(/\s+/).filter(Boolean);
+  return tokens[0] || '없음';
+};
+
 const getDday = (value) => {
   const raw = String(value ?? '').replace(/\D/g, '');
   if (raw.length !== 8) {
@@ -197,6 +202,7 @@ const getPopularPostingSummary = (item) => ({
   companyName: toSafeText(item?.companyName),
   jobTitle: toSafeText(item?.jobTitle),
   workAddress: toSafeText(item?.workAddress),
+  region: getRegionFromAddress(item?.workAddress),
   employmentType: toSafeText(item?.employmentType),
   salaryText: [item?.salaryType, item?.salary].filter(Boolean).join(' ') || '없음',
   termDate: item?.termDate || '',
@@ -306,8 +312,10 @@ const buildQuickExplainPayload = ({ job, profile, detail }) => {
     return null;
   }
 
+  const normalizedJobPostId = Number.isFinite(Number(jobPostId)) ? Number(jobPostId) : 0;
+
   const explainJob = {
-    job_post_id: jobPostId,
+    job_post_id: normalizedJobPostId,
     company_name: companyName,
     job_title: jobTitle,
     work_address: toNullableText(workAddress),
@@ -325,41 +333,36 @@ const buildQuickExplainPayload = ({ job, profile, detail }) => {
     agency_name: toNullableText(detail?.agencyName || job?.agencyName),
     registered_at: toNullableText(detail?.registeredAt || job?.registeredAt),
     source_table: 'pd_kepad_recruitment',
-    source_id: jobPostId
+    source_id: normalizedJobPostId
+  };
+
+  const explainProfile = {
+    profile_id: Number.isFinite(profileId) && profileId > 0 ? profileId : null,
+    user_id: Number.isFinite(Number(profile?.userId)) ? Number(profile.userId) : null,
+    name: toNullableText(profile?.fullName || profile?.name),
+    address: toNullableText(profile?.detailAddress || profile?.address),
+    desired_jobs: [profile?.targetJob, profile?.desiredJob].filter((item) => toNullableText(item)),
+    skills: splitToList(profile?.skills),
+    education: toNullableText(profile?.highestEducation || profile?.educationSummary),
+    career: toNullableText(profile?.careerSummary || profile?.majorCareer),
+    major: toNullableText(profile?.majorCareer),
+    licenses: splitToList(profile?.certifications),
+    job_fit_statement: toNullableText(profile?.jobFitDescription),
+    available_employment_types: splitToList(profile?.workTypes),
+    desired_salary: extractInteger(profile?.expectedSalary),
+    time_preference: toNullableText(profile?.workTimePreference),
+    remote_work: typeof profile?.remoteAvailableYn === 'boolean' ? profile.remoteAvailableYn : null,
+    disability_types: profile?.disabilityType ? [profile.disabilityType] : [],
+    disability_severity: toNullableText(profile?.disabilitySeverity),
+    is_registered_disabled: typeof profile?.disabilityRegisteredYn === 'boolean' ? profile.disabilityRegisteredYn : null,
+    disability_description: toNullableText(profile?.disabilityDescription),
+    assistive_devices: splitToList(profile?.assistiveDevices),
+    required_supports: splitToList(profile?.requiredSupports || profile?.workSupportRequirements)
   };
 
   return {
-    profile: {
-      profile_id: Number.isFinite(profileId) && profileId > 0 ? profileId : null,
-      user_id: Number.isFinite(Number(profile?.userId)) ? Number(profile.userId) : null,
-      name: toNullableText(profile?.fullName || profile?.name),
-      address: toNullableText(profile?.detailAddress || profile?.address),
-      desired_jobs: [profile?.targetJob, profile?.desiredJob].filter((item) => toNullableText(item)),
-      skills: splitToList(profile?.skills),
-      education: toNullableText(profile?.highestEducation || profile?.educationSummary),
-      career: toNullableText(profile?.careerSummary || profile?.majorCareer),
-      major: toNullableText(profile?.majorCareer),
-      licenses: splitToList(profile?.certifications),
-      job_fit_statement: toNullableText(profile?.jobFitDescription),
-      available_employment_types: splitToList(profile?.workTypes),
-      desired_salary: extractInteger(profile?.expectedSalary),
-      time_preference: toNullableText(profile?.workTimePreference),
-      remote_work: typeof profile?.remoteAvailableYn === 'boolean' ? profile.remoteAvailableYn : null,
-      disability_types: profile?.disabilityType ? [profile.disabilityType] : [],
-      disability_severity: toNullableText(profile?.disabilitySeverity),
-      is_registered_disabled: typeof profile?.disabilityRegisteredYn === 'boolean' ? profile.disabilityRegisteredYn : null,
-      disability_description: toNullableText(profile?.disabilityDescription),
-      assistive_devices: splitToList(profile?.assistiveDevices),
-      required_supports: splitToList(profile?.requiredSupports || profile?.workSupportRequirements)
-    },
+    profile: explainProfile,
     job: explainJob,
-    selected_result: {
-      job: explainJob,
-      job_fit_score: typeof job?.fitScore === 'number' ? job.fitScore : null,
-      reasons: [],
-      risk_factors: [],
-      evidence_items: []
-    },
     job_fit_score: typeof job?.fitScore === 'number' ? job.fitScore : null,
     reasons: [],
     risk_factors: [],
@@ -1397,7 +1400,6 @@ export function MainPage() {
           <div className="home-section-head">
             <div>
               <h2 id="popular-postings-title">인기 공고 TOP 20</h2>
-              <p className="home-popular__caption">정렬: 스크랩 수 높은순, 동률 시 최신 공고 우선</p>
             </div>
           </div>
 
@@ -1417,7 +1419,7 @@ export function MainPage() {
                     <strong>{item.companyName}</strong>
                   </div>
                   <h3>{item.jobTitle}</h3>
-                  <p>{item.workAddress}</p>
+                  <p>{item.region}</p>
                   <div className="home-popular__card-meta">
                     <span>{item.employmentType}</span>
                     <span>{item.salaryText}</span>

@@ -74,7 +74,7 @@ function createMarkerIcon(marker) {
 }
 
 function canRenderMap(viewState) {
-  return viewState !== 'loading' && viewState !== 'calculating' && viewState !== 'error';
+  return viewState !== 'error';
 }
 
 function getProfileDisplayName(profile) {
@@ -123,12 +123,14 @@ function AccessibilityMapCanvasComponent({
   profiles = [],
   selectedProfileId,
   supportAgencyCount = 0,
+  showSupportAgencies = false,
   currentLocation,
   viewport,
   viewState,
   onSelectProfile,
   onRequireLogin,
   onRequestCurrentLocation,
+  onToggleSupportAgencies,
   onRetry
 }) {
   const { localizePath } = useLocale();
@@ -238,6 +240,26 @@ function AccessibilityMapCanvasComponent({
     mapInstanceRef.current.setCenter(new window.naver.maps.LatLng(viewport.center.lat, viewport.center.lng));
     mapInstanceRef.current.setZoom(viewport.zoom, false);
   }, [mapScriptStatus, viewport, viewState]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current || mapScriptStatus !== 'ready' || !canRenderMap(viewState)) {
+      return undefined;
+    }
+
+    const map = mapInstanceRef.current;
+    const center = new window.naver.maps.LatLng(viewport.center.lat, viewport.center.lng);
+    const relayout = () => {
+      window.naver.maps.Event.trigger(map, 'resize');
+      map.setCenter(center);
+    };
+
+    relayout();
+    const timerId = window.setTimeout(relayout, 120);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [mapScriptStatus, viewState, viewport.center.lat, viewport.center.lng]);
 
   useEffect(() => {
     if (!mapInstanceRef.current || mapScriptStatus !== 'ready' || !canRenderMap(viewState)) {
@@ -375,22 +397,6 @@ function AccessibilityMapCanvasComponent({
     ? '로그인 후 자신의 프로필을 선택해보세요.'
     : getProfileDisplayName(visibleSelectedProfile);
 
-  if (viewState === 'loading') {
-    return (
-      <section className="accessibility-map__map-panel is-feedback">
-        <LoadingView label="지역 접근성 지도를 준비하는 중입니다..." />
-      </section>
-    );
-  }
-
-  if (viewState === 'calculating') {
-    return (
-      <section className="accessibility-map__map-panel is-feedback">
-        <LoadingView label="선택한 프로필 기준으로 접근성 점수를 다시 계산하는 중입니다..." />
-      </section>
-    );
-  }
-
   if (viewState === 'error') {
     return (
       <section className="accessibility-map__map-panel is-feedback">
@@ -433,6 +439,14 @@ function AccessibilityMapCanvasComponent({
       <div className="accessibility-map__map-surface">
         <div ref={mapElementRef} className="accessibility-map__naver-map" />
       </div>
+      {viewState === 'loading' || viewState === 'calculating' ? (
+        <div className="accessibility-map__map-loading-overlay" role="status" aria-live="polite">
+          <div className="accessibility-map__map-loading-message jobs-feedback--animated-dots">
+            로딩중
+            <span className="jobs-feedback__dots" aria-hidden="true" />
+          </div>
+        </div>
+      ) : null}
       {showProfileSelect ? (
         <div
           ref={profileSelectRef}
@@ -507,6 +521,14 @@ function AccessibilityMapCanvasComponent({
             src={accessibilityScorePanel}
             alt="접근성 점수 기준: A 80 이상, B 60~79, C 60 미만"
           />
+          <label className="accessibility-map__support-agency-toggle">
+            <input
+              type="checkbox"
+              checked={showSupportAgencies}
+              onChange={(event) => onToggleSupportAgencies?.(event.target.checked)}
+            />
+            근로지원인 수행기관 보기
+          </label>
           <div className="accessibility-map__map-pill">
             공고 {markers.filter((marker) => marker.type === 'office').length}개 · 수행기관 {supportAgencyCount}곳
             {markers.length > MAX_RENDERED_MARKERS ? ` · 지도 표시 ${MAX_RENDERED_MARKERS}개` : ''}

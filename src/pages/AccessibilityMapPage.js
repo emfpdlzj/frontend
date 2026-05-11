@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useMapSearch } from '../accessibility/MapSearchContext';
 import { AccessibilityMapCanvas } from '../components/accessibility-map/AccessibilityMapCanvas';
 import { AccessibilityMapDetailPanel } from '../components/accessibility-map/AccessibilityMapDetailPanel';
 import { TrafficFilterPanel } from '../components/accessibility-map/TrafficFilterPanel';
@@ -19,7 +20,10 @@ function MapLoadingModal({ isOpen }) {
   return (
     <div className="home-loading-modal" role="status" aria-live="polite" aria-label="지도 추천 결과를 준비하고 있습니다.">
       <div className="home-loading-modal__panel">
-        <strong>지도 추천 결과를 준비하고 있습니다.</strong>
+        <strong className="jobs-feedback--animated-dots">
+          로딩중
+          <span className="jobs-feedback__dots" aria-hidden="true" />
+        </strong>
         <p>요청이 완료될 때까지 이 화면을 다시 열어도 진행 상태가 이어집니다.</p>
       </div>
     </div>
@@ -28,6 +32,7 @@ function MapLoadingModal({ isOpen }) {
 
 export function AccessibilityMapPage() {
   const { isAuthenticated } = useAuth();
+  const { submittedQuery, setSearchEnabled, clearQuery } = useMapSearch();
   const {
     jobs,
     totalJobCount,
@@ -53,14 +58,18 @@ export function AccessibilityMapPage() {
     selectedTab,
     isAiEnabled,
     appliedAiEnabled,
+    showSupportAgencies,
+    sortMode,
     viewState,
     setSelectedJobId,
     setSelectedProfileId,
     toggleAiScoring,
     applyFilters,
     setSelectedTab,
+    setSortMode,
+    setShowSupportAgencies,
     reloadRecommendations
-  } = useAccessibilityMap();
+  } = useAccessibilityMap({ searchQuery: submittedQuery });
   const [currentLocation, setCurrentLocation] = useState(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
@@ -101,6 +110,18 @@ export function AccessibilityMapPage() {
     setIsLoginModalOpen(true);
   }, []);
 
+  useEffect(() => {
+    setSearchEnabled(hasAppliedConditions);
+    if (!hasAppliedConditions) {
+      clearQuery();
+    }
+  }, [clearQuery, hasAppliedConditions, setSearchEnabled]);
+
+  useEffect(() => () => {
+    setSearchEnabled(false);
+    clearQuery();
+  }, [clearQuery, setSearchEnabled]);
+
   return (
     <main className="accessibility-map">
       <MapLoadingModal isOpen={isLoadingModalOpen} />
@@ -113,12 +134,14 @@ export function AccessibilityMapPage() {
           totalJobCount={totalJobCount}
           isAiEnabled={isAiEnabled}
           appliedAiEnabled={appliedAiEnabled}
+          sortMode={sortMode}
           selectedJobId={selectedJobId}
           viewState={viewState}
           isGuestUser={isGuestUser}
           onSelectJob={setSelectedJobId}
           onRequireLogin={openLoginModal}
           onToggleAiScoring={toggleAiScoring}
+          onChangeSortMode={setSortMode}
           onApplyFilters={applyFilters}
         />
         <AccessibilityMapCanvas
@@ -132,12 +155,14 @@ export function AccessibilityMapPage() {
           profiles={profiles}
           selectedProfileId={selectedProfileId}
           supportAgencyCount={supportAgencyCount}
+          showSupportAgencies={showSupportAgencies}
           currentLocation={currentLocation}
           viewport={viewport}
           viewState={viewState}
           onSelectProfile={setSelectedProfileId}
           onRequireLogin={openLoginModal}
           onRequestCurrentLocation={requestCurrentLocation}
+          onToggleSupportAgencies={setShowSupportAgencies}
           onRetry={reloadRecommendations}
         />
         {viewState === 'success' && selectedJob ? (

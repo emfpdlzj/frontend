@@ -9,7 +9,6 @@ import {
   getRecommendationCacheKey,
   setCachedRecommendation
 } from '../cache/recommendationCache';
-import { accessibilityMapMockData } from '../config/accessibilityMapMockData';
 import { getProfileScoringSignature } from '../utils/profileScoringSignature';
 import { useJobFilterOptions } from './useJobFilterOptions';
 import { useProfiles } from './useProfiles';
@@ -18,6 +17,27 @@ const MAP_RECOMMEND_REQUEST_TIMEOUT_MS = 3 * 60 * 1000;
 const MAP_RECOMMEND_POLL_INTERVAL_MS = 2500;
 const FILTER_ALL_VALUE = '전체';
 const VALID_TABS = ['accessibility', 'job', 'company'];
+const MAP_PERSONAS = {
+  wheelchair: {
+    label: '지체'
+  },
+  vision: {
+    label: '시각'
+  },
+  hearing: {
+    label: '청각'
+  }
+};
+const MAP_LEGEND = [
+  ['A', '80 이상', 'good'],
+  ['B', '60 ~ 79', 'warning'],
+  ['C', '60 미만', 'danger']
+];
+const MAP_DEFAULT_VIEWPORT = {
+  center: { lat: 37.498095, lng: 127.02761 },
+  zoom: 16
+};
+const MAP_RADIUS_METERS = 850;
 const REGION_ALIASES = {
   서울: ['서울', '서울특별시'],
   부산: ['부산', '부산광역시'],
@@ -44,6 +64,41 @@ const delay = (ms) =>
   new Promise((resolve) => {
     window.setTimeout(resolve, ms);
   });
+
+const toSafeText = (value, fallback = '-') => {
+  const text = String(value ?? '').trim();
+  return text || fallback;
+};
+
+const toNullableText = (value) => {
+  const text = String(value ?? '').trim();
+  return text || null;
+};
+
+const splitToList = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item ?? '').trim()).filter(Boolean);
+  }
+  if (value == null) {
+    return [];
+  }
+  return String(value)
+    .split(/[,/]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const extractInteger = (raw) => {
+  if (raw == null) {
+    return null;
+  }
+  const matched = String(raw).match(/\d+/);
+  if (!matched) {
+    return null;
+  }
+  const parsed = Number.parseInt(matched[0], 10);
+  return Number.isFinite(parsed) ? parsed : null;
+};
 
 async function waitForRecommendTask(callWithAuth, requestId, signal) {
   let lastPayload = null;
@@ -77,7 +132,7 @@ const formatRawDate = (raw) => `${raw.slice(0, 4)}.${raw.slice(4, 6)}.${raw.slic
 const formatDate = (value) => {
   const [raw] = extractDateValues(value);
   if (!raw) {
-    return value ? String(value) : '확인 필요';
+    return value ? String(value) : '-';
   }
 
   return formatRawDate(raw);
@@ -99,7 +154,7 @@ const getRecruitmentPeriodText = (job, termDate) => {
   const startDate = getJobStartDateValue(job, termDate);
   const deadlineDate = getJobDeadlineDateValue(termDate);
 
-  return `${startDate ? formatRawDate(startDate) : '확인 필요'} ~ ${deadlineDate ? formatRawDate(deadlineDate) : '확인 필요'}`;
+  return `${startDate ? formatRawDate(startDate) : '-'} ~ ${deadlineDate ? formatRawDate(deadlineDate) : '-'}`;
 };
 
 const getDday = (value) => {
@@ -123,7 +178,7 @@ const getDday = (value) => {
 
 const normalizeSalary = (salaryType, salary) => {
   if (!salary && !salaryType) {
-    return '확인 필요';
+    return '-';
   }
 
   if (!salaryType || String(salary || '').includes(String(salaryType))) {
@@ -243,15 +298,15 @@ const toIntegerOrNull = (value) => {
 };
 
 const buildJobInfo = (job, recruitmentPeriodText, salaryText) => [
-  ['모집직종', getJobTitle(job) || '확인 필요'],
-  ['고용형태', getFirstPresentValue(job?.empType, job?.emp_type, job?.employmentType, job?.employment_type) || '확인 필요'],
+  ['모집직종', getJobTitle(job) || '-'],
+  ['고용형태', getFirstPresentValue(job?.empType, job?.emp_type, job?.employmentType, job?.employment_type) || '-'],
   ['임금', salaryText],
-  ['임금형태', getFirstPresentValue(job?.salaryType, job?.salary_type) || '확인 필요'],
-  ['요구경력', getFirstPresentValue(job?.reqCareer, job?.req_career, job?.enterType, job?.enter_type) || '확인 필요'],
-  ['요구학력', getFirstPresentValue(job?.reqEduc, job?.req_educ) || '확인 필요'],
+  ['임금형태', getFirstPresentValue(job?.salaryType, job?.salary_type) || '-'],
+  ['요구경력', getFirstPresentValue(job?.reqCareer, job?.req_career, job?.enterType, job?.enter_type) || '-'],
+  ['요구학력', getFirstPresentValue(job?.reqEduc, job?.req_educ) || '-'],
   ['모집기간', recruitmentPeriodText],
-  ['요구전공', getFirstPresentValue(job?.reqMajor, job?.req_major) || '확인 필요'],
-  ['요구자격', getFirstPresentValue(job?.reqLicens, job?.req_licens) || '확인 필요']
+  ['요구전공', getFirstPresentValue(job?.reqMajor, job?.req_major) || '-'],
+  ['요구자격', getFirstPresentValue(job?.reqLicens, job?.req_licens) || '-']
 ];
 
 const getDateRangeText = (job) => getRecruitmentPeriodText(job, getJobDateField(job, 'termDate', 'term_date'));
@@ -324,13 +379,60 @@ const getJobPostId = (source, job) =>
   );
 
 const buildExplainScoreDetail = (scoreDetail) => ({
-  jobFitScore: toIntegerOrNull(scoreDetail?.job_fit_score ?? scoreDetail?.jobFitScore),
-  workConditionScore: toIntegerOrNull(scoreDetail?.work_condition_score ?? scoreDetail?.workConditionScore),
-  disabilitySupportScore: toIntegerOrNull(scoreDetail?.disability_support_score ?? scoreDetail?.disabilitySupportScore),
-  workEnvironmentScore: toIntegerOrNull(scoreDetail?.work_environment_score ?? scoreDetail?.workEnvironmentScore),
-  companyStabilityScore: toIntegerOrNull(scoreDetail?.company_stability_score ?? scoreDetail?.companyStabilityScore),
-  accessibilityScore: toIntegerOrNull(scoreDetail?.accessibility_score ?? scoreDetail?.accessibilityScore)
+  job_fit_score: toIntegerOrNull(scoreDetail?.job_fit_score ?? scoreDetail?.jobFitScore),
+  work_condition_score: toIntegerOrNull(scoreDetail?.work_condition_score ?? scoreDetail?.workConditionScore),
+  disability_support_score: toIntegerOrNull(scoreDetail?.disability_support_score ?? scoreDetail?.disabilitySupportScore),
+  work_environment_score: toIntegerOrNull(scoreDetail?.work_environment_score ?? scoreDetail?.workEnvironmentScore),
+  company_stability_score: toIntegerOrNull(scoreDetail?.company_stability_score ?? scoreDetail?.companyStabilityScore),
+  accessibility_score: toIntegerOrNull(scoreDetail?.accessibility_score ?? scoreDetail?.accessibilityScore)
 });
+
+const resolveCommuteStats = (source, aiResult, scoreDetail) => {
+  const totalMinutes = getFirstPresentValue(
+    scoreDetail?.total_minutes,
+    scoreDetail?.totalMinutes,
+    aiResult?.total_minutes,
+    aiResult?.totalMinutes,
+    source?.totalMinutes,
+    source?.total_minutes
+  );
+  const transferCount = getFirstPresentValue(
+    scoreDetail?.transfer_count,
+    scoreDetail?.transferCount,
+    aiResult?.transfer_count,
+    aiResult?.transferCount,
+    source?.transferCount,
+    source?.transfer_count
+  );
+  const walkInfo = getFirstPresentValue(
+    scoreDetail?.walk_minutes,
+    scoreDetail?.walkMinutes,
+    scoreDetail?.walk_distance_meters,
+    scoreDetail?.walkDistanceMeters,
+    aiResult?.walk_minutes,
+    aiResult?.walkMinutes,
+    aiResult?.walk_distance_meters,
+    aiResult?.walkDistanceMeters,
+    source?.walkMinutes,
+    source?.walk_minutes,
+    source?.walkDistanceMeters,
+    source?.walk_distance_meters
+  );
+
+  const totalText = totalMinutes != null && totalMinutes !== ''
+    ? `총 ${String(totalMinutes).trim()}분`
+    : '-';
+  const transferText = transferCount != null && transferCount !== ''
+    ? `환승 ${String(transferCount).trim()}회`
+    : '-';
+  const walkText = walkInfo != null && walkInfo !== ''
+    ? String(walkInfo).trim().includes('m') || String(walkInfo).trim().includes('분')
+      ? String(walkInfo).trim()
+      : `${String(walkInfo).trim()}`
+    : '-';
+
+  return [totalText, transferText, walkText];
+};
 
 const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult) => {
   const aiResult = aiEnabled ? matchedAiResult || findAiMapResult(aiResults, job) : null;
@@ -350,9 +452,9 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult) => {
   const displayScore = accessibilityScore ?? totalScore;
   const grade = getScoreGrade(displayScore);
   const tone = getAccessibilityTone(displayScore);
-  const title = getJobTitle(job) || '공고명 확인 필요';
-  const company = getCompanyName(job) || '기업명 확인 필요';
-  const address = getWorkAddress(job) || '근무지 확인 필요';
+  const title = getJobTitle(job) || '-';
+  const company = getCompanyName(job) || '-';
+  const address = getWorkAddress(job) || '-';
   const region = getRegionLabel(address);
   const salaryType = getFirstPresentValue(job?.salaryType, job?.salary_type);
   const termDate = getJobDateField(job, 'termDate', 'term_date');
@@ -365,6 +467,27 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult) => {
   const id = getJobExternalId(job) || `${company}-${title}-${termDate || ''}`;
   const geoLatitude = getGeoLatitude(job);
   const geoLongitude = getGeoLongitude(job);
+  const commuteStats = resolveCommuteStats(job, aiResult, scoreDetail);
+  const companyType = getFirstPresentValue(
+    job?.companyType,
+    job?.company_type,
+    job?.busplaType,
+    job?.buspla_type
+  );
+  const companyLogoUrl = getFirstPresentValue(
+    job?.companyLogoUrl,
+    job?.company_logo_url,
+    job?.logoUrl,
+    job?.logo_url
+  );
+  const workplaceType = getFirstPresentValue(
+    job?.workplaceType,
+    job?.workplace_type,
+    job?.isStandardWorkplace,
+    job?.is_standard_workplace
+  );
+  const hiringRate = getFirstPresentValue(job?.disabilityHiringRate, job?.disability_hiring_rate, job?.hiringRate, job?.hiring_rate);
+  const legalRate = getFirstPresentValue(job?.legalObligationRate, job?.legal_obligation_rate, job?.legalRate, job?.legal_rate);
 
   return {
     id,
@@ -376,33 +499,36 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult) => {
     dueLabel,
     dueDateText,
     dateRangeText: getDateRangeText(job),
-    commuteMinutes: '확인 필요',
+    commuteMinutes: '-',
     payText: salaryText,
-    salaryType: salaryType || '확인 필요',
-    employmentType: getFirstPresentValue(job?.empType, job?.emp_type, job?.employmentType, job?.employment_type) || '확인 필요',
+    salaryType: salaryType || '-',
+    employmentType: getFirstPresentValue(job?.empType, job?.emp_type, job?.employmentType, job?.employment_type) || '-',
     region,
-    score: displayScore ?? '확인 필요',
+    score: displayScore ?? '-',
     scoreDetail,
     totalScore,
     jobInfo: buildJobInfo(job, recruitmentPeriodText, salaryText),
     companyInfo: {
       name: company,
-      type: '확인 필요',
+      logoUrl: toNullableText(companyLogoUrl),
+      type: toSafeText(companyType),
       address,
       initial: getInitial(company),
-      workplaceType: '확인 필요',
-      hiringRate: '확인 필요',
-      legalRate: '확인 필요',
-      hiringSummary: '장애인 고용 현황은 추가 확인이 필요합니다.'
+      workplaceType: toSafeText(workplaceType),
+      hiringRate: toSafeText(hiringRate),
+      legalRate: toSafeText(legalRate),
+      hiringSummary: hiringRate && legalRate
+        ? `장애인 고용률 ${String(hiringRate).trim()}, 법정 의무율 ${String(legalRate).trim()}`
+        : '-'
     },
     accessibilityByPersona: Object.fromEntries(
-      Object.keys(accessibilityMapMockData.personas).map((personaKey) => [
+      Object.keys(MAP_PERSONAS).map((personaKey) => [
         personaKey,
         {
-          panelBadge: `${grade} · ${accessibilityMapMockData.personas[personaKey].label} 기준`,
+          panelBadge: `${grade} · ${MAP_PERSONAS[personaKey].label} 기준`,
           headline: tone.headline,
           description: tone.description,
-          commuteStats: ['총 시간 확인 필요', '환승 확인 필요', '도보 확인 필요'],
+          commuteStats,
           detailItems: [
             ['접근성 점수', displayScore === null || displayScore === undefined ? '점수 데이터가 없어 확인이 필요합니다.' : `접근성 점수는 ${displayScore}점입니다.`, displayScore >= 80 ? '접근 양호' : displayScore >= 60 ? '주의 필요' : '데이터 미확인'],
             ['근무지 좌표', geoLatitude && geoLongitude ? '지도에서 근무지 위치를 확인할 수 있습니다.' : '근무지 좌표 데이터가 없어 위치 확인이 필요합니다.', geoLatitude && geoLongitude ? '접근 양호' : '데이터 미확인'],
@@ -470,7 +596,7 @@ const getMapMarkerDisplayLabel = (label) => {
 const buildMapViewport = (jobs, selectedJob) => {
   const centerPoint = selectedJob?.mapPoint || jobs.find((job) => job.mapPoint)?.mapPoint;
   if (!centerPoint) {
-    return accessibilityMapMockData.mapViewport;
+    return MAP_DEFAULT_VIEWPORT;
   }
 
   return {
@@ -589,6 +715,28 @@ const getRegionTerms = (selectedRegion) => {
   return Array.from(terms);
 };
 
+const filterJobsByMapSearchQuery = (jobs, searchQuery) => {
+  const terms = getComparableTerms(searchQuery);
+  if (!terms.length) {
+    return jobs;
+  }
+
+  return jobs.filter((job) => {
+    const source = job.source || {};
+    const searchableText = [
+      job.title,
+      job.company,
+      job.region,
+      job.companyInfo?.address,
+      getJobTitle(source),
+      getCompanyName(source),
+      getWorkAddress(source)
+    ].filter(Boolean).join(' ');
+
+    return includesAnyTerm(searchableText, terms);
+  });
+};
+
 export const filterAccessibilityMapJobs = (jobs, selectedFilters, jobCategories = []) =>
   jobs.filter((job) => {
     const source = job.source || {};
@@ -621,7 +769,29 @@ export const filterAccessibilityMapJobs = (jobs, selectedFilters, jobCategories 
 const sortJobsByAccessibility = (jobs) =>
   [...jobs].sort((left, right) => (getScoreNumber(right.score) ?? -1) - (getScoreNumber(left.score) ?? -1));
 
-const buildExplainPayload = ({ job, profileId }) => {
+const getRegisteredDateNumber = (job) => {
+  const source = job?.source || {};
+  const raw = getLastDateValue(
+    getFirstPresentValue(
+      source?.offerregDt,
+      source?.offerreg_dt,
+      source?.regDt,
+      source?.reg_dt,
+      source?.registeredAt,
+      source?.registered_at
+    )
+  );
+  return raw ? Number(raw) : -1;
+};
+
+const sortMapJobs = (jobs, sortMode) => {
+  if (sortMode === 'latest_desc') {
+    return [...jobs].sort((left, right) => getRegisteredDateNumber(right) - getRegisteredDateNumber(left));
+  }
+  return sortJobsByAccessibility(jobs);
+};
+
+const buildExplainPayload = ({ job, profileId, profile }) => {
   const source = job?.source || {};
   const scoreDetail = job?.scoreDetail || {};
   const jobPostId = getJobPostId(source, job);
@@ -630,36 +800,91 @@ const buildExplainPayload = ({ job, profileId }) => {
   const salaryType = getFirstPresentValue(source.salaryType, source.salary_type);
   const jobFitScore =
     toIntegerOrNull(scoreDetail?.job_fit_score) ?? toIntegerOrNull(scoreDetail?.jobFitScore) ?? totalScore ?? 0;
+  const companyName = toSafeText(
+    getFirstPresentValue(
+      job?.company,
+      source?.company_name,
+      source?.companyName,
+      source?.busplaName,
+      source?.buspla_name
+    ),
+    ''
+  );
+  const jobTitle = toSafeText(
+    getFirstPresentValue(
+      job?.title,
+      source?.job_title,
+      source?.jobTitle,
+      source?.jobNm,
+      source?.job_nm
+    ),
+    ''
+  );
+
+  if (!companyName || !jobTitle || !profileId) {
+    return null;
+  }
+
+  const normalizedProfileId = Number(profileId);
+  const normalizedJobPostId = getFirstInteger(jobPostId, sourceId, 0) ?? 0;
+
+  const explainProfile = {
+    profile_id: Number.isFinite(normalizedProfileId) ? normalizedProfileId : null,
+    user_id: Number.isFinite(Number(profile?.userId)) ? Number(profile.userId) : null,
+    name: toNullableText(profile?.fullName || profile?.name),
+    address: toNullableText(profile?.detailAddress || profile?.address),
+    desired_jobs: [profile?.targetJob, profile?.desiredJob].filter((item) => toNullableText(item)),
+    skills: splitToList(profile?.skills),
+    education: toNullableText(profile?.highestEducation || profile?.educationSummary),
+    career: toNullableText(profile?.careerSummary || profile?.majorCareer),
+    major: toNullableText(profile?.majorCareer),
+    licenses: splitToList(profile?.certifications),
+    job_fit_statement: toNullableText(profile?.jobFitDescription),
+    available_employment_types: splitToList(profile?.workTypes),
+    desired_salary: extractInteger(profile?.expectedSalary),
+    time_preference: toNullableText(profile?.workTimePreference),
+    remote_work: typeof profile?.remoteAvailableYn === 'boolean' ? profile.remoteAvailableYn : null,
+    disability_types: profile?.disabilityType ? [profile.disabilityType] : [],
+    disability_severity: toNullableText(profile?.disabilitySeverity),
+    is_registered_disabled: typeof profile?.disabilityRegisteredYn === 'boolean' ? profile.disabilityRegisteredYn : null,
+    disability_description: toNullableText(profile?.disabilityDescription),
+    assistive_devices: splitToList(profile?.assistiveDevices),
+    required_supports: splitToList(profile?.requiredSupports || profile?.workSupportRequirements)
+  };
+
+  const explainJob = {
+    job_post_id: normalizedJobPostId,
+    company_name: companyName,
+    job_title: jobTitle,
+    work_address: toNullableText(getWorkAddress(source) || job.companyInfo.address),
+    work_lat: getGeoLatitude(source) ?? null,
+    work_lng: getGeoLongitude(source) ?? null,
+    employment_type: toNullableText(getFirstPresentValue(source.empType, source.emp_type, source.employmentType, source.employment_type) || job.employmentType),
+    enter_type: toNullableText(getFirstPresentValue(source.enterType, source.enter_type)),
+    salary_type: toNullableText(salaryType),
+    salary: toNullableText(source.salary),
+    term_date: toNullableText(getJobDateField(source, 'termDate', 'term_date')),
+    required_career: toNullableText(getFirstPresentValue(source.reqCareer, source.req_career)),
+    required_education: toNullableText(getFirstPresentValue(source.reqEduc, source.req_educ)),
+    required_major: toNullableText(getFirstPresentValue(source.reqMajor, source.req_major)),
+    required_licenses: toNullableText(getFirstPresentValue(source.reqLicens, source.req_licens)),
+    agency_name: toNullableText(getFirstPresentValue(source.agencyName, source.agency_name)),
+    registered_at: toNullableText(getJobDateField(source, 'regDt', 'reg_dt') || getJobDateField(source, 'offerregDt', 'offerreg_dt')),
+    source_table: source.sourceTable || 'pd_kepad_recruitment',
+    source_id: sourceId
+  };
+
+  const explainScoreDetail = buildExplainScoreDetail(scoreDetail);
 
   return {
-    profileId: Number(profileId),
-    job: {
-      jobPostId,
-      companyName: job.company,
-      jobTitle: job.title,
-      workAddress: getWorkAddress(source) || job.companyInfo.address,
-      workLat: getGeoLatitude(source) ?? null,
-      workLng: getGeoLongitude(source) ?? null,
-      employmentType: getFirstPresentValue(source.empType, source.emp_type, source.employmentType, source.employment_type) || job.employmentType,
-      enterType: getFirstPresentValue(source.enterType, source.enter_type) || '확인 필요',
-      salaryType: salaryType || '확인 필요',
-      salary: source.salary || '확인 필요',
-      termDate: getJobDateField(source, 'termDate', 'term_date') || '',
-      requiredCareer: getFirstPresentValue(source.reqCareer, source.req_career) || '확인 필요',
-      requiredEducation: getFirstPresentValue(source.reqEduc, source.req_educ) || '확인 필요',
-      requiredMajor: getFirstPresentValue(source.reqMajor, source.req_major) || '확인 필요',
-      requiredLicenses: getFirstPresentValue(source.reqLicens, source.req_licens) || '확인 필요',
-      registeredAt: getJobDateField(source, 'regDt', 'reg_dt') || getJobDateField(source, 'offerregDt', 'offerreg_dt') || '',
-      sourceTable: source.sourceTable || 'pd_kepad_recruitment',
-      sourceId,
-      externalId: source.externalId ?? source.external_id ?? job.externalId ?? String(jobPostId || '')
-    },
-    scoreDetail: buildExplainScoreDetail(scoreDetail),
-    totalScore,
-    jobFitScore,
+    profile: explainProfile,
+    job: explainJob,
+    score_detail: explainScoreDetail,
+    total_score: totalScore,
+    job_fit_score: jobFitScore,
     reasons: [`추천 지도 기준 총점은 ${job.totalScore ?? job.score}점입니다.`],
-    riskFactors: ['출퇴근 경로와 사업장 접근성 세부 정보는 지원 전 확인이 필요합니다.'],
-    evidenceItems: []
+    risk_factors: ['출퇴근 경로와 사업장 접근성 세부 정보는 지원 전 확인이 필요합니다.'],
+    evidence_items: []
   };
 };
 
@@ -707,7 +932,7 @@ export const buildRecommendationStateFromPayload = (payload, aiEnabled = Boolean
   };
 };
 
-export function useAccessibilityMap() {
+export function useAccessibilityMap({ searchQuery = '' } = {}) {
   const { callWithAuth, isAuthenticated } = useAuth();
   const profilesState = useProfiles();
   const filterOptions = useJobFilterOptions();
@@ -716,6 +941,8 @@ export function useAccessibilityMap() {
   const [isAiEnabled, setIsAiEnabled] = useState(true);
   const [appliedAiEnabled, setAppliedAiEnabled] = useState(true);
   const [hasAppliedConditions, setHasAppliedConditions] = useState(false);
+  const [sortMode, setSortMode] = useState('score_desc');
+  const [showSupportAgencies, setShowSupportAgencies] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState({});
   const [reloadKey, setReloadKey] = useState(0);
   const [recommendationState, setRecommendationState] = useState({
@@ -753,10 +980,14 @@ export function useAccessibilityMap() {
   );
   const selectedPersona = selectedProfileSummary?.personaKey || 'wheelchair';
   const allJobs = recommendationState.jobs;
-  const filteredJobs = useMemo(
-    () => sortJobsByAccessibility(filterAccessibilityMapJobs(allJobs, selectedFilters, filterOptions.jobCategories)),
-    [allJobs, filterOptions.jobCategories, selectedFilters]
-  );
+  const filteredJobs = useMemo(() => {
+    const filterMatchedJobs = filterAccessibilityMapJobs(allJobs, selectedFilters, filterOptions.jobCategories);
+    const searchMatchedJobs = filterJobsByMapSearchQuery(
+      filterMatchedJobs,
+      hasAppliedConditions ? searchQuery : ''
+    );
+    return sortMapJobs(searchMatchedJobs, sortMode);
+  }, [allJobs, filterOptions.jobCategories, hasAppliedConditions, searchQuery, selectedFilters, sortMode]);
   const filterGroups = useMemo(
     () => buildFilterGroups(selectedFilters, filterOptions),
     [filterOptions, selectedFilters]
@@ -962,8 +1193,8 @@ export function useAccessibilityMap() {
   );
   const jobMarkers = useMemo(() => buildMapMarkers(filteredJobs), [filteredJobs]);
   const supportAgencyMarkers = useMemo(
-    () => buildSupportAgencyMarkers(supportAgencyState.agencies),
-    [supportAgencyState.agencies]
+    () => (showSupportAgencies ? buildSupportAgencyMarkers(supportAgencyState.agencies) : []),
+    [showSupportAgencies, supportAgencyState.agencies]
   );
   const mapMarkers = useMemo(
     () => (hasAppliedConditions ? [...jobMarkers, ...supportAgencyMarkers] : []),
@@ -978,6 +1209,15 @@ export function useAccessibilityMap() {
         error: '',
         agencies: []
       });
+      return undefined;
+    }
+
+    if (!showSupportAgencies) {
+      setSupportAgencyState((prev) => ({
+        ...prev,
+        status: 'idle',
+        error: ''
+      }));
       return undefined;
     }
 
@@ -1024,7 +1264,7 @@ export function useAccessibilityMap() {
     return () => {
       controller.abort();
     };
-  }, [callWithAuth, hasAppliedConditions, isAuthenticated, reloadKey]);
+  }, [callWithAuth, hasAppliedConditions, isAuthenticated, reloadKey, showSupportAgencies]);
 
   useEffect(() => {
     if (!appliedAiEnabled || !selectedJob || !selectedProfileId || recommendationState.status !== 'success') {
@@ -1058,8 +1298,21 @@ export function useAccessibilityMap() {
     }
 
     const loadExplanation = async () => {
-      const explainPayload = buildExplainPayload({ job: selectedJob, profileId: selectedProfileId });
-      if (!explainPayload.job.jobPostId) {
+      const explainPayload = buildExplainPayload({
+        job: selectedJob,
+        profileId: selectedProfileId,
+        profile: selectedProfile
+      });
+      if (!explainPayload) {
+        setExplanationState({
+          status: 'error',
+          error: '추천 설명 요청에 필요한 프로필/공고 정보가 부족합니다.',
+          jobId: selectedJob.id,
+          data: null
+        });
+        return;
+      }
+      if (!explainPayload?.job?.job_post_id && !explainPayload?.job?.source_id) {
         setExplanationState({
           status: 'error',
           error: '추천 설명을 요청할 공고 내부 ID가 없어 설명을 불러올 수 없습니다.',
@@ -1109,7 +1362,7 @@ export function useAccessibilityMap() {
     return () => {
       controller.abort();
     };
-  }, [appliedAiEnabled, callWithAuth, recommendationState.status, selectedJob, selectedProfileId, selectedProfileScoringSignature]);
+  }, [appliedAiEnabled, callWithAuth, recommendationState.status, selectedJob, selectedProfile, selectedProfileId, selectedProfileScoringSignature]);
 
   const reloadRecommendations = useCallback(() => {
     clearRecommendationCache();
@@ -1119,6 +1372,7 @@ export function useAccessibilityMap() {
   const applyFilters = useCallback((filters) => {
     setSelectedFilters(filters || {});
     setAppliedAiEnabled(isAiEnabled);
+    setSortMode(isAiEnabled ? 'score_desc' : 'latest_desc');
     setHasAppliedConditions(true);
   }, [isAiEnabled]);
 
@@ -1137,12 +1391,12 @@ export function useAccessibilityMap() {
     jobs: filteredJobs,
     totalJobCount: allJobs.length,
     profiles,
-    personas: accessibilityMapMockData.personas,
+    personas: MAP_PERSONAS,
     filterGroups,
     filterOptionStatus: filterOptions.status,
     filterOptionErrorMessage: filterOptions.error,
-    mapLegend: accessibilityMapMockData.mapLegend,
-    mapRadiusMeters: accessibilityMapMockData.mapRadiusMeters,
+    mapLegend: MAP_LEGEND,
+    mapRadiusMeters: MAP_RADIUS_METERS,
     mapRoutes: [],
     mapMarkers,
     hasAppliedConditions,
@@ -1158,6 +1412,8 @@ export function useAccessibilityMap() {
     selectedTab: VALID_TABS.includes(selectedTab) ? selectedTab : 'accessibility',
     isAiEnabled,
     appliedAiEnabled,
+    showSupportAgencies,
+    sortMode,
     viewState,
     errorMessage: recommendationState.error,
     explanation: explanationState.data,
@@ -1166,6 +1422,8 @@ export function useAccessibilityMap() {
     setSelectedJobId,
     setSelectedProfileId: profilesState.selectProfile,
     setSelectedTab,
+    setSortMode,
+    setShowSupportAgencies,
     toggleAiScoring,
     applyFilters,
     reloadRecommendations

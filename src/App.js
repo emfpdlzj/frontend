@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { MapSearchProvider } from './accessibility/MapSearchContext';
 import { AppRouter } from './app/AppRouter';
 import { WithdrawalRestoredModal } from './components/auth/WithdrawalRestoredModal';
 import { AppFooter } from './components/common/AppFooter';
@@ -58,20 +59,22 @@ function AppLayout() {
 
   return (
     <AccessibilityPreferencesProvider>
-      <UiTextTranslator locale={locale} />
-      <div className="app-frame">
-        <AppHeader showMapSearch={isMapPage} />
-        <div className="app-frame__body">
-          <AppTabNavigation />
-          <div className="app-frame__content">
-            <div className="app-frame__main">
-              <AppRouter />
+      <MapSearchProvider>
+        <UiTextTranslator locale={locale} />
+        <div className="app-frame">
+          <AppHeader showMapSearch={isMapPage} />
+          <div className="app-frame__body">
+            <AppTabNavigation />
+            <div className="app-frame__content">
+              <div className="app-frame__main">
+                <AppRouter />
+              </div>
+              {isMapPage ? null : <AppFooter />}
             </div>
-            {isMapPage ? null : <AppFooter />}
           </div>
+          {isWithdrawalRestoredOpen ? <WithdrawalRestoredModal onClose={closeWithdrawalRestoredModal} /> : null}
         </div>
-        {isWithdrawalRestoredOpen ? <WithdrawalRestoredModal onClose={closeWithdrawalRestoredModal} /> : null}
-      </div>
+      </MapSearchProvider>
     </AccessibilityPreferencesProvider>
   );
 }
