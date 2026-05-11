@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authApi } from '../api/authApi';
 import { useAccessibilityPreferences } from '../accessibility/AccessibilityPreferencesContext';
@@ -285,6 +285,7 @@ export function SettingsPage() {
     status: 'idle',
     message: ''
   });
+  const withdrawalInFlightRef = useRef(false);
 
   const handlePreferenceChange = (key, value) => {
     updatePreference(key, value);
@@ -296,6 +297,10 @@ export function SettingsPage() {
   };
 
   const handleWithdrawalSubmit = async () => {
+    if (withdrawalInFlightRef.current) {
+      return;
+    }
+
     if (!isAuthenticated) {
       setWithdrawalState({
         status: 'error',
@@ -304,6 +309,7 @@ export function SettingsPage() {
       return;
     }
 
+    withdrawalInFlightRef.current = true;
     setWithdrawalState({
       status: 'loading',
       message: '회원탈퇴 신청을 처리하는 중입니다.'
@@ -322,6 +328,8 @@ export function SettingsPage() {
         status: 'error',
         message: error?.message || '회원탈퇴 신청에 실패했습니다. 잠시 후 다시 시도해 주세요.'
       });
+    } finally {
+      withdrawalInFlightRef.current = false;
     }
   };
 

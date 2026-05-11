@@ -1,3 +1,49 @@
-# https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Allow: /
+Allow: /settings/policies/
+Allow: /ko/settings/policies/
+Allow: /en/settings/policies/
+Allow: /ja/settings/policies/
+Allow: /zh/settings/policies/
+
+# Authenticated or session-specific pages should not be indexed.
+Disallow: /login
+Disallow: /signup
+Disallow: /profile
+Disallow: /my/
+Disallow: /jobs
+Disallow: /accessibility-map
+Disallow: /settings
+Disallow: /auth/
+
+# Localized authenticated routes.
+Disallow: /ko/login
+Disallow: /ko/signup
+Disallow: /ko/profile
+Disallow: /ko/my/
+Disallow: /ko/jobs
+Disallow: /ko/accessibility-map
+Disallow: /ko/settings
+Disallow: /en/login
+Disallow: /en/signup
+Disallow: /en/profile
+Disallow: /en/my/
+Disallow: /en/jobs
+Disallow: /en/accessibility-map
+Disallow: /en/settings
+Disallow: /ja/login
+Disallow: /ja/signup
+Disallow: /ja/profile
+Disallow: /ja/my/
+Disallow: /ja/jobs
+Disallow: /ja/accessibility-map
+Disallow: /ja/settings
+Disallow: /zh/login
+Disallow: /zh/signup
+Disallow: /zh/profile
+Disallow: /zh/my/
+Disallow: /zh/jobs
+Disallow: /zh/accessibility-map
+Disallow: /zh/settings
+
+Sitemap: https://www.bridgework.cloud/sitemap.xml

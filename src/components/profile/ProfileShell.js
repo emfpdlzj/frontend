@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { UNSAFE_NavigationContext as NavigationContext } from 'react-router-dom';
 import arrowDownIcon from '../../assets/profile/arrow-down.png';
 import arrowUpWhiteIcon from '../../assets/profile/arrow_up_white.png';
 import editIcon from '../../assets/profile/edit_icon.png';
@@ -32,6 +33,7 @@ const PROFILE_DRAFT_AUTOSAVE_INTERVAL_MS = 60000;
 const PROFILE_DRAFT_CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_PORTFOLIO_PDF_SIZE_BYTES = 10 * 1024 * 1024;
 const MAX_PORTFOLIO_PDF_SIZE_LABEL = '10MB';
+const PROFILE_LEAVE_CONFIRM_MESSAGE = '작성 중인 프로필 정보가 있습니다. 저장하지 않고 나가시겠습니까?';
 const HIGHEST_EDUCATION_LABEL_MAP = {
   HIGH_SCHOOL_OR_BELOW: '고졸 이하',
   HIGH_SCHOOL: '고졸',
@@ -62,6 +64,45 @@ const SAFE_PROFILE_DRAFT_FIELDS = [
   'workTimePreference',
   'remoteAvailableYn'
 ];
+
+function useProfileLeavePrompt(shouldPrompt) {
+  const { navigator } = useContext(NavigationContext);
+
+  useEffect(() => {
+    if (!shouldPrompt || typeof navigator.block !== 'function') {
+      return undefined;
+    }
+
+    const unblock = navigator.block((transition) => {
+      if (!window.confirm(PROFILE_LEAVE_CONFIRM_MESSAGE)) {
+        return;
+      }
+
+      unblock();
+      transition.retry();
+    });
+
+    return unblock;
+  }, [navigator, shouldPrompt]);
+
+  useEffect(() => {
+    if (!shouldPrompt) {
+      return undefined;
+    }
+
+    const handleBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = '';
+      return '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [shouldPrompt]);
+}
 
 export function ProfileShell() {
   const { callWithAuth } = useAuth();
@@ -144,6 +185,9 @@ export function ProfileShell() {
   const isDefaultProfileSelected = Boolean(selectedProfileForToggle?.isDefault);
   const canDeleteProfile = Boolean(selectedProfile) && !isCreateMode && !selectedProfile.isDefault && profiles.length > 1 && !isMutating;
   const isReadOnlyMode = !isCreateMode && !isEditMode;
+  const shouldPromptBeforeLeavingProfile = (isCreateMode || isEditMode) && hasAutosaveTarget && !isMutating;
+
+  useProfileLeavePrompt(shouldPromptBeforeLeavingProfile);
 
   const showDraftToast = useCallback((message, kind = 'info') => {
     setDraftToast({

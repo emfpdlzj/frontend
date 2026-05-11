@@ -8,6 +8,7 @@ import { AppHeader } from './components/common/AppHeader';
 import { AppTabNavigation } from './components/common/AppTabNavigation';
 import { AccessibilityPreferencesProvider } from './accessibility/AccessibilityPreferencesContext';
 import { ROUTE_PATHS } from './config/routes';
+import { usePageMetadata } from './hooks/usePageMetadata';
 import { LocaleProvider } from './i18n/LocaleContext';
 import { UiTextTranslator } from './i18n/UiTextTranslator';
 import { getLocaleFromPathname, stripLocaleFromPathname } from './i18n/locales';
@@ -19,6 +20,8 @@ function AppLayout() {
   const currentPathname = stripLocaleFromPathname(location.pathname);
   const isMapPage = currentPathname === ROUTE_PATHS.accessibilityMap;
   const [isWithdrawalRestoredOpen, setIsWithdrawalRestoredOpen] = useState(false);
+
+  usePageMetadata();
 
   useEffect(() => {
     if (location.state?.withdrawalRestored) {

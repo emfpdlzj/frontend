@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import checkCircleIcon from '../assets/signup/check_circle.png';
 import stepBeforeIcon from '../assets/signup/item-before.png';
@@ -288,6 +288,7 @@ export function OnboardingPage() {
   const [formatValidationVisible, setFormatValidationVisible] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const signupInFlightRef = useRef(false);
 
   const progressWidth = useMemo(() => `${(currentStep / STEPS.length) * 100}%`, [currentStep]);
   const validationMessage = useMemo(() => getSignupValidationMessage(form), [form]);
@@ -345,6 +346,10 @@ export function OnboardingPage() {
   };
 
   const goNext = async () => {
+    if (signupInFlightRef.current) {
+      return;
+    }
+
     setSubmitError('');
     const stepValidationMessage = getStepValidationMessage(currentStep, form);
 
@@ -377,6 +382,7 @@ export function OnboardingPage() {
       }
 
       try {
+        signupInFlightRef.current = true;
         setSubmitting(true);
         await completeSignup({
           signupToken: pendingSignup.signupToken,
@@ -386,6 +392,7 @@ export function OnboardingPage() {
       } catch (error) {
         setSubmitError(error.message || '회원가입 처리에 실패했습니다.');
       } finally {
+        signupInFlightRef.current = false;
         setSubmitting(false);
       }
       return;

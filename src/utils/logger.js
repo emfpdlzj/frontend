@@ -31,6 +31,8 @@ const resolveLogLevel = () => {
 };
 
 const ACTIVE_LOG_LEVEL = resolveLogLevel();
+const REDACTED_VALUE = '[REDACTED]';
+const SENSITIVE_KEY_PATTERN = /authorization|password|passwd|token|secret|credential|api[-_]?key|session|jwt/i;
 
 const shouldLog = (level) => LOG_LEVELS[level] <= LOG_LEVELS[ACTIVE_LOG_LEVEL];
 
@@ -60,6 +62,43 @@ const getConsoleMethod = (level) => {
   return console.error;
 };
 
+export const sanitizeLogMeta = (value, seen = new WeakSet()) => {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  if (typeof value !== 'object') {
+    return value;
+  }
+
+  if (value instanceof Error) {
+    return {
+      name: value.name,
+      message: value.message,
+      status: value.status,
+      errorCode: value.errorCode,
+      payload: sanitizeLogMeta(value.payload, seen)
+    };
+  }
+
+  if (seen.has(value)) {
+    return '[Circular]';
+  }
+
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeLogMeta(item, seen));
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entryValue]) => [
+      key,
+      SENSITIVE_KEY_PATTERN.test(key) ? REDACTED_VALUE : sanitizeLogMeta(entryValue, seen)
+    ])
+  );
+};
+
 const writeLog = (scope, level, message, meta) => {
   if (!shouldLog(level)) {
     return;
@@ -73,7 +112,7 @@ const writeLog = (scope, level, message, meta) => {
     return;
   }
 
-  method(prefix, message, meta);
+  method(prefix, message, sanitizeLogMeta(meta));
 };
 
 export const loggerConfig = {

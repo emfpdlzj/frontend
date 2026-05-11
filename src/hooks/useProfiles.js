@@ -41,6 +41,7 @@ export function useProfiles() {
   const [state, setState] = useState(initialState);
   const selectedProfileIdRef = useRef(readSelectedProfilePreference());
   const isInitialLoadRef = useRef(true);
+  const mutationInFlightRef = useRef(null);
 
   useEffect(() => {
     selectedProfileIdRef.current = state.selectedProfileId;
@@ -196,29 +197,40 @@ export function useProfiles() {
 
   const runMutation = useCallback(
     async (operation, successMessage) => {
-      setState((prev) => ({
-        ...prev,
-        mutationStatus: 'loading',
-        mutationMessage: ''
-      }));
-
-      try {
-        const result = await callWithAuth((accessToken) => operation(accessToken));
-        await loadProfiles(undefined, selectedProfileIdRef.current);
-        setState((prev) => ({
-          ...prev,
-          mutationStatus: 'success',
-          mutationMessage: successMessage
-        }));
-        return result;
-      } catch (error) {
-        setState((prev) => ({
-          ...prev,
-          mutationStatus: 'error',
-          mutationMessage: error.message || '프로필 변경에 실패했습니다.'
-        }));
-        throw error;
+      if (mutationInFlightRef.current) {
+        return mutationInFlightRef.current;
       }
+
+      const mutationPromise = (async () => {
+        setState((prev) => ({
+          ...prev,
+          mutationStatus: 'loading',
+          mutationMessage: ''
+        }));
+
+        try {
+          const result = await callWithAuth((accessToken) => operation(accessToken));
+          await loadProfiles(undefined, selectedProfileIdRef.current);
+          setState((prev) => ({
+            ...prev,
+            mutationStatus: 'success',
+            mutationMessage: successMessage
+          }));
+          return result;
+        } catch (error) {
+          setState((prev) => ({
+            ...prev,
+            mutationStatus: 'error',
+            mutationMessage: error.message || '프로필 변경에 실패했습니다.'
+          }));
+          throw error;
+        } finally {
+          mutationInFlightRef.current = null;
+        }
+      })();
+
+      mutationInFlightRef.current = mutationPromise;
+      return mutationPromise;
     },
     [callWithAuth, loadProfiles]
   );

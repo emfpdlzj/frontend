@@ -33,6 +33,18 @@ const isPendingDeletionAccount = (payload) => {
   return status === 'PENDING_DELETION';
 };
 
+const getTokenPairShape = (tokenPair) => {
+  if (!tokenPair || typeof tokenPair !== 'object') {
+    return { receivedType: typeof tokenPair };
+  }
+
+  return {
+    receivedKeys: Object.keys(tokenPair),
+    hasAccessToken: Boolean(tokenPair.accessToken || tokenPair.access_token || tokenPair.jwt || tokenPair.token),
+    hasRefreshToken: Boolean(tokenPair.refreshToken || tokenPair.refresh_token)
+  };
+};
+
 const normalizeTokenPair = (tokenPair) => {
   const normalized = {
     accessToken: tokenPair?.accessToken || tokenPair?.access_token || tokenPair?.jwt || tokenPair?.token,
@@ -44,7 +56,7 @@ const normalizeTokenPair = (tokenPair) => {
   };
 
   if (!normalized.accessToken) {
-    throw new ApiError('로그인 응답에 액세스 토큰이 없습니다.', 500, 'MISSING_ACCESS_TOKEN', tokenPair);
+    throw new ApiError('로그인 응답에 액세스 토큰이 없습니다.', 500, 'MISSING_ACCESS_TOKEN', getTokenPairShape(tokenPair));
   }
 
   return normalized;
