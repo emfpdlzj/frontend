@@ -220,6 +220,12 @@ const normalizePostingDetail = (detail) => ({
   contactNumber: toSafeText(detail?.contactNumber),
   employmentType: toSafeText(detail?.employmentType),
   enterType: toSafeText(detail?.enterType),
+  envBothHands: toSafeText(detail?.envBothHands),
+  envEyesight: toSafeText(detail?.envEyesight),
+  envLstnTalk: toSafeText(detail?.envLstnTalk),
+  envHandWork: toSafeText(detail?.envHandWork),
+  envLiftPower: toSafeText(detail?.envLiftPower),
+  envStndWalk: toSafeText(detail?.envStndWalk),
   salaryType: toSafeText(detail?.salaryType),
   salary: toSafeText(detail?.salary),
   salaryText: [detail?.salaryType, detail?.salary].filter(Boolean).join(' ') || '없음',
@@ -232,7 +238,17 @@ const normalizePostingDetail = (detail) => ({
   requiredMajor: toSafeText(detail?.requiredMajor),
   requiredLicenses: toSafeText(detail?.requiredLicenses),
   agencyName: toSafeText(detail?.agencyName),
+  rno: toSafeText(detail?.rno),
+  rnum: toSafeText(detail?.rnum),
+  geoOriginalAddress: toSafeText(detail?.geoOriginalAddress),
+  geoMatchedAddress: toSafeText(detail?.geoMatchedAddress),
+  geoLatitude: detail?.geoLatitude,
+  geoLongitude: detail?.geoLongitude,
   postingStatus: detail?.postingStatus || 'ACTIVE',
+  closedAt: toSafeText(detail?.closedAt),
+  statusUpdatedAt: toSafeText(detail?.statusUpdatedAt),
+  createdAt: toSafeText(detail?.createdAt),
+  updatedAt: toSafeText(detail?.updatedAt),
   scrapCount: Number(detail?.scrapCount || 0),
   scrappedByMe: Boolean(detail?.scrappedByMe)
 });
@@ -379,6 +395,12 @@ const toQuickFallbackDetail = (job) => ({
   contactNumber: '없음',
   employmentType: toSafeText(job?.employmentType),
   enterType: toSafeText(job?.source?.enterType),
+  envBothHands: '없음',
+  envEyesight: '없음',
+  envLstnTalk: '없음',
+  envHandWork: '없음',
+  envLiftPower: '없음',
+  envStndWalk: '없음',
   salaryType: toSafeText(job?.salaryType),
   salary: toSafeText(job?.salary),
   salaryText: toSafeText(job?.salary),
@@ -391,7 +413,17 @@ const toQuickFallbackDetail = (job) => ({
   requiredMajor: toSafeText(job?.source?.reqMajor),
   requiredLicenses: toSafeText(job?.source?.reqLicens),
   agencyName: toSafeText(job?.agencyName),
+  rno: '없음',
+  rnum: '없음',
+  geoOriginalAddress: '없음',
+  geoMatchedAddress: '없음',
+  geoLatitude: null,
+  geoLongitude: null,
   postingStatus: 'ACTIVE',
+  closedAt: '없음',
+  statusUpdatedAt: '없음',
+  createdAt: '없음',
+  updatedAt: '없음',
   scrapCount: 0,
   scrappedByMe: false
 });
@@ -619,6 +651,12 @@ function PopularPostingDetailModal({
                 <div><dt>연락처</dt><dd>{detail.contactNumber}</dd></div>
                 <div><dt>고용형태</dt><dd>{detail.employmentType}</dd></div>
                 <div><dt>입사유형</dt><dd>{detail.enterType}</dd></div>
+                <div><dt>작업환경(양손 사용)</dt><dd>{detail.envBothHands}</dd></div>
+                <div><dt>작업환경(시력)</dt><dd>{detail.envEyesight}</dd></div>
+                <div><dt>작업환경(듣기·말하기)</dt><dd>{detail.envLstnTalk}</dd></div>
+                <div><dt>작업환경(손작업)</dt><dd>{detail.envHandWork}</dd></div>
+                <div><dt>작업환경(들어올리기)</dt><dd>{detail.envLiftPower}</dd></div>
+                <div><dt>작업환경(서기·걷기)</dt><dd>{detail.envStndWalk}</dd></div>
                 <div><dt>임금</dt><dd>{detail.salaryText}</dd></div>
                 <div><dt>모집마감일</dt><dd>{parseDateText(detail.termDate) || '없음'}</dd></div>
                 <div><dt>공고등록일</dt><dd>{detail.offerRegisteredAt || detail.registeredAt || '없음'}</dd></div>
@@ -627,6 +665,12 @@ function PopularPostingDetailModal({
                 <div><dt>요구전공</dt><dd>{detail.requiredMajor}</dd></div>
                 <div><dt>요구자격증</dt><dd>{detail.requiredLicenses}</dd></div>
                 <div><dt>담당기관</dt><dd>{detail.agencyName}</dd></div>
+                <div><dt>원본 주소</dt><dd>{detail.geoOriginalAddress}</dd></div>
+                <div><dt>매칭 주소</dt><dd>{detail.geoMatchedAddress}</dd></div>
+                <div><dt>위도</dt><dd>{detail.geoLatitude ?? '없음'}</dd></div>
+                <div><dt>경도</dt><dd>{detail.geoLongitude ?? '없음'}</dd></div>
+                <div><dt>원천 번호(rno)</dt><dd>{detail.rno}</dd></div>
+                <div><dt>원천 순번(rnum)</dt><dd>{detail.rnum}</dd></div>
               </dl>
               <div className="posting-detail-modal__actions">
                 <button

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { postingApi } from '../api/postingApi';
 import { useAuth } from '../auth/AuthContext';
 
-const toSafeText = (value, fallback = '확인 필요') => {
+const toSafeText = (value, fallback = '없음') => {
   const text = String(value ?? '').trim();
   return text || fallback;
 };
@@ -90,7 +90,7 @@ const normalizeDetail = (detail) => {
     salary: [detail.salaryType, detail.salary].filter(Boolean).join(' ') || '급여 확인 필요',
     employmentType: toSafeText(detail.employmentType),
     enterType: toSafeText(detail.enterType),
-    termDateText: parseDateText(detail.termDate) || '확인 필요',
+    termDateText: parseDateText(detail.termDate) || '없음',
     dueLabel: getDday(detail.termDate),
     postingStatus: detail.postingStatus || 'ACTIVE',
     scrapCount: Number(detail.scrapCount || 0),
@@ -101,15 +101,27 @@ const normalizeDetail = (detail) => {
       ['연락처', toSafeText(detail.contactNumber)],
       ['고용형태', toSafeText(detail.employmentType)],
       ['입사유형', toSafeText(detail.enterType)],
+      ['작업환경(양손 사용)', toSafeText(detail.envBothHands)],
+      ['작업환경(시력)', toSafeText(detail.envEyesight)],
+      ['작업환경(듣기·말하기)', toSafeText(detail.envLstnTalk)],
+      ['작업환경(손작업)', toSafeText(detail.envHandWork)],
+      ['작업환경(들어올리기)', toSafeText(detail.envLiftPower)],
+      ['작업환경(서기·걷기)', toSafeText(detail.envStndWalk)],
       ['임금형태', toSafeText(detail.salaryType)],
       ['임금', toSafeText(detail.salary)],
-      ['모집마감일', parseDateText(detail.termDate) || '확인 필요'],
-      ['공고등록일', parseDateText(detail.offerRegisteredAt || detail.registeredAt) || '확인 필요'],
+      ['모집마감일', parseDateText(detail.termDate) || '없음'],
+      ['공고등록일', parseDateText(detail.offerRegisteredAt || detail.registeredAt) || '없음'],
       ['요구경력', toSafeText(detail.requiredCareer)],
       ['요구학력', toSafeText(detail.requiredEducation)],
       ['요구전공', toSafeText(detail.requiredMajor)],
       ['요구자격증', toSafeText(detail.requiredLicenses)],
-      ['담당기관', toSafeText(detail.agencyName)]
+      ['담당기관', toSafeText(detail.agencyName)],
+      ['원본 주소', toSafeText(detail.geoOriginalAddress)],
+      ['매칭 주소', toSafeText(detail.geoMatchedAddress)],
+      ['위도', detail.geoLatitude ?? '없음'],
+      ['경도', detail.geoLongitude ?? '없음'],
+      ['원천 번호(rno)', toSafeText(detail.rno)],
+      ['원천 순번(rnum)', toSafeText(detail.rnum)]
     ]
   };
 };
