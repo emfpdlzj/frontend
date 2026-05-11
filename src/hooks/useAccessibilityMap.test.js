@@ -127,6 +127,98 @@ describe('buildRecommendationStateFromPayload', () => {
         lng: 126.978
       }
     });
+    expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
+      '접근성 점수',
+      '접근성 점수는 78점입니다.',
+      '주의 필요'
+    ]);
+    expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
+      '근무지 좌표',
+      '지도에서 근무지 위치를 확인할 수 있습니다. (37.5665, 126.9780)',
+      '접근 양호'
+    ]);
+    expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
+      '교통 접근 근거',
+      '주변 대중교통/이동지원 데이터는 추가 확인이 필요합니다.',
+      '주의 필요'
+    ]);
+  });
+
+  it('uses difficult status for low accessibility scores', () => {
+    const state = buildRecommendationStateFromPayload({
+      aiEnabled: true,
+      aiResponse: {
+        result: {
+          results: [
+            {
+              total_score: 47,
+              score_detail: {
+                accessibility_score: 47
+              },
+              job: {
+                external_id: 'job-low-accessibility',
+                job_title: '매장 보조원',
+                company_name: '브릿지워크',
+                work_lat: 37.5665,
+                work_lng: 126.978
+              }
+            }
+          ]
+        }
+      }
+    });
+
+    expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
+      '접근성 점수',
+      '접근성 점수는 47점입니다.',
+      '접근 어려움'
+    ]);
+  });
+
+  it('keeps AI score and evidence when top-level jobs are present', () => {
+    const state = buildRecommendationStateFromPayload({
+      aiEnabled: true,
+      jobs: [
+        {
+          jobPostId: 1,
+          jobNm: '사무 보조원',
+          busplaName: '브릿지워크',
+          compAddr: '서울특별시 중구 세종대로 1',
+          geoLatitude: 37.5665,
+          geoLongitude: 126.978
+        }
+      ],
+      aiResponse: {
+        result: {
+          results: [
+            {
+              total_score: 82,
+              score_detail: {
+                accessibility_score: 81
+              },
+              evidence_items: [
+                {
+                  source_type: 'NATIONWIDE_BUS_STOP',
+                  source_name: '전국 버스정류장 위치정보',
+                  distance_meters: 120
+                }
+              ],
+              job: {
+                job_post_id: 1,
+                job_title: '사무 보조원'
+              }
+            }
+          ]
+        }
+      }
+    });
+
+    expect(state.jobs[0].score).toBe(81);
+    expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
+      '교통 접근 근거',
+      '근무지 주변 대중교통 또는 교통약자 이동지원 데이터가 1건, 최근접 약 120m 확인됩니다.',
+      '접근 양호'
+    ]);
   });
 
   it('formats recruitment period fields without duplicating date ranges', () => {
@@ -173,7 +265,8 @@ describe('buildRecommendationStateFromPayload', () => {
                 {
                   source_type: 'NATIONWIDE_CROSSWALK',
                   source_name: '전국횡단보도표준데이터',
-                  description: '근무지 주변 횡단보도 정보가 확인됩니다.'
+                  description: '근무지 주변 횡단보도 정보가 확인됩니다.',
+                  distance_meters: 180
                 }
               ],
               score_detail: {
@@ -209,7 +302,7 @@ describe('buildRecommendationStateFromPayload', () => {
     expect(state.jobs[0].accessibilityByPersona.wheelchair.source).toContain('장애인 고용직무분류');
     expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
       '보행 안전 근거',
-      '횡단보도, 신호등, 보행 네트워크 데이터가 접근성 산정에 반영되었습니다.',
+      '횡단보도, 신호등, 보행 네트워크 데이터가 1건, 최근접 약 180m 확인됩니다.',
       '접근 양호'
     ]);
   });

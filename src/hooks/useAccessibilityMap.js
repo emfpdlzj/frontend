@@ -229,6 +229,19 @@ const getAccessibilityTone = (score) => {
   };
 };
 
+const getAccessibilityStatusFromScore = (score) => {
+  if (typeof score !== 'number') {
+    return '주의 필요';
+  }
+  if (score >= 80) {
+    return '접근 양호';
+  }
+  if (score >= 60) {
+    return '주의 필요';
+  }
+  return '접근 어려움';
+};
+
 const getFirstPresentValue = (...values) =>
   values.find((value) => value !== undefined && value !== null && value !== '');
 
@@ -297,6 +310,87 @@ const toIntegerOrNull = (value) => {
   }
 
   return null;
+};
+
+const SEOUL_DISTRICT_COORDINATES = {
+  강남구: { latitude: 37.5172, longitude: 127.0473 },
+  강동구: { latitude: 37.5301, longitude: 127.1238 },
+  강북구: { latitude: 37.6396, longitude: 127.0257 },
+  강서구: { latitude: 37.5509, longitude: 126.8495 },
+  관악구: { latitude: 37.4784, longitude: 126.9516 },
+  광진구: { latitude: 37.5385, longitude: 127.0823 },
+  구로구: { latitude: 37.4955, longitude: 126.8877 },
+  금천구: { latitude: 37.4569, longitude: 126.8958 },
+  노원구: { latitude: 37.6542, longitude: 127.0568 },
+  도봉구: { latitude: 37.6688, longitude: 127.0471 },
+  동대문구: { latitude: 37.5744, longitude: 127.0396 },
+  동작구: { latitude: 37.5124, longitude: 126.9393 },
+  마포구: { latitude: 37.5663, longitude: 126.9016 },
+  서대문구: { latitude: 37.5791, longitude: 126.9368 },
+  서초구: { latitude: 37.4837, longitude: 127.0324 },
+  성동구: { latitude: 37.5633, longitude: 127.0371 },
+  성북구: { latitude: 37.5894, longitude: 127.0167 },
+  송파구: { latitude: 37.5145, longitude: 127.1059 },
+  양천구: { latitude: 37.5169, longitude: 126.8664 },
+  영등포구: { latitude: 37.5264, longitude: 126.8963 },
+  용산구: { latitude: 37.5326, longitude: 126.9904 },
+  은평구: { latitude: 37.6176, longitude: 126.9227 },
+  종로구: { latitude: 37.5735, longitude: 126.9788 },
+  중구: { latitude: 37.5636, longitude: 126.9976 },
+  중랑구: { latitude: 37.6063, longitude: 127.0927 }
+};
+
+const getAddressDistrict = (address) =>
+  String(address ?? '').trim().split(/\s+/).find((token) => /[가-힣]+구$/.test(token)) || '';
+
+const getAddressCoordinate = (address) => SEOUL_DISTRICT_COORDINATES[getAddressDistrict(address)] || null;
+
+const getDistanceKm = (from, to) => {
+  if (!from || !to) {
+    return null;
+  }
+
+  const toRadians = (degrees) => (degrees * Math.PI) / 180;
+  const latitudeDelta = toRadians(to.latitude - from.latitude);
+  const longitudeDelta = toRadians(to.longitude - from.longitude);
+  const fromLatitude = toRadians(from.latitude);
+  const toLatitude = toRadians(to.latitude);
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(fromLatitude) * Math.cos(toLatitude) * Math.sin(longitudeDelta / 2) ** 2;
+
+  return 6371 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+};
+
+const formatCommuteMinutes = (minutes) =>
+  Number.isFinite(minutes) ? Math.max(10, Math.round(minutes / 5) * 5) : '-';
+
+const estimateCommuteMinutes = (profile, job, commuteStats) => {
+  const providedMinutes = extractInteger(commuteStats?.[0]);
+  if (providedMinutes !== null) {
+    return providedMinutes;
+  }
+
+  const homeAddress = getFirstPresentValue(profile?.detailAddress, profile?.address);
+  const homeCoordinate = getAddressCoordinate(homeAddress);
+  const workLatitude = toNumberOrNull(getGeoLatitude(job));
+  const workLongitude = toNumberOrNull(getGeoLongitude(job));
+  const workCoordinate = workLatitude !== null && workLongitude !== null
+    ? { latitude: workLatitude, longitude: workLongitude }
+    : getAddressCoordinate(getWorkAddress(job));
+  const distanceKm = getDistanceKm(homeCoordinate, workCoordinate);
+
+  if (distanceKm === null) {
+    return '-';
+  }
+
+  const homeDistrict = getAddressDistrict(homeAddress);
+  const workDistrict = getAddressDistrict(getWorkAddress(job));
+  const estimatedMinutes = homeDistrict && workDistrict && homeDistrict === workDistrict
+    ? 20 + distanceKm * 4
+    : 18 + distanceKm * 5.2;
+
+  return formatCommuteMinutes(estimatedMinutes);
 };
 
 const buildJobInfo = (job, recruitmentPeriodText, salaryText) => {
@@ -436,6 +530,30 @@ const buildExplainScoreDetail = (scoreDetail) => ({
 
 const normalizeEvidenceItems = (value) => (Array.isArray(value) ? value.filter(Boolean) : []);
 
+const formatEvidenceDistance = (distanceMeters) => {
+  const numberValue = toNumberOrNull(distanceMeters);
+  if (numberValue === null) {
+    return '';
+  }
+  return numberValue >= 1000 ? `약 ${(numberValue / 1000).toFixed(1)}km` : `약 ${Math.round(numberValue)}m`;
+};
+
+const getEvidenceDistance = (item) => item?.distance_meters ?? item?.distanceMeters;
+
+const summarizeEvidenceGroup = (items, presentText, missingText) => {
+  if (!items.length) {
+    return missingText;
+  }
+
+  const distances = items
+    .map((item) => toNumberOrNull(getEvidenceDistance(item)))
+    .filter((distance) => distance !== null);
+  const nearestDistance = distances.length ? Math.min(...distances) : null;
+  const distanceText = formatEvidenceDistance(nearestDistance);
+  const suffix = distanceText ? `, 최근접 ${distanceText}` : '';
+  return `${presentText} ${items.length}건${suffix} 확인됩니다.`;
+};
+
 const getEvidenceSourceSummary = (evidenceItems) => {
   const sourceNames = [
     ...new Set(
@@ -455,23 +573,21 @@ const getEvidenceSourceSummary = (evidenceItems) => {
 };
 
 const buildEvidenceDetailItems = (evidenceItems) => {
-  const sourceTypes = new Set(
-    normalizeEvidenceItems(evidenceItems)
-      .map((item) => item?.source_type || item?.sourceType)
-      .filter(Boolean)
-  );
+  const normalizedItems = normalizeEvidenceItems(evidenceItems);
+  const filterBySourceTypes = (sourceTypes) =>
+    normalizedItems.filter((item) => sourceTypes.includes(item?.source_type || item?.sourceType));
 
-  const hasTransportation = [
+  const transportationItems = filterBySourceTypes([
     'NATIONWIDE_BUS_STOP',
     'SEOUL_LOW_FLOOR_BUS_ROUTE_RETENTION',
     'TRANSPORT_SUPPORT_CENTER'
-  ].some((sourceType) => sourceTypes.has(sourceType));
-  const hasWalking = [
+  ]);
+  const walkingItems = filterBySourceTypes([
     'NATIONWIDE_CROSSWALK',
     'NATIONWIDE_TRAFFIC_LIGHT',
     'SEOUL_WALKING_NETWORK'
-  ].some((sourceType) => sourceTypes.has(sourceType));
-  const hasWheelchairFacility = [
+  ]);
+  const wheelchairFacilityItems = filterBySourceTypes([
     'RAIL_WHEELCHAIR_LIFT',
     'RAIL_WHEELCHAIR_LIFT_MOVEMENT',
     'SEOUL_WHEELCHAIR_LIFT',
@@ -479,29 +595,35 @@ const buildEvidenceDetailItems = (evidenceItems) => {
     'SEOUL_SUBWAY_ENTRANCE_LIFT',
     'SEOUL_WHEELCHAIR_RAMP_STATUS',
     'KORAIL_WEEK_PERSON_FACILITIES'
-  ].some((sourceType) => sourceTypes.has(sourceType));
+  ]);
 
   return [
     [
       '교통 접근 근거',
-      hasTransportation
-        ? '근무지 주변 대중교통 또는 교통약자 이동지원 데이터가 확인됩니다.'
-        : '주변 대중교통/이동지원 데이터는 추가 확인이 필요합니다.',
-      hasTransportation ? '접근 양호' : '데이터 미확인'
+      summarizeEvidenceGroup(
+        transportationItems,
+        '근무지 주변 대중교통 또는 교통약자 이동지원 데이터가',
+        '주변 대중교통/이동지원 데이터는 추가 확인이 필요합니다.'
+      ),
+      transportationItems.length ? '접근 양호' : '주의 필요'
     ],
     [
       '보행 안전 근거',
-      hasWalking
-        ? '횡단보도, 신호등, 보행 네트워크 데이터가 접근성 산정에 반영되었습니다.'
-        : '보행 경로 안전 데이터는 추가 확인이 필요합니다.',
-      hasWalking ? '접근 양호' : '데이터 미확인'
+      summarizeEvidenceGroup(
+        walkingItems,
+        '횡단보도, 신호등, 보행 네트워크 데이터가',
+        '보행 경로 안전 데이터는 추가 확인이 필요합니다.'
+      ),
+      walkingItems.length ? '접근 양호' : '주의 필요'
     ],
     [
       '휠체어/편의시설 근거',
-      hasWheelchairFacility
-        ? '리프트, 경사로 또는 철도 편의시설 데이터가 확인됩니다.'
-        : '휠체어 리프트/경사로 등 편의시설은 현장 확인이 필요합니다.',
-      hasWheelchairFacility ? '접근 양호' : '데이터 미확인'
+      summarizeEvidenceGroup(
+        wheelchairFacilityItems,
+        '리프트, 경사로 또는 철도 편의시설 데이터가',
+        '휠체어 리프트/경사로 등 편의시설은 현장 확인이 필요합니다.'
+      ),
+      wheelchairFacilityItems.length ? '접근 양호' : '주의 필요'
     ]
   ];
 };
@@ -553,7 +675,7 @@ const resolveCommuteStats = (source, aiResult, scoreDetail) => {
   return [totalText, transferText, walkText];
 };
 
-const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult) => {
+const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult, profile = null) => {
   const aiResult = aiEnabled ? matchedAiResult || findAiMapResult(aiResults, job) : null;
   const scoreDetail = aiResult?.score_detail || aiResult?.scoreDetail || {};
   const evidenceItems = normalizeEvidenceItems(aiResult?.evidence_items || aiResult?.evidenceItems);
@@ -592,6 +714,7 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult) => {
   const geoLatitude = getGeoLatitude(job);
   const geoLongitude = getGeoLongitude(job);
   const commuteStats = resolveCommuteStats(job, aiResult, scoreDetail);
+  const commuteMinutes = estimateCommuteMinutes(profile, job, commuteStats);
   const companyType = getFirstPresentValue(
     job?.companyType,
     job?.company_type,
@@ -625,7 +748,7 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult) => {
     dueLabel,
     dueDateText,
     dateRangeText: getDateRangeText(job),
-    commuteMinutes: '-',
+    commuteMinutes,
     payText: salaryText,
     salaryType: salaryType || '-',
     employmentType: getFirstPresentValue(job?.empType, job?.emp_type, job?.employmentType, job?.employment_type) || '-',
@@ -659,8 +782,20 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult) => {
           description: tone.description,
           commuteStats,
           detailItems: [
-            ['접근성 점수', displayScore === null || displayScore === undefined ? '점수 데이터가 없어 확인이 필요합니다.' : `접근성 점수는 ${displayScore}점입니다.`, displayScore >= 80 ? '접근 양호' : displayScore >= 60 ? '주의 필요' : '데이터 미확인'],
-            ['근무지 좌표', geoLatitude && geoLongitude ? '지도에서 근무지 위치를 확인할 수 있습니다.' : '근무지 좌표 데이터가 없어 위치 확인이 필요합니다.', geoLatitude && geoLongitude ? '접근 양호' : '데이터 미확인'],
+            [
+              '접근성 점수',
+              displayScore === null || displayScore === undefined
+                ? '점수 데이터가 없어 확인이 필요합니다.'
+                : `접근성 점수는 ${displayScore}점입니다.`,
+              getAccessibilityStatusFromScore(displayScore)
+            ],
+            [
+              '근무지 좌표',
+              geoLatitude && geoLongitude
+                ? `지도에서 근무지 위치를 확인할 수 있습니다. (${Number(geoLatitude).toFixed(4)}, ${Number(geoLongitude).toFixed(4)})`
+                : '근무지 좌표 데이터가 없어 위치 확인이 필요합니다.',
+              geoLatitude && geoLongitude ? '접근 양호' : '주의 필요'
+            ],
             ...evidenceDetailItems
           ],
           source: evidenceSourceSummary
@@ -1087,7 +1222,7 @@ const getPayloadJobs = (payload, aiResults) => {
   const jobs = candidates.find(Array.isArray);
 
   if (jobs) {
-    return jobs.map((job) => ({ job, aiResult: null }));
+    return jobs.map((job) => ({ job, aiResult: findAiMapResult(aiResults, job) }));
   }
 
   return aiResults
@@ -1095,10 +1230,10 @@ const getPayloadJobs = (payload, aiResults) => {
     .filter(Boolean);
 };
 
-export const buildRecommendationStateFromPayload = (payload, aiEnabled = Boolean(payload?.aiEnabled ?? payload?.ai_enabled)) => {
+export const buildRecommendationStateFromPayload = (payload, aiEnabled = Boolean(payload?.aiEnabled ?? payload?.ai_enabled), profile = null) => {
   const aiResults = getPayloadAiResults(payload);
   const jobEntries = getPayloadJobs(payload, aiResults);
-  const jobs = jobEntries.map(({ job, aiResult }) => normalizeMapJob(job, aiResults, aiEnabled, aiResult));
+  const jobs = jobEntries.map(({ job, aiResult }) => normalizeMapJob(job, aiResults, aiEnabled, aiResult, profile));
 
   return {
     status: jobs.length ? 'success' : 'empty',
@@ -1237,7 +1372,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
       if (cachedPayload) {
         if (isCurrentRequest) {
           activeRecommendationCacheKeyRef.current = cacheKey;
-          setRecommendationState(buildRecommendationStateFromPayload(cachedPayload, appliedAiEnabled));
+          setRecommendationState(buildRecommendationStateFromPayload(cachedPayload, appliedAiEnabled, selectedProfile));
         }
         return;
       }
@@ -1305,7 +1440,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
           return;
         }
 
-        const nextState = buildRecommendationStateFromPayload(completedPayload, appliedAiEnabled);
+        const nextState = buildRecommendationStateFromPayload(completedPayload, appliedAiEnabled, selectedProfile);
 
         if (!isCurrentRequest) {
           return;
@@ -1349,6 +1484,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     profilesState.status,
     reloadKey,
     selectedProfileId,
+    selectedProfile,
     selectedProfileScoringSignature
   ]);
 

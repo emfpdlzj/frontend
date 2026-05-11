@@ -539,7 +539,7 @@ a:hover {
 
 .home-job-meta {
   display: grid;
-  grid-template-columns: 1.15fr repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   gap: 8px 18px;
   margin: 18px 0 0;
 }
@@ -566,6 +566,14 @@ a:hover {
   font-size: 16px;
   font-weight: 700;
   line-height: 1.45;
+}
+
+.home-job-meta__hint {
+  display: inline-block;
+  margin-left: 5px;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .home-job-meta__salary dd {

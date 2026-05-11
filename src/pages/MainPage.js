@@ -143,6 +143,107 @@ const getRegionFromAddress = (address) => {
   return tokens[0] || '없음';
 };
 
+const KNOWN_DISTRICT_COORDINATES = {
+  강남구: { latitude: 37.5172, longitude: 127.0473 },
+  강동구: { latitude: 37.5301, longitude: 127.1238 },
+  강북구: { latitude: 37.6396, longitude: 127.0257 },
+  강서구: { latitude: 37.5509, longitude: 126.8495 },
+  관악구: { latitude: 37.4784, longitude: 126.9516 },
+  광진구: { latitude: 37.5385, longitude: 127.0823 },
+  구로구: { latitude: 37.4955, longitude: 126.8877 },
+  금천구: { latitude: 37.4569, longitude: 126.8958 },
+  노원구: { latitude: 37.6542, longitude: 127.0568 },
+  도봉구: { latitude: 37.6688, longitude: 127.0471 },
+  동대문구: { latitude: 37.5744, longitude: 127.0396 },
+  동작구: { latitude: 37.5124, longitude: 126.9393 },
+  마포구: { latitude: 37.5663, longitude: 126.9016 },
+  서대문구: { latitude: 37.5791, longitude: 126.9368 },
+  서초구: { latitude: 37.4837, longitude: 127.0324 },
+  성동구: { latitude: 37.5633, longitude: 127.0371 },
+  성북구: { latitude: 37.5894, longitude: 127.0167 },
+  송파구: { latitude: 37.5145, longitude: 127.1059 },
+  양천구: { latitude: 37.5169, longitude: 126.8664 },
+  영등포구: { latitude: 37.5264, longitude: 126.8963 },
+  용산구: { latitude: 37.5326, longitude: 126.9904 },
+  은평구: { latitude: 37.6176, longitude: 126.9227 },
+  종로구: { latitude: 37.5735, longitude: 126.9788 },
+  중구: { latitude: 37.5636, longitude: 126.9976 },
+  중랑구: { latitude: 37.6063, longitude: 127.0927 }
+};
+
+const parseAddressDistrict = (address) => {
+  const tokens = String(address ?? '').trim().split(/\s+/).filter(Boolean);
+  return tokens.find((token) => /[가-힣]+구$/.test(token)) || '';
+};
+
+const toNumberOrNull = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+};
+
+const resolveAddressCoordinate = (address) => KNOWN_DISTRICT_COORDINATES[parseAddressDistrict(address)] || null;
+
+const getDistanceKm = (from, to) => {
+  if (!from || !to) {
+    return null;
+  }
+
+  const earthRadiusKm = 6371;
+  const toRadians = (degrees) => (degrees * Math.PI) / 180;
+  const latitudeDelta = toRadians(to.latitude - from.latitude);
+  const longitudeDelta = toRadians(to.longitude - from.longitude);
+  const fromLatitude = toRadians(from.latitude);
+  const toLatitude = toRadians(to.latitude);
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(fromLatitude) * Math.cos(toLatitude) * Math.sin(longitudeDelta / 2) ** 2;
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+};
+
+const formatCommuteEstimate = (minutes) => {
+  if (!Number.isFinite(minutes)) {
+    return '확인 필요';
+  }
+  return `${Math.max(10, Math.round(minutes / 5) * 5)}분`;
+};
+
+const estimateCommuteMinutes = (profile, job) => {
+  const explicitMinutes = toNumberOrNull(
+    job?.totalMinutes
+    ?? job?.total_minutes
+    ?? job?.commuteMinutes
+    ?? job?.commute_minutes
+  );
+  if (explicitMinutes !== null) {
+    return { label: formatCommuteEstimate(explicitMinutes), source: 'provided' };
+  }
+
+  const homeAddress = firstNonBlank(profile?.detailAddress, profile?.address);
+  const homeCoordinate = resolveAddressCoordinate(homeAddress);
+  const workCoordinate = (
+    toNumberOrNull(job?.workLatitude) !== null && toNumberOrNull(job?.workLongitude) !== null
+      ? { latitude: toNumberOrNull(job.workLatitude), longitude: toNumberOrNull(job.workLongitude) }
+      : resolveAddressCoordinate(job?.location)
+  );
+  const distanceKm = getDistanceKm(homeCoordinate, workCoordinate);
+
+  if (distanceKm === null) {
+    return { label: '확인 필요', source: 'missing' };
+  }
+
+  const homeDistrict = parseAddressDistrict(homeAddress);
+  const workDistrict = parseAddressDistrict(job?.location);
+  if (homeDistrict && workDistrict && homeDistrict === workDistrict) {
+    return { label: formatCommuteEstimate(20 + distanceKm * 4), source: 'estimated' };
+  }
+
+  return { label: formatCommuteEstimate(18 + distanceKm * 5.2), source: 'estimated' };
+};
+
 const getDday = (value) => {
   const raw = String(value ?? '').replace(/\D/g, '');
   if (raw.length !== 8) {
@@ -435,6 +536,7 @@ const getQuickFitScore = (item) => {
 
 const normalizeQuickJob = (item, index) => {
   const job = item?.job || item;
+  const scoreDetail = item?.score_detail || item?.scoreDetail || {};
   const postingIdCandidate = job?.job_post_id ?? job?.jobPostId ?? job?.source_id ?? job?.sourceId ?? null;
   const postingId = Number.isFinite(Number(postingIdCandidate)) ? Number(postingIdCandidate) : null;
   const externalId = job?.external_id || job?.externalId || `${job?.company_name || job?.companyName}-${index}`;
@@ -464,6 +566,9 @@ const normalizeQuickJob = (item, index) => {
     registeredDateText: parseDateText(registeredAt),
     fitScore,
     fitLabel: typeof fitScore === 'number' ? `${fitScore}점` : '없음',
+    totalMinutes: item?.total_minutes ?? item?.totalMinutes ?? scoreDetail?.total_minutes ?? scoreDetail?.totalMinutes ?? job?.total_minutes ?? job?.totalMinutes ?? null,
+    workLatitude: job?.work_lat ?? job?.workLat ?? job?.geoLatitude ?? job?.geo_latitude ?? null,
+    workLongitude: job?.work_lng ?? job?.workLng ?? job?.geoLongitude ?? job?.geo_longitude ?? null,
     source: {
       sourceId: postingId,
       reqMajor: job?.required_major || job?.requiredMajor,
@@ -471,7 +576,9 @@ const normalizeQuickJob = (item, index) => {
       enterType: job?.enter_type || job?.enterType,
       empType: job?.employment_type || job?.employmentType,
       salaryType: job?.salary_type || job?.salaryType,
-      compAddr: job?.work_address || job?.workAddress
+      compAddr: job?.work_address || job?.workAddress,
+      workLat: job?.work_lat ?? job?.workLat ?? job?.geoLatitude ?? job?.geo_latitude,
+      workLng: job?.work_lng ?? job?.workLng ?? job?.geoLongitude ?? job?.geo_longitude
     },
     requiredCareer: job?.required_career || job?.requiredCareer || '',
     requiredEducation: job?.required_education || job?.requiredEducation || '',
@@ -932,8 +1039,11 @@ export function MainPage() {
       appliedFilters,
       filterOptions.jobCategories
     );
-    return sortQuickJobs(filtered, appliedAiEnabled);
-  }, [quickState.rawJobs, appliedFilters, filterOptions.jobCategories, appliedAiEnabled]);
+    return sortQuickJobs(filtered, appliedAiEnabled).map((job) => ({
+      ...job,
+      commuteEstimate: estimateCommuteMinutes(visibleSelectedProfile, job)
+    }));
+  }, [quickState.rawJobs, appliedFilters, filterOptions.jobCategories, appliedAiEnabled, visibleSelectedProfile]);
 
   useEffect(() => {
     // 프로필 목록이 갱신되어도 선택값이 비거나 유효하지 않으면 기본 프로필로 복원한다.
@@ -1715,6 +1825,13 @@ export function MainPage() {
                         <h3>{job.title}</h3>
                         <p className="home-job-role">{job.location}</p>
                         <dl className="home-job-meta" aria-label={`${job.title} 공고 정보`}>
+                          <div>
+                            <dt>통근</dt>
+                            <dd>
+                              {job.commuteEstimate?.label || '확인 필요'}
+                              {job.commuteEstimate?.source === 'estimated' ? <span className="home-job-meta__hint">예상</span> : null}
+                            </dd>
+                          </div>
                           <div><dt>급여</dt><dd>{job.salary}</dd></div>
                           <div><dt>고용형태</dt><dd>{job.employmentType}</dd></div>
                           <div><dt>등록일</dt><dd>{job.registeredDateText || '없음'}</dd></div>
