@@ -1392,11 +1392,11 @@ export function MainPage() {
           <div className="home-overview__heading">
             <p className="home-eyebrow">Home</p>
             <h1 id="main-page-title">현재 인기 공고</h1>
-            <p>인기순으로 정렬된 공고를 가로 스크롤로 확인하고, 상세 조회 후 바로 스크랩할 수 있습니다.</p>
+            <p>사람들이 많이 스크랩한 공고들을 스크랩 해보세요.</p>
           </div>
         </section>
 
-        <section className="home-popular" aria-labelledby="popular-postings-title">
+        <section className="home-popular home-section-entrance home-section-entrance--popular" aria-labelledby="popular-postings-title">
           <div className="home-section-head">
             <div>
               <h2 id="popular-postings-title">인기 공고 TOP 20</h2>
@@ -1432,7 +1432,7 @@ export function MainPage() {
           ) : null}
         </section>
 
-        <section className="home-quick" aria-labelledby="quick-recommend-title">
+        <section className="home-quick home-section-entrance home-section-entrance--quick" aria-labelledby="quick-recommend-title">
             <section className="home-overview home-overview--compact" aria-labelledby="quick-recommend-title">
               <div className="home-overview__heading">
                 <h1 id="quick-recommend-title">퀵 맞춤 일자리 추천</h1>
