@@ -16,10 +16,9 @@ const primaryTabs = [
   { id: 'home', labelKey: 'nav.home', icon: homeIcon, to: ROUTE_PATHS.root },
   { id: 'map', labelKey: 'nav.map', icon: mapIcon, to: ROUTE_PATHS.accessibilityMap },
   { id: 'jobs', labelKey: 'nav.jobs', icon: docsIcon, to: ROUTE_PATHS.jobs },
-  { id: 'business', labelKey: 'nav.business', icon: businesscardIcon, to: ROUTE_PATHS.profile }
+  { id: 'business', labelKey: 'nav.business', icon: businesscardIcon, to: ROUTE_PATHS.profile },
+  { id: 'settings', labelKey: 'nav.settings', icon: settingIcon, to: ROUTE_PATHS.settings }
 ];
-
-const secondaryTabs = [{ id: 'settings', labelKey: 'nav.settings', icon: settingIcon, to: ROUTE_PATHS.settings }];
 
 function TabIcon({ item, label }) {
   return <img src={item.icon} alt={`${label} 아이콘`} />;
@@ -156,9 +155,6 @@ export function AppTabNavigation() {
         </div>
         <div className="app-tab-nav__group app-tab-nav__group--bottom">
           <SessionActionTab onRequireLogin={() => setIsLoginModalOpen(true)} />
-          {secondaryTabs.map((item) => (
-            <TabLink key={item.id} item={item} onRequireLogin={() => setIsLoginModalOpen(true)} />
-          ))}
         </div>
       </nav>
       {isLoginModalOpen ? <LoginModal onClose={() => setIsLoginModalOpen(false)} /> : null}
