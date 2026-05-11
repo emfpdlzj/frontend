@@ -63,12 +63,15 @@ const normalizeTokenPair = (tokenPair) => {
 };
 
 const isAnonymousBootstrapFailure = (error) => error?.status === 400 || error?.status === 401;
+const createSessionExpiredError = (payload) =>
+  new ApiError('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.', 401, 'SESSION_EXPIRED', payload);
 
 export function AuthProvider({ children }) {
   const [tokens, setTokens] = useState(() => authStorage.readTokens());
   const [pendingSignup, setPendingSignupState] = useState(() => authStorage.readSignupSession());
   const [currentUser, setCurrentUser] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [authNotice, setAuthNotice] = useState('');
 
   const tokensRef = useRef(tokens);
   const refreshingRef = useRef(null);
@@ -83,10 +86,11 @@ export function AuthProvider({ children }) {
     authStorage.writeTokens(normalized);
     tokensRef.current = normalized;
     setTokens(normalized);
+    setAuthNotice('');
     return normalized;
   }, []);
 
-  const clearSession = useCallback(() => {
+  const clearSession = useCallback((noticeMessage = '') => {
     sessionVersionRef.current += 1;
     refreshingRef.current = null;
     authStorage.clearUserScopedStorage();
@@ -94,6 +98,11 @@ export function AuthProvider({ children }) {
     setTokens(null);
     setPendingSignupState(null);
     setCurrentUser(null);
+    setAuthNotice(noticeMessage);
+  }, []);
+
+  const dismissAuthNotice = useCallback(() => {
+    setAuthNotice('');
   }, []);
 
   const setPendingSignup = useCallback((value) => {
@@ -178,11 +187,21 @@ export function AuthProvider({ children }) {
           status: error.status,
           errorCode: error.errorCode
         });
-        const refreshed = await refreshTokens();
-        return operation(refreshed.accessToken, signal);
+        try {
+          const refreshed = await refreshTokens();
+          return await operation(refreshed.accessToken, signal);
+        } catch (refreshError) {
+          if (refreshError?.status === 401) {
+            const sessionExpiredError = createSessionExpiredError(refreshError.payload);
+            clearSession(sessionExpiredError.message);
+            throw sessionExpiredError;
+          }
+
+          throw refreshError;
+        }
       }
     },
-    [refreshTokens]
+    [clearSession, refreshTokens]
   );
 
   const loginWithSocialCode = useCallback(
@@ -310,6 +329,7 @@ export function AuthProvider({ children }) {
     () => ({
       tokens,
       currentUser,
+      authNotice,
       isInitializing,
       isAuthenticated: Boolean(tokens?.accessToken),
       pendingSignup,
@@ -320,11 +340,13 @@ export function AuthProvider({ children }) {
       fetchMe,
       refreshTokens,
       logout,
-      clearSession
+      clearSession,
+      dismissAuthNotice
     }),
     [
       tokens,
       currentUser,
+      authNotice,
       isInitializing,
       pendingSignup,
       loginWithSocialCode,
@@ -334,7 +356,8 @@ export function AuthProvider({ children }) {
       fetchMe,
       refreshTokens,
       logout,
-      clearSession
+      clearSession,
+      dismissAuthNotice
     ]
   );
 

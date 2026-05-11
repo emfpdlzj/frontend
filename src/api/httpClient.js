@@ -6,6 +6,7 @@ const logger = createLogger('http');
 const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
 const RETRY_DELAY_MS = 350;
+const inFlightRequests = new Map();
 
 export class ApiError extends Error {
   constructor(message, status, errorCode, payload) {
@@ -16,6 +17,64 @@ export class ApiError extends Error {
     this.payload = payload;
   }
 }
+
+const HTTP_STATUS_MESSAGES = {
+  401: '로그인 세션이 만료되었습니다. 다시 로그인해 주세요.',
+  403: '접근 권한이 없습니다. 필요한 권한을 확인해 주세요.',
+  404: '요청한 정보를 찾을 수 없습니다.',
+  408: '요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.',
+  500: '서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.'
+};
+
+const NETWORK_ERROR_MESSAGE = '네트워크 연결을 확인할 수 없습니다. 인터넷 연결 상태를 확인한 뒤 다시 시도해 주세요.';
+
+const stableStringify = (value) => {
+  if (value === undefined || value === null) {
+    return '';
+  }
+
+  if (typeof value !== 'object') {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(',')}]`;
+  }
+
+  return `{${Object.keys(value)
+    .sort()
+    .map((key) => `${key}:${stableStringify(value[key])}`)
+    .join(',')}}`;
+};
+
+const getStatusMessage = (status, fallbackMessage) => {
+  if (fallbackMessage) {
+    return fallbackMessage;
+  }
+
+  if (HTTP_STATUS_MESSAGES[status]) {
+    return HTTP_STATUS_MESSAGES[status];
+  }
+
+  if (status >= 500) {
+    return HTTP_STATUS_MESSAGES[500];
+  }
+
+  return `요청에 실패했습니다. (${status})`;
+};
+
+const getRequestKey = ({ method, path, token, requestBody, dedupe, isFormDataBody }) => {
+  if (!dedupe || isFormDataBody) {
+    return '';
+  }
+
+  return stableStringify({
+    method,
+    path,
+    token: token === undefined ? authStorage.readTokens()?.accessToken || '' : token || '',
+    body: requestBody
+  });
+};
 
 const buildHeaders = (token, extraHeaders = {}) => {
   const headers = {
@@ -82,7 +141,8 @@ export async function httpRequest(path, options = {}) {
     signal,
     timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
     retry = method === 'GET' ? 1 : 0,
-    expectedErrorStatuses = []
+    expectedErrorStatuses = [],
+    dedupe = true
   } = options;
 
   const requestHeaders = buildHeaders(token, headers);
@@ -98,6 +158,13 @@ export async function httpRequest(path, options = {}) {
 
   if (requestBody !== undefined && !isFormDataBody) {
     requestHeaders['Content-Type'] = requestHeaders['Content-Type'] || 'application/json';
+  }
+
+  const requestKey = getRequestKey({ method, path, token, requestBody, dedupe, isFormDataBody });
+
+  if (requestKey && inFlightRequests.has(requestKey)) {
+    logger.debug('API duplicate request reused.', { method, path });
+    return inFlightRequests.get(requestKey);
   }
 
   const runRequest = async (attempt = 0) => {
@@ -128,7 +195,7 @@ export async function httpRequest(path, options = {}) {
       const payload = canParseJson ? await response.json() : null;
 
       if (!response.ok) {
-        const message = payload?.message || payload?.error || `요청에 실패했습니다. (${response.status})`;
+        const message = getStatusMessage(response.status, payload?.message || payload?.error);
         const errorCode = payload?.errorCode || 'HTTP_ERROR';
         const errorMeta = {
           method,
@@ -162,10 +229,45 @@ export async function httpRequest(path, options = {}) {
       });
 
       return payload;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+
+      const abortReason = requestSignal.signal?.reason;
+      const abortMessage = abortReason?.message || '';
+
+      if (error?.name === 'AbortError' && abortMessage.includes('초과')) {
+        throw new ApiError(HTTP_STATUS_MESSAGES[408], 408, 'REQUEST_TIMEOUT');
+      }
+
+      if (error?.name === 'AbortError') {
+        throw error;
+      }
+
+      logger.warn('API network request failed.', {
+        method,
+        path,
+        errorName: error?.name
+      });
+
+      throw new ApiError(NETWORK_ERROR_MESSAGE, 0, 'NETWORK_ERROR', {
+        originalMessage: error?.message
+      });
     } finally {
       requestSignal.cleanup();
     }
   };
 
-  return runRequest();
+  const requestPromise = runRequest().finally(() => {
+    if (requestKey && inFlightRequests.get(requestKey) === requestPromise) {
+      inFlightRequests.delete(requestKey);
+    }
+  });
+
+  if (requestKey) {
+    inFlightRequests.set(requestKey, requestPromise);
+  }
+
+  return requestPromise;
 }

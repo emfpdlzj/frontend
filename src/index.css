@@ -53,6 +53,33 @@ a:hover {
   padding-top: var(--app-header-height);
 }
 
+.app-frame__notice {
+  position: fixed;
+  top: calc(var(--app-header-height) + 12px);
+  right: 24px;
+  z-index: 40;
+  width: min(420px, calc(100vw - 32px));
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.app-frame__notice .status-message {
+  flex: 1;
+}
+
+.app-frame__notice button {
+  min-width: 56px;
+  min-height: 44px;
+  border: 1px solid #f3c5c5;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--danger);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
 .app-frame__content {
   min-width: 0;
   padding-left: var(--app-tab-nav-width);
@@ -2148,7 +2175,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   font-size: 16px;
 }
 
-.not-found-page {
+.common-error-page {
   min-height: calc(100vh - var(--app-header-height));
   min-height: calc(100dvh - var(--app-header-height));
   display: flex;
@@ -2157,7 +2184,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   padding: clamp(72px, 12vh, 128px) 24px 48px;
 }
 
-.not-found-page__content {
+.common-error-page__content {
   width: min(100%, 520px);
   display: flex;
   flex-direction: column;
@@ -2170,21 +2197,36 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   box-shadow: 0 18px 36px rgba(14, 42, 83, 0.08);
 }
 
-.not-found-page__logo {
+.common-error-page__logo {
   width: min(260px, 72vw);
   height: auto;
   object-fit: contain;
   margin-bottom: 28px;
 }
 
-.not-found-page h1 {
+.common-error-page__status {
+  margin: 0 0 8px;
+  color: var(--primary);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.common-error-page h1 {
   margin: 0;
   color: #111827;
   font-size: 1.75rem;
   line-height: 1.35;
 }
 
-.not-found-page__support {
+.common-error-page__description {
+  margin: 12px 0 0;
+  color: #374151;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.common-error-page__support {
   width: 100%;
   margin-top: 24px;
   display: flex;
@@ -2196,15 +2238,16 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   line-height: 1.5;
 }
 
-.not-found-page__support p {
+.common-error-page__support p {
   margin: 0;
 }
 
-.not-found-page__support a {
+.common-error-page__support a {
   font-weight: 700;
 }
 
-.not-found-page__kakao-button {
+.common-error-page__kakao-button,
+.common-error-page__home-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2221,21 +2264,29 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   font-weight: 700;
 }
 
-.not-found-page__kakao-button:hover {
+.common-error-page__home-button {
+  margin-top: 18px;
+  background: var(--primary);
+  color: #fff;
+}
+
+.common-error-page__kakao-button:hover,
+.common-error-page__home-button:hover {
   text-decoration: none;
 }
 
-.not-found-page__kakao-button:focus-visible {
+.common-error-page__kakao-button:focus-visible,
+.common-error-page__home-button:focus-visible {
   outline: 3px solid rgba(13, 99, 243, 0.28);
   outline-offset: 3px;
 }
 
 @media (max-width: 560px) {
-  .not-found-page {
+  .common-error-page {
     padding: 48px 16px 32px;
   }
 
-  .not-found-page__content {
+  .common-error-page__content {
     padding: 32px 20px;
   }
 }
@@ -10801,7 +10852,7 @@ html[data-bw-contrast='on'] :where(
   .policy-detail-page,
   .terms-page,
   .privacy-page,
-  .not-found-page
+  .common-error-page
 ) {
   color: #0f172a;
   background-color: #ffffff;
@@ -10865,7 +10916,7 @@ html[data-bw-contrast='on'] .app-frame :where(
   .settings-policy-accordion,
   .settings-danger-card,
   .policy-detail-page__content,
-  .not-found-page__content
+  .common-error-page__content
 ) {
   border-color: #334155 !important;
   box-shadow: none !important;
