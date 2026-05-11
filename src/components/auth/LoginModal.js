@@ -65,13 +65,13 @@ export function LoginModal({ onClose }) {
           <SocialLoginButtons onError={setError} />
           <StatusMessage kind="error">{error}</StatusMessage>
 
-          <p className="login-modal__signup-note">처음 이용해도 별도 가입 절차 없이 바로 시작할 수 있어요.</p>
+          <p className="login-modal__signup-note">처음 이용해도 별도 가입 절차 없이<br /> 바로 시작할 수 있어요.</p>
           <p className="login-modal__notice">
             회원가입을 진행하면{' '}
             <Link to={localizePath(ROUTE_PATHS.terms)} onClick={onClose}>
               이용약관
             </Link>{' '}
-            및{' '}
+            및{' '} <br />
             <Link to={localizePath(ROUTE_PATHS.privacy)} onClick={onClose}>
               개인정보 처리방침
             </Link>
