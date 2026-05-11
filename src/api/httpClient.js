@@ -248,7 +248,10 @@ export async function httpRequest(path, options = {}) {
       logger.warn('API network request failed.', {
         method,
         path,
-        errorName: error?.name
+        apiBaseUrl: API_BASE_URL,
+        errorName: error?.name,
+        errorMessage: error?.message,
+        isOnline: typeof navigator === 'undefined' ? undefined : navigator.onLine
       });
 
       throw new ApiError(NETWORK_ERROR_MESSAGE, 0, 'NETWORK_ERROR', {

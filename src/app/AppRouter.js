@@ -7,9 +7,9 @@ import { PageShell } from '../components/common/PageShell';
 import { AUTH_PROVIDER_ROUTES, LEGACY_ROUTE_PATHS, LOCALIZED_ROUTE_PATHS, ROUTE_PATHS } from '../config/routes';
 import { useLocale } from '../i18n/LocaleContext';
 import { buildLocalizedPath, DEFAULT_LOCALE, isSupportedLocale } from '../i18n/locales';
+import { OAuthCallbackPage } from '../pages/OAuthCallbackPage';
 
 const MainPage = lazy(() => import('../pages/MainPage').then((module) => ({ default: module.MainPage })));
-const OAuthCallbackPage = lazy(() => import('../pages/OAuthCallbackPage').then((module) => ({ default: module.OAuthCallbackPage })));
 const SignupPage = lazy(() => import('../pages/SignupPage').then((module) => ({ default: module.SignupPage })));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
 const AccessibilityMapPage = lazy(() => import('../pages/AccessibilityMapPage').then((module) => ({ default: module.AccessibilityMapPage })));
