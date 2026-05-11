@@ -5,7 +5,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' https://oapi.map.naver.com https://nrbe.pstatic.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.pstatic.net https://*.naver.net https://oapi.map.naver.com; connect-src 'self' https://api.bridgework.cloud https://*.naver.com https://*.naver.net https://*.pstatic.net https://kr-col-ext.nelo.navercorp.com; font-src 'self' data:; manifest-src 'self'; form-action 'self' https://kauth.kakao.com https://nid.naver.com; upgrade-insecure-requests"
+          "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'sha256-tRvglit9N8WdLYQfFKUAbHnqGToIg/47h/Nxu5TsjS8=' https://www.googletagmanager.com https://www.google-analytics.com https://oapi.map.naver.com https://nrbe.pstatic.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.googletagmanager.com https://www.google-analytics.com https://*.pstatic.net https://*.naver.net https://oapi.map.naver.com; connect-src 'self' https://api.bridgework.cloud https://www.googletagmanager.com https://*.google-analytics.com https://*.naver.com https://*.naver.net https://*.pstatic.net https://kr-col-ext.nelo.navercorp.com; frame-src https://www.googletagmanager.com; font-src 'self' data:; manifest-src 'self'; form-action 'self' https://kauth.kakao.com https://nid.naver.com; upgrade-insecure-requests"
         },
         {
           "key": "X-Content-Type-Options",
