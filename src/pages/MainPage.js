@@ -1508,7 +1508,7 @@ export function MainPage() {
                     }}
                   >
                     <span className="accessibility-map__profile-trigger-main">
-                      <img src={profileIcon} alt="프로필 아이콘" />
+                      <img src={profileIcon} alt="프로필 아이콘" loading="lazy" decoding="async" />
                       <span className="accessibility-map__profile-option-text">
                         {isGuestUser ? (
                           <strong>로그인 후 자신의 프로필을 선택해보세요.</strong>
@@ -1522,7 +1522,7 @@ export function MainPage() {
                         )}
                       </span>
                     </span>
-                    <img src={arrowDown} alt="프로필 목록 펼치기 아이콘" />
+                    <img src={arrowDown} alt="프로필 목록 펼치기 아이콘" loading="lazy" decoding="async" />
                   </button>
                   {isProfileMenuOpen && !isGuestUser ? (
                     <div className="accessibility-map__profile-menu" role="listbox" aria-label="프로필 목록">
@@ -1533,14 +1533,14 @@ export function MainPage() {
                           className={`accessibility-map__profile-option${getProfileId(profile) === String(selectedProfileId) ? ' is-selected' : ''}`}
                           role="option"
                           aria-selected={getProfileId(profile) === String(selectedProfileId)}
-                          onMouseDown={(event) => {
+                          onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
                             setSelectedProfileId(getProfileId(profile));
                             setIsProfileMenuOpen(false);
                           }}
                         >
-                          <img src={profileIcon} alt="프로필 아이콘" />
+                          <img src={profileIcon} alt="프로필 아이콘" loading="lazy" decoding="async" />
                           <span className="accessibility-map__profile-option-text">
                             <strong>{getProfileDisplayName(profile)}</strong>
                             {profile?.isDefault ? <small className="accessibility-map__profile-default-badge">기본 프로필</small> : null}
@@ -1548,7 +1548,7 @@ export function MainPage() {
                         </button>
                       ))}
                       <Link to={localizePath(ROUTE_PATHS.myProfile)} className="accessibility-map__profile-manage">
-                        <img src={settingIcon} alt="프로필 관리 아이콘" />
+                        <img src={settingIcon} alt="프로필 관리 아이콘" loading="lazy" decoding="async" />
                         프로필 관리
                       </Link>
                     </div>

@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useScrappedJobs } from '../hooks/useScrappedJobs';
+
+const INITIAL_VISIBLE_SCRAP_COUNT = 60;
+const VISIBLE_SCRAP_INCREMENT = 60;
 
 function ScrapDeleteConfirmModal({ pending, onConfirm, onClose }) {
   return (
@@ -34,6 +37,14 @@ function ScrapDeleteConfirmModal({ pending, onConfirm, onClose }) {
 }
 
 function ScrapListPanel({ scraps, selectedPostingId, onSelect }) {
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_SCRAP_COUNT);
+  const visibleScraps = useMemo(() => scraps.slice(0, visibleCount), [scraps, visibleCount]);
+  const hasMoreScraps = visibleScraps.length < scraps.length;
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE_SCRAP_COUNT);
+  }, [scraps]);
+
   return (
     <section className="jobs-list-panel jobs-list-panel--scrap" aria-label="스크랩 공고 목록">
       <div className="jobs-list-panel__header">
@@ -43,7 +54,7 @@ function ScrapListPanel({ scraps, selectedPostingId, onSelect }) {
         </div>
       </div>
       <div className="jobs-list-panel__list">
-        {scraps.map((item) => {
+        {visibleScraps.map((item) => {
           const isSelected = item.postingId === selectedPostingId;
 
           return (
@@ -73,6 +84,15 @@ function ScrapListPanel({ scraps, selectedPostingId, onSelect }) {
             </button>
           );
         })}
+        {hasMoreScraps ? (
+          <button
+            type="button"
+            className="secondary-button jobs-list-panel__more-button"
+            onClick={() => setVisibleCount((current) => current + VISIBLE_SCRAP_INCREMENT)}
+          >
+            스크랩 공고 {Math.min(VISIBLE_SCRAP_INCREMENT, scraps.length - visibleScraps.length)}건 더 보기
+          </button>
+        ) : null}
       </div>
     </section>
   );

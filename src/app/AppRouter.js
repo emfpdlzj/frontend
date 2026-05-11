@@ -1,14 +1,15 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { hasRequiredRole } from '../auth/authorization';
 import { LoadingView } from '../components/common/LoadingView';
 import { PageShell } from '../components/common/PageShell';
 import { AUTH_PROVIDER_ROUTES, LEGACY_ROUTE_PATHS, LOCALIZED_ROUTE_PATHS, ROUTE_PATHS } from '../config/routes';
 import { useLocale } from '../i18n/LocaleContext';
 import { buildLocalizedPath, DEFAULT_LOCALE, isSupportedLocale } from '../i18n/locales';
+import { OAuthCallbackPage } from '../pages/OAuthCallbackPage';
 
 const MainPage = lazy(() => import('../pages/MainPage').then((module) => ({ default: module.MainPage })));
-const OAuthCallbackPage = lazy(() => import('../pages/OAuthCallbackPage').then((module) => ({ default: module.OAuthCallbackPage })));
 const SignupPage = lazy(() => import('../pages/SignupPage').then((module) => ({ default: module.SignupPage })));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
 const AccessibilityMapPage = lazy(() => import('../pages/AccessibilityMapPage').then((module) => ({ default: module.AccessibilityMapPage })));
@@ -29,15 +30,23 @@ function RouteFallback() {
   );
 }
 
-function AuthRoute({ children }) {
-  const { isAuthenticated, isInitializing } = useAuth();
+function AuthRoute({ children, requiredRole }) {
+  const { currentUser, isAuthenticated, isInitializing } = useAuth();
   const { localizePath } = useLocale();
 
   if (isInitializing) {
-    return null;
+    return (
+      <PageShell title="세션 확인" description="로그인 상태를 확인하고 있습니다.">
+        <LoadingView label="세션 검증 중..." />
+      </PageShell>
+    );
   }
 
   if (!isAuthenticated) {
+    return <Navigate to={localizePath(ROUTE_PATHS.root)} replace />;
+  }
+
+  if (!hasRequiredRole(currentUser, requiredRole)) {
     return <Navigate to={localizePath(ROUTE_PATHS.root)} replace />;
   }
 

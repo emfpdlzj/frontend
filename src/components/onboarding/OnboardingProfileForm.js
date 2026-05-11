@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { BOOLEAN_OPTIONS } from '../../config/appConfig';
 import { toBooleanOrNull } from '../../utils/formUtils';
 import { ChipInput, Field, FieldRow, SelectInput, TextAreaInput, TextInput } from '../common/FormFields';
@@ -106,6 +106,7 @@ const hasValue = (value) => trim(value).length > 0;
 export function OnboardingProfileForm({ initialValue, onSubmit, submitting, aiTags }) {
   const [form, setForm] = useState(() => normalizeForm(initialValue));
   const [error, setError] = useState('');
+  const submitInFlightRef = useRef(false);
 
   const update = (field, value) => {
     setForm((prev) => ({
@@ -214,6 +215,11 @@ export function OnboardingProfileForm({ initialValue, onSubmit, submitting, aiTa
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (submitting || submitInFlightRef.current) {
+      return;
+    }
+
     setError('');
 
     if (validationMessage) {
@@ -221,9 +227,14 @@ export function OnboardingProfileForm({ initialValue, onSubmit, submitting, aiTa
       return;
     }
 
-    await onSubmit(submitPayload()).catch((submitError) => {
+    submitInFlightRef.current = true;
+    try {
+      await onSubmit(submitPayload());
+    } catch (submitError) {
       setError(submitError.message || '온보딩 저장에 실패했습니다.');
-    });
+    } finally {
+      submitInFlightRef.current = false;
+    }
   };
 
   return (

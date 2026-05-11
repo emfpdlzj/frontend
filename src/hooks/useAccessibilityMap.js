@@ -248,6 +248,8 @@ const getGeoLongitude = (job) => getFirstPresentValue(job?.geoLongitude, job?.ge
 
 const getJobDateField = (job, camelKey, snakeKey) => getFirstPresentValue(job?.[camelKey], job?.[snakeKey]);
 
+const getRecruitmentContext = (job) => job?.recruitmentContext || job?.recruitment_context || {};
+
 const findAiMapResult = (aiResults, job) => {
   const externalId = getJobExternalId(job);
   const jobPostId = getFirstPresentValue(job?.jobPostId, job?.job_post_id, job?.id);
@@ -297,17 +299,62 @@ const toIntegerOrNull = (value) => {
   return null;
 };
 
-const buildJobInfo = (job, recruitmentPeriodText, salaryText) => [
-  ['모집직종', getJobTitle(job) || '-'],
-  ['고용형태', getFirstPresentValue(job?.empType, job?.emp_type, job?.employmentType, job?.employment_type) || '-'],
-  ['임금', salaryText],
-  ['임금형태', getFirstPresentValue(job?.salaryType, job?.salary_type) || '-'],
-  ['요구경력', getFirstPresentValue(job?.reqCareer, job?.req_career, job?.enterType, job?.enter_type) || '-'],
-  ['요구학력', getFirstPresentValue(job?.reqEduc, job?.req_educ) || '-'],
-  ['모집기간', recruitmentPeriodText],
-  ['요구전공', getFirstPresentValue(job?.reqMajor, job?.req_major) || '-'],
-  ['요구자격', getFirstPresentValue(job?.reqLicens, job?.req_licens) || '-']
-];
+const buildJobInfo = (job, recruitmentPeriodText, salaryText) => {
+  const recruitmentContext = getRecruitmentContext(job);
+  return [
+    ['모집직종', getJobTitle(job) || '-'],
+    ['고용형태', getFirstPresentValue(job?.empType, job?.emp_type, job?.employmentType, job?.employment_type) || '-'],
+    ['임금', salaryText],
+    ['임금형태', getFirstPresentValue(job?.salaryType, job?.salary_type) || '-'],
+    [
+      '요구경력',
+      getFirstPresentValue(
+        job?.reqCareer,
+        job?.req_career,
+        job?.requiredCareer,
+        job?.required_career,
+        recruitmentContext.req_career,
+        recruitmentContext.reqCareer,
+        job?.enterType,
+        job?.enter_type
+      ) || '-'
+    ],
+    [
+      '요구학력',
+      getFirstPresentValue(
+        job?.reqEduc,
+        job?.req_educ,
+        job?.requiredEducation,
+        job?.required_education,
+        recruitmentContext.req_educ,
+        recruitmentContext.reqEduc
+      ) || '-'
+    ],
+    ['모집기간', recruitmentPeriodText],
+    [
+      '요구전공',
+      getFirstPresentValue(
+        job?.reqMajor,
+        job?.req_major,
+        job?.requiredMajor,
+        job?.required_major,
+        recruitmentContext.req_major,
+        recruitmentContext.reqMajor
+      ) || '-'
+    ],
+    [
+      '요구자격',
+      getFirstPresentValue(
+        job?.reqLicens,
+        job?.req_licens,
+        job?.requiredLicenses,
+        job?.required_licenses,
+        recruitmentContext.req_licens,
+        recruitmentContext.reqLicens
+      ) || '-'
+    ]
+  ];
+};
 
 const getDateRangeText = (job) => getRecruitmentPeriodText(job, getJobDateField(job, 'termDate', 'term_date'));
 
@@ -387,6 +434,78 @@ const buildExplainScoreDetail = (scoreDetail) => ({
   accessibility_score: toIntegerOrNull(scoreDetail?.accessibility_score ?? scoreDetail?.accessibilityScore)
 });
 
+const normalizeEvidenceItems = (value) => (Array.isArray(value) ? value.filter(Boolean) : []);
+
+const getEvidenceSourceSummary = (evidenceItems) => {
+  const sourceNames = [
+    ...new Set(
+      normalizeEvidenceItems(evidenceItems)
+        .map((item) => item?.source_name || item?.sourceName || item?.source_type || item?.sourceType)
+        .filter(Boolean)
+    )
+  ];
+
+  if (!sourceNames.length) {
+    return '데이터 출처 · BridgeWork Spring Backend 추천 지도 API';
+  }
+
+  const visibleNames = sourceNames.slice(0, 3).join(', ');
+  const suffix = sourceNames.length > 3 ? ` 외 ${sourceNames.length - 3}건` : '';
+  return `데이터 출처 · ${visibleNames}${suffix}`;
+};
+
+const buildEvidenceDetailItems = (evidenceItems) => {
+  const sourceTypes = new Set(
+    normalizeEvidenceItems(evidenceItems)
+      .map((item) => item?.source_type || item?.sourceType)
+      .filter(Boolean)
+  );
+
+  const hasTransportation = [
+    'NATIONWIDE_BUS_STOP',
+    'SEOUL_LOW_FLOOR_BUS_ROUTE_RETENTION',
+    'TRANSPORT_SUPPORT_CENTER'
+  ].some((sourceType) => sourceTypes.has(sourceType));
+  const hasWalking = [
+    'NATIONWIDE_CROSSWALK',
+    'NATIONWIDE_TRAFFIC_LIGHT',
+    'SEOUL_WALKING_NETWORK'
+  ].some((sourceType) => sourceTypes.has(sourceType));
+  const hasWheelchairFacility = [
+    'RAIL_WHEELCHAIR_LIFT',
+    'RAIL_WHEELCHAIR_LIFT_MOVEMENT',
+    'SEOUL_WHEELCHAIR_LIFT',
+    'SEOUL_TRANSPORT_WEAK_WHEELCHAIR_LIFT',
+    'SEOUL_SUBWAY_ENTRANCE_LIFT',
+    'SEOUL_WHEELCHAIR_RAMP_STATUS',
+    'KORAIL_WEEK_PERSON_FACILITIES'
+  ].some((sourceType) => sourceTypes.has(sourceType));
+
+  return [
+    [
+      '교통 접근 근거',
+      hasTransportation
+        ? '근무지 주변 대중교통 또는 교통약자 이동지원 데이터가 확인됩니다.'
+        : '주변 대중교통/이동지원 데이터는 추가 확인이 필요합니다.',
+      hasTransportation ? '접근 양호' : '데이터 미확인'
+    ],
+    [
+      '보행 안전 근거',
+      hasWalking
+        ? '횡단보도, 신호등, 보행 네트워크 데이터가 접근성 산정에 반영되었습니다.'
+        : '보행 경로 안전 데이터는 추가 확인이 필요합니다.',
+      hasWalking ? '접근 양호' : '데이터 미확인'
+    ],
+    [
+      '휠체어/편의시설 근거',
+      hasWheelchairFacility
+        ? '리프트, 경사로 또는 철도 편의시설 데이터가 확인됩니다.'
+        : '휠체어 리프트/경사로 등 편의시설은 현장 확인이 필요합니다.',
+      hasWheelchairFacility ? '접근 양호' : '데이터 미확인'
+    ]
+  ];
+};
+
 const resolveCommuteStats = (source, aiResult, scoreDetail) => {
   const totalMinutes = getFirstPresentValue(
     scoreDetail?.total_minutes,
@@ -437,6 +556,11 @@ const resolveCommuteStats = (source, aiResult, scoreDetail) => {
 const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult) => {
   const aiResult = aiEnabled ? matchedAiResult || findAiMapResult(aiResults, job) : null;
   const scoreDetail = aiResult?.score_detail || aiResult?.scoreDetail || {};
+  const evidenceItems = normalizeEvidenceItems(aiResult?.evidence_items || aiResult?.evidenceItems);
+  const recommendationReasons = Array.isArray(aiResult?.reasons) ? aiResult.reasons : [];
+  const riskFactors = Array.isArray(aiResult?.risk_factors || aiResult?.riskFactors)
+    ? aiResult?.risk_factors || aiResult?.riskFactors
+    : [];
   const totalScore =
     toNumberOrNull(aiResult?.total_score) ??
     toNumberOrNull(aiResult?.totalScore) ??
@@ -488,6 +612,8 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult) => {
   );
   const hiringRate = getFirstPresentValue(job?.disabilityHiringRate, job?.disability_hiring_rate, job?.hiringRate, job?.hiring_rate);
   const legalRate = getFirstPresentValue(job?.legalObligationRate, job?.legal_obligation_rate, job?.legalRate, job?.legal_rate);
+  const evidenceDetailItems = buildEvidenceDetailItems(evidenceItems);
+  const evidenceSourceSummary = getEvidenceSourceSummary(evidenceItems);
 
   return {
     id,
@@ -507,6 +633,9 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult) => {
     score: displayScore ?? '-',
     scoreDetail,
     totalScore,
+    evidenceItems,
+    recommendationReasons,
+    riskFactors,
     jobInfo: buildJobInfo(job, recruitmentPeriodText, salaryText),
     companyInfo: {
       name: company,
@@ -532,9 +661,9 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult) => {
           detailItems: [
             ['접근성 점수', displayScore === null || displayScore === undefined ? '점수 데이터가 없어 확인이 필요합니다.' : `접근성 점수는 ${displayScore}점입니다.`, displayScore >= 80 ? '접근 양호' : displayScore >= 60 ? '주의 필요' : '데이터 미확인'],
             ['근무지 좌표', geoLatitude && geoLongitude ? '지도에서 근무지 위치를 확인할 수 있습니다.' : '근무지 좌표 데이터가 없어 위치 확인이 필요합니다.', geoLatitude && geoLongitude ? '접근 양호' : '데이터 미확인'],
-            ['편의시설 정보', '엘리베이터, 저상버스, 보행 경로 등 세부 시설 정보는 기업 또는 지도 데이터로 추가 확인이 필요합니다.', '데이터 미확인']
+            ...evidenceDetailItems
           ],
-          source: '데이터 출처 · BridgeWork Spring Backend 추천 지도 API'
+          source: evidenceSourceSummary
         }
       ])
     ),
@@ -793,6 +922,7 @@ const sortMapJobs = (jobs, sortMode) => {
 
 const buildExplainPayload = ({ job, profileId, profile }) => {
   const source = job?.source || {};
+  const recruitmentContext = getRecruitmentContext(source);
   const scoreDetail = job?.scoreDetail || {};
   const jobPostId = getJobPostId(source, job);
   const sourceId = getFirstInteger(source.sourceId, source.source_id, source.id, jobPostId);
@@ -852,6 +982,10 @@ const buildExplainPayload = ({ job, profileId, profile }) => {
     required_supports: splitToList(profile?.requiredSupports || profile?.workSupportRequirements)
   };
 
+  const evidenceItems = normalizeEvidenceItems(job?.evidenceItems);
+  const recommendationReasons = Array.isArray(job?.recommendationReasons) ? job.recommendationReasons : [];
+  const riskFactors = Array.isArray(job?.riskFactors) ? job.riskFactors : [];
+
   const explainJob = {
     job_post_id: normalizedJobPostId,
     company_name: companyName,
@@ -864,13 +998,51 @@ const buildExplainPayload = ({ job, profileId, profile }) => {
     salary_type: toNullableText(salaryType),
     salary: toNullableText(source.salary),
     term_date: toNullableText(getJobDateField(source, 'termDate', 'term_date')),
-    required_career: toNullableText(getFirstPresentValue(source.reqCareer, source.req_career)),
-    required_education: toNullableText(getFirstPresentValue(source.reqEduc, source.req_educ)),
-    required_major: toNullableText(getFirstPresentValue(source.reqMajor, source.req_major)),
-    required_licenses: toNullableText(getFirstPresentValue(source.reqLicens, source.req_licens)),
-    agency_name: toNullableText(getFirstPresentValue(source.agencyName, source.agency_name)),
+    required_career: toNullableText(
+      getFirstPresentValue(
+        source.reqCareer,
+        source.req_career,
+        source.requiredCareer,
+        source.required_career,
+        recruitmentContext.req_career,
+        recruitmentContext.reqCareer
+      )
+    ),
+    required_education: toNullableText(
+      getFirstPresentValue(
+        source.reqEduc,
+        source.req_educ,
+        source.requiredEducation,
+        source.required_education,
+        recruitmentContext.req_educ,
+        recruitmentContext.reqEduc
+      )
+    ),
+    required_major: toNullableText(
+      getFirstPresentValue(
+        source.reqMajor,
+        source.req_major,
+        source.requiredMajor,
+        source.required_major,
+        recruitmentContext.req_major,
+        recruitmentContext.reqMajor
+      )
+    ),
+    required_licenses: toNullableText(
+      getFirstPresentValue(
+        source.reqLicens,
+        source.req_licens,
+        source.requiredLicenses,
+        source.required_licenses,
+        recruitmentContext.req_licens,
+        recruitmentContext.reqLicens
+      )
+    ),
+    agency_name: toNullableText(
+      getFirstPresentValue(source.agencyName, source.agency_name, recruitmentContext.regagn_name, recruitmentContext.regagnName)
+    ),
     registered_at: toNullableText(getJobDateField(source, 'regDt', 'reg_dt') || getJobDateField(source, 'offerregDt', 'offerreg_dt')),
-    source_table: source.sourceTable || 'pd_kepad_recruitment',
+    source_table: source.sourceTable || source.source_table || 'pd_kepad_recruitment',
     source_id: sourceId
   };
 
@@ -882,9 +1054,13 @@ const buildExplainPayload = ({ job, profileId, profile }) => {
     score_detail: explainScoreDetail,
     total_score: totalScore,
     job_fit_score: jobFitScore,
-    reasons: [`추천 지도 기준 총점은 ${job.totalScore ?? job.score}점입니다.`],
-    risk_factors: ['출퇴근 경로와 사업장 접근성 세부 정보는 지원 전 확인이 필요합니다.'],
-    evidence_items: []
+    reasons: recommendationReasons.length
+      ? recommendationReasons
+      : [`추천 지도 기준 총점은 ${job.totalScore ?? job.score}점입니다.`],
+    risk_factors: riskFactors.length
+      ? riskFactors
+      : ['출퇴근 경로와 사업장 접근성 세부 정보는 지원 전 확인이 필요합니다.'],
+    evidence_items: evidenceItems
   };
 };
 

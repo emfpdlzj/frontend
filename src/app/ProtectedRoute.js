@@ -1,12 +1,13 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { hasRequiredRole } from '../auth/authorization';
 import { LoadingView } from '../components/common/LoadingView';
 import { PageShell } from '../components/common/PageShell';
 import { ROUTE_PATHS } from '../config/routes';
 import { useLocale } from '../i18n/LocaleContext';
 
-export function ProtectedRoute() {
-  const { isAuthenticated, isInitializing } = useAuth();
+export function ProtectedRoute({ requiredRole }) {
+  const { currentUser, isAuthenticated, isInitializing } = useAuth();
   const location = useLocation();
   const { localizePath } = useLocale();
 
@@ -20,6 +21,10 @@ export function ProtectedRoute() {
 
   if (!isAuthenticated) {
     return <Navigate to={localizePath(ROUTE_PATHS.login)} replace state={{ from: location }} />;
+  }
+
+  if (!hasRequiredRole(currentUser, requiredRole)) {
+    return <Navigate to={localizePath(ROUTE_PATHS.root)} replace />;
   }
 
   return <Outlet />;

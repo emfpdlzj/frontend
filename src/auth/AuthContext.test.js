@@ -139,6 +139,40 @@ test('clears stale access token when cookie refresh fails', async () => {
   expect(window.sessionStorage.getItem(STORAGE_KEYS.refreshToken)).toBeNull();
 });
 
+test('clears session and reports session expiration when authorized request refresh fails', async () => {
+  authApi.socialLogin.mockResolvedValue({
+    data: {
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token'
+    }
+  });
+  authApi.refreshToken.mockRejectedValue(new ApiError('리프레시 토큰이 만료되었습니다.', 401, 'UNAUTHORIZED'));
+
+  const getAuth = await renderAuth();
+
+  await act(async () => {
+    await getAuth().loginWithSocialCode({ provider: 'KAKAO', code: 'code' });
+  });
+
+  await act(async () => {
+    await expect(
+      getAuth().callWithAuth(() => {
+        throw new ApiError('인증이 만료되었습니다.', 401, 'UNAUTHORIZED');
+      })
+    ).rejects.toMatchObject({
+      status: 401,
+      errorCode: 'SESSION_EXPIRED',
+      message: '로그인 세션이 만료되었습니다. 다시 로그인해 주세요.'
+    });
+  });
+
+  expect(window.localStorage.getItem(STORAGE_KEYS.accessToken)).toBeNull();
+  expect(window.localStorage.getItem(STORAGE_KEYS.refreshToken)).toBeNull();
+  expect(window.sessionStorage.getItem(STORAGE_KEYS.accessToken)).toBeNull();
+  expect(window.sessionStorage.getItem(STORAGE_KEYS.refreshToken)).toBeNull();
+  await waitFor(() => expect(screen.getByTestId('auth-state')).toHaveTextContent('anonymous'));
+});
+
 test('treats missing refresh session during bootstrap as anonymous state', async () => {
   const getAuth = await renderAuth();
 

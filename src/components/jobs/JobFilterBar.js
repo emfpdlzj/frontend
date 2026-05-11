@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 export const JOB_FILTER_ALL_VALUE = 'ALL';
 
@@ -30,33 +31,51 @@ function toStaticOptions(values) {
   ];
 }
 
-function FilterControl({ id, label, value, placeholder, options, isSearch = false, onChange }) {
+function SearchFilterControl({ id, label, value, placeholder, onChange }) {
+  const [localSearchValue, setLocalSearchValue] = useState(value || '');
+  const debouncedSearchValue = useDebouncedValue(localSearchValue, 250);
+
+  useEffect(() => {
+    setLocalSearchValue(value || '');
+  }, [value]);
+
+  useEffect(() => {
+    if (debouncedSearchValue !== value) {
+      onChange(id, debouncedSearchValue);
+    }
+  }, [debouncedSearchValue, id, onChange, value]);
+
   return (
     <label className="jobs-filter__field" htmlFor={`jobs-filter-${id}`}>
       <span>{label}</span>
-      {isSearch ? (
-        <input
-          id={`jobs-filter-${id}`}
-          type="search"
-          value={value}
-          placeholder={placeholder}
-          aria-label={label}
-          onChange={(event) => onChange(id, event.target.value)}
-        />
-      ) : (
-        <select
-          id={`jobs-filter-${id}`}
-          value={value}
-          aria-label={label}
-          onChange={(event) => onChange(id, event.target.value)}
-        >
-          {options.map((option) => (
-            <option key={`${id}-${option.value}`} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      )}
+      <input
+        id={`jobs-filter-${id}`}
+        type="search"
+        value={localSearchValue}
+        placeholder={placeholder}
+        aria-label={label}
+        onChange={(event) => setLocalSearchValue(event.target.value)}
+      />
+    </label>
+  );
+}
+
+function FilterControl({ id, label, value, options, onChange }) {
+  return (
+    <label className="jobs-filter__field" htmlFor={`jobs-filter-${id}`}>
+      <span>{label}</span>
+      <select
+        id={`jobs-filter-${id}`}
+        value={value}
+        aria-label={label}
+        onChange={(event) => onChange(id, event.target.value)}
+      >
+        {options.map((option) => (
+          <option key={`${id}-${option.value}`} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }
@@ -184,12 +203,11 @@ export function JobFilterBar({
         <p>최신 공고를 빠르게 좁혀보고, 선택 공고는 오른쪽에서 자세히 확인합니다.</p>
       </header>
       <div className="jobs-filter__main-row">
-        <FilterControl
+        <SearchFilterControl
           id="keyword"
           label="키워드 검색"
           value={filterValues.keyword}
           placeholder="직무명, 회사명, 지역 검색"
-          isSearch
           onChange={onChangeFilter}
         />
         <JobCategoryCascadeControl

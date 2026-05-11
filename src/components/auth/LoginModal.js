@@ -53,7 +53,7 @@ export function LoginModal({ onClose }) {
 
         <div className="login-modal__body">
           <div className="login-modal__brand-mark">
-            <img className="login-modal__logo" src={logoBig} alt="Bridgework 로고" />
+            <img className="login-modal__logo" src={logoBig} alt="Bridgework 로고" loading="lazy" decoding="async" />
           </div>
           <div className="login-modal__heading">
             <h2 id="login-modal-title" className="login-modal__title">BridgeWork</h2>

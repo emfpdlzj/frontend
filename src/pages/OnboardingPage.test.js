@@ -125,9 +125,9 @@ test('blocks each signup step until required fields are completed', async () => 
   await waitFor(() => expect(screen.getByRole('heading', { name: '기본 정보 입력 완료!' })).toBeInTheDocument());
   expect(screen.getByText('15개')).toBeInTheDocument();
   expect(screen.getByText('7개 묶음')).toBeInTheDocument();
-  expect(screen.getByText('25개 선택 정보')).toBeInTheDocument();
+  expect(screen.getByText('24개 선택 정보')).toBeInTheDocument();
   expect(screen.getByText('약 5분')).toBeInTheDocument();
-  expect(screen.getByText('40개')).toBeInTheDocument();
+  expect(screen.getByText('39개')).toBeInTheDocument();
   expect(screen.queryByText('2.4배')).not.toBeInTheDocument();
   expect(completeSignup).toHaveBeenCalledWith({
     signupToken: 'signup-token',

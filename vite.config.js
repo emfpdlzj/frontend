@@ -11,6 +11,23 @@ const envKeys = [
   'REACT_APP_LOG_LEVEL',
   'REACT_APP_WEB_VITALS_ENDPOINT'
 ];
+const forbiddenClientEnvPattern = /(SECRET|PRIVATE|PASSWORD|PASSWD|TOKEN|JWT|CLIENT_SECRET|SERVICE_KEY)/i;
+const publicClientEnvAllowList = new Set(envKeys);
+
+const validateClientEnv = (env) => {
+  const exposedKeys = Object.keys(env).filter((key) => key.startsWith('REACT_APP_') || key.startsWith('VITE_'));
+  const forbiddenKeys = exposedKeys.filter((key) => {
+    const reactKey = key.replace(/^VITE_/, 'REACT_APP_');
+    return forbiddenClientEnvPattern.test(key) && !publicClientEnvAllowList.has(reactKey);
+  });
+
+  if (forbiddenKeys.length > 0) {
+    throw new Error(
+      `Client env contains keys that look sensitive: ${forbiddenKeys.join(', ')}. ` +
+        'Do not expose secrets through REACT_APP_* or VITE_* variables.'
+    );
+  }
+};
 
 const jsAsJsxPlugin = () => ({
   name: 'bridgework-js-as-jsx',
@@ -28,6 +45,7 @@ const jsAsJsxPlugin = () => ({
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  validateClientEnv(env);
   const define = {
     'process.env.NODE_ENV': JSON.stringify(mode === 'production' ? 'production' : 'development')
   };

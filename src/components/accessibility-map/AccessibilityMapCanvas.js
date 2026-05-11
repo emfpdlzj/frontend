@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import accessibilityScorePanel from '../../assets/accessibility-map/accessibility-score-panel.png';
 import arrowDown from '../../assets/accessibility-map/arrow_down.png';
@@ -144,6 +144,19 @@ function AccessibilityMapCanvasComponent({
   );
   const [mapInitError, setMapInitError] = useState('');
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const renderableMarkers = useMemo(() => toRenderableMarkers(markers, viewport.zoom), [markers, viewport.zoom]);
+  const officeMarkerCount = useMemo(
+    () => markers.filter((marker) => marker.type === 'office').length,
+    [markers]
+  );
+  const orderedProfiles = useMemo(
+    () => [...profiles].sort((left, right) => Number(Boolean(right?.isDefault)) - Number(Boolean(left?.isDefault))),
+    [profiles]
+  );
+  const selectedProfile = useMemo(
+    () => profiles.find((profile) => profile.id === String(selectedProfileId)) || null,
+    [profiles, selectedProfileId]
+  );
 
   useEffect(() => {
     if (!showProfileSelect) {
@@ -308,7 +321,7 @@ function AccessibilityMapCanvasComponent({
     }
 
     markerRefs.current.forEach((marker) => marker.setMap(null));
-    markerRefs.current = toRenderableMarkers(markers, viewport.zoom)
+    markerRefs.current = renderableMarkers
       .map((marker) =>
         new window.naver.maps.Marker({
           position: new window.naver.maps.LatLng(Number(marker.lat), Number(marker.lng)),
@@ -317,7 +330,7 @@ function AccessibilityMapCanvasComponent({
           icon: createMarkerIcon(marker)
         })
       );
-  }, [mapScriptStatus, markers, viewport.zoom, viewState]);
+  }, [mapScriptStatus, renderableMarkers, viewState]);
 
   useEffect(
     () => () => {
@@ -361,23 +374,23 @@ function AccessibilityMapCanvasComponent({
     };
   }, [isProfileMenuOpen]);
 
-  const handleZoomIn = () => {
+  const handleZoomIn = useCallback(() => {
     if (!mapInstanceRef.current) {
       return;
     }
 
     mapInstanceRef.current.zoomBy(1, createNaverLatLng(currentLocation) || undefined, true);
-  };
+  }, [currentLocation]);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     if (!mapInstanceRef.current) {
       return;
     }
 
     mapInstanceRef.current.zoomBy(-1, createNaverLatLng(currentLocation) || undefined, true);
-  };
+  }, [currentLocation]);
 
-  const handleMoveToCurrentLocation = () => {
+  const handleMoveToCurrentLocation = useCallback(() => {
     if (!currentLocation) {
       onRequestCurrentLocation?.();
       return;
@@ -388,10 +401,8 @@ function AccessibilityMapCanvasComponent({
     }
 
     mapInstanceRef.current.panTo(createNaverLatLng(currentLocation));
-  };
+  }, [currentLocation, onRequestCurrentLocation]);
 
-  const selectedProfile = profiles.find((profile) => profile.id === String(selectedProfileId)) || null;
-  const orderedProfiles = [...profiles].sort((left, right) => Number(Boolean(right?.isDefault)) - Number(Boolean(left?.isDefault)));
   const visibleSelectedProfile = selectedProfile || orderedProfiles[0] || null;
   const closedProfileLabel = isGuestUser
     ? '로그인 후 자신의 프로필을 선택해보세요.'
@@ -467,7 +478,7 @@ function AccessibilityMapCanvasComponent({
             }}
           >
             <span className="accessibility-map__profile-trigger-main">
-              <img src={profileIcon} alt="프로필 아이콘" />
+              <img src={profileIcon} alt="프로필 아이콘" loading="lazy" decoding="async" />
               <span className="accessibility-map__profile-option-text">
                 {isGuestUser ? (
                   <strong>{closedProfileLabel}</strong>
@@ -481,7 +492,7 @@ function AccessibilityMapCanvasComponent({
                 )}
               </span>
             </span>
-            <img src={arrowDown} alt="프로필 목록 펼치기 아이콘" />
+            <img src={arrowDown} alt="프로필 목록 펼치기 아이콘" loading="lazy" decoding="async" />
           </button>
           {isProfileMenuOpen && !isGuestUser ? (
             <div className="accessibility-map__profile-menu" role="listbox" aria-label="프로필 목록">
@@ -492,14 +503,14 @@ function AccessibilityMapCanvasComponent({
                   className={`accessibility-map__profile-option${profile.id === String(selectedProfileId) ? ' is-selected' : ''}`}
                   role="option"
                   aria-selected={profile.id === String(selectedProfileId)}
-                  onMouseDown={(event) => {
+                  onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
                     onSelectProfile?.(profile.id);
                     setIsProfileMenuOpen(false);
                   }}
                 >
-                  <img src={profileIcon} alt="프로필 아이콘" />
+                  <img src={profileIcon} alt="프로필 아이콘" loading="lazy" decoding="async" />
                   <span className="accessibility-map__profile-option-text">
                     <strong>{getProfileDisplayName(profile)}</strong>
                     {profile?.isDefault ? <small className="accessibility-map__profile-default-badge">기본 프로필</small> : null}
@@ -507,7 +518,7 @@ function AccessibilityMapCanvasComponent({
                 </button>
               ))}
               <Link to={localizePath(ROUTE_PATHS.myProfile)} className="accessibility-map__profile-manage">
-                <img src={settingIcon} alt="프로필 관리 아이콘" />
+                <img src={settingIcon} alt="프로필 관리 아이콘" loading="lazy" decoding="async" />
                 프로필 관리
               </Link>
             </div>
@@ -520,6 +531,8 @@ function AccessibilityMapCanvasComponent({
             className="accessibility-map__score-panel-image"
             src={accessibilityScorePanel}
             alt="접근성 점수 기준: A 80 이상, B 60~79, C 60 미만"
+            loading="lazy"
+            decoding="async"
           />
           <label className="accessibility-map__support-agency-toggle">
             <input
@@ -530,7 +543,7 @@ function AccessibilityMapCanvasComponent({
             근로지원인 수행기관 보기
           </label>
           <div className="accessibility-map__map-pill">
-            공고 {markers.filter((marker) => marker.type === 'office').length}개 · 수행기관 {supportAgencyCount}곳
+            공고 {officeMarkerCount}개 · 수행기관 {supportAgencyCount}곳
             {markers.length > MAX_RENDERED_MARKERS ? ` · 지도 표시 ${MAX_RENDERED_MARKERS}개` : ''}
           </div>
         </>

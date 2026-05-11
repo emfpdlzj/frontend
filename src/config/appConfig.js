@@ -1,9 +1,18 @@
 import { AUTH_PROVIDER_ROUTES } from './routes';
 
 const trimTrailingSlash = (value) => value.replace(/\/+$/, '');
+const DEFAULT_API_BASE_URL_BY_ENV = Object.freeze({
+  development: 'http://localhost:8080/api/v1',
+  test: 'http://localhost:8080/api/v1',
+  production: 'https://api.bridgework.cloud/api/v1'
+});
+
+const getRuntimeEnv = () => process.env.NODE_ENV || 'development';
+const getDefaultApiBaseUrl = () =>
+  DEFAULT_API_BASE_URL_BY_ENV[getRuntimeEnv()] || DEFAULT_API_BASE_URL_BY_ENV.development;
 
 export const API_BASE_URL = trimTrailingSlash(
-  process.env.REACT_APP_API_BASE_URL || 'https://api.bridgework.cloud/api/v1'
+  process.env.REACT_APP_API_BASE_URL || getDefaultApiBaseUrl()
 );
 
 export const STORAGE_KEYS = {

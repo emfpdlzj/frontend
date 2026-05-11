@@ -119,6 +119,11 @@ export function TrafficFilterPanel({
       onRequireLogin?.();
       return;
     }
+
+    if (isRecommendationBusy) {
+      return;
+    }
+
     onApplyFilters?.(draftFilterValues);
     setIsFilterCollapsed(true);
   };
@@ -128,6 +133,11 @@ export function TrafficFilterPanel({
       onRequireLogin?.();
       return;
     }
+
+    if (isRecommendationBusy) {
+      return;
+    }
+
     const resetValues = Object.fromEntries(
       filterGroups
         .filter((group) => !group.readonly)
@@ -257,7 +267,12 @@ export function TrafficFilterPanel({
       ) : null}
 
       <div className="accessibility-map__filter-actions" aria-label="필터 검색 실행">
-        <button type="button" className="secondary-button accessibility-map__filter-reset-button" onClick={handleResetFilters}>
+        <button
+          type="button"
+          className="secondary-button accessibility-map__filter-reset-button"
+          onClick={handleResetFilters}
+          disabled={!isGuestUser && isRecommendationBusy}
+        >
           초기화
         </button>
         <button

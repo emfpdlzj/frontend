@@ -5,16 +5,26 @@ import logoText from '../../assets/header/logo-text.png';
 import searchIcon from '../../assets/header/search.png';
 import { useMapSearch } from '../../accessibility/MapSearchContext';
 import { ROUTE_PATHS } from '../../config/routes';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useLocale } from '../../i18n/LocaleContext';
 
 export function AppHeader({ showMapSearch = false }) {
   const { locale, supportedLocales, switchLocale, localizePath, t } = useLocale();
   const { searchEnabled, submittedQuery, submitQuery } = useMapSearch();
   const [searchInput, setSearchInput] = useState('');
+  const debouncedSearchInput = useDebouncedValue(searchInput, 300);
 
   useEffect(() => {
     setSearchInput(submittedQuery);
   }, [submittedQuery]);
+
+  useEffect(() => {
+    if (!searchEnabled || debouncedSearchInput === submittedQuery) {
+      return;
+    }
+
+    submitQuery(debouncedSearchInput);
+  }, [debouncedSearchInput, searchEnabled, submitQuery, submittedQuery]);
 
   const handleSearchSubmit = (event) => {
     event.preventDefault();
@@ -27,8 +37,8 @@ export function AppHeader({ showMapSearch = false }) {
   return (
     <header className="app-header">
       <Link className="app-header__brand" to={localizePath(ROUTE_PATHS.root)} aria-label={t('header.brandLabel')}>
-        <img className="app-header__logo" src={logo} alt="Bridgework 로고 아이콘" />
-        <img className="app-header__logo-text" src={logoText} alt="Bridgework" />
+        <img className="app-header__logo" src={logo} alt="Bridgework 로고 아이콘" decoding="async" />
+        <img className="app-header__logo-text" src={logoText} alt="Bridgework" decoding="async" />
       </Link>
 
       {showMapSearch ? (
@@ -55,7 +65,7 @@ export function AppHeader({ showMapSearch = false }) {
             aria-label={t('header.searchButtonLabel')}
             disabled={!searchEnabled}
           >
-            <img src={searchIcon} alt="검색 아이콘" />
+            <img src={searchIcon} alt="검색 아이콘" loading="lazy" decoding="async" />
           </button>
         </form>
       ) : null}

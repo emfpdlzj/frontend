@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMapSearch } from '../accessibility/MapSearchContext';
 import { AccessibilityMapCanvas } from '../components/accessibility-map/AccessibilityMapCanvas';
 import { AccessibilityMapDetailPanel } from '../components/accessibility-map/AccessibilityMapDetailPanel';
@@ -98,12 +98,16 @@ export function AccessibilityMapPage() {
     );
   }, []);
 
-  const viewport = !hasAppliedConditions && currentLocation
-    ? {
-        center: currentLocation,
-        zoom: 16
-      }
-    : mapViewport;
+  const viewport = useMemo(
+    () =>
+      !hasAppliedConditions && currentLocation
+        ? {
+            center: currentLocation,
+            zoom: 16
+          }
+        : mapViewport,
+    [currentLocation, hasAppliedConditions, mapViewport]
+  );
   const isLoadingModalOpen = viewState === 'loading' || viewState === 'calculating';
   const isGuestUser = !isAuthenticated;
   const openLoginModal = useCallback(() => {

@@ -1,4 +1,5 @@
 import { STORAGE_KEYS } from '../config/appConfig';
+import { TOKEN_STORAGE_POLICY } from '../config/securityPolicy';
 
 const createSafeStorage = (storageName) => ({
   get(key) {
@@ -27,6 +28,8 @@ const createSafeStorage = (storageName) => ({
 const persistentStorage = createSafeStorage('localStorage');
 const sessionFallbackStorage = createSafeStorage('sessionStorage');
 let memoryTokenSnapshot = null;
+
+export const AUTH_TOKEN_STORAGE_POLICY = TOKEN_STORAGE_POLICY;
 
 const removeKeysByPrefix = (storageName, prefixes) => {
   try {
@@ -101,11 +104,11 @@ export const authStorage = {
       refreshTokenExpiresAt: tokenPair.refreshTokenExpiresAt || null
     };
     this.clearTokenStorage();
-    if (memoryTokenSnapshot.refreshToken) {
+    if (TOKEN_STORAGE_POLICY.refreshToken === 'sessionStorage' && memoryTokenSnapshot.refreshToken) {
       sessionFallbackStorage.set(STORAGE_KEYS.refreshToken, memoryTokenSnapshot.refreshToken);
       sessionFallbackStorage.set(STORAGE_KEYS.tokenType, memoryTokenSnapshot.tokenType);
     }
-    if (memoryTokenSnapshot.refreshTokenExpiresAt) {
+    if (TOKEN_STORAGE_POLICY.refreshToken === 'sessionStorage' && memoryTokenSnapshot.refreshTokenExpiresAt) {
       sessionFallbackStorage.set(STORAGE_KEYS.refreshTokenExpiresAt, memoryTokenSnapshot.refreshTokenExpiresAt);
     }
   },
