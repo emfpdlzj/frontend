@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { GENDER_OPTIONS } from '../../config/appConfig';
+import { formatPhoneNumber, getFieldFormatMessage } from '../../utils/formValidation';
 import { Field, FieldRow, SelectInput, TextInput } from '../common/FormFields';
 import { StatusMessage } from '../common/StatusMessage';
 
@@ -15,6 +16,7 @@ const toInitialForm = (seed) => ({
 export function SignupCompletionForm({ seed, onSubmit, submitting }) {
   const [form, setForm] = useState(() => toInitialForm(seed));
   const [error, setError] = useState('');
+  const submitInFlightRef = useRef(false);
 
   const ageHint = useMemo(() => {
     if (!form.age) {
@@ -36,9 +38,18 @@ export function SignupCompletionForm({ seed, onSubmit, submitting }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (submitting || submitInFlightRef.current) {
+      return;
+    }
+
     setError('');
 
     const ageValue = Number(form.age);
+    const nameError = getFieldFormatMessage('name', form.name);
+    const phoneError = getFieldFormatMessage('phone', form.phoneNumber);
+    const emailError = form.contactEmail.trim() ? getFieldFormatMessage('email', form.contactEmail) : '';
+
     if (
       !form.name.trim() ||
       Number.isNaN(ageValue) ||
@@ -52,18 +63,28 @@ export function SignupCompletionForm({ seed, onSubmit, submitting }) {
       return;
     }
 
+    if (nameError || phoneError || emailError) {
+      setError(nameError || phoneError || emailError);
+      return;
+    }
+
     const contactEmail = form.contactEmail.trim();
 
-    await onSubmit({
-      name: form.name.trim(),
-      age: ageValue,
-      gender: form.gender,
-      location: form.location.trim(),
-      phoneNumber: form.phoneNumber.trim(),
-      ...(contactEmail ? { contactEmail } : {})
-    }).catch((submitError) => {
+    submitInFlightRef.current = true;
+    try {
+      await onSubmit({
+        name: form.name.trim(),
+        age: ageValue,
+        gender: form.gender,
+        location: form.location.trim(),
+        phoneNumber: form.phoneNumber.trim(),
+        ...(contactEmail ? { contactEmail } : {})
+      });
+    } catch (submitError) {
       setError(submitError.message || '회원가입 완료에 실패했습니다.');
-    });
+    } finally {
+      submitInFlightRef.current = false;
+    }
   };
 
   return (
@@ -103,7 +124,7 @@ export function SignupCompletionForm({ seed, onSubmit, submitting }) {
         <Field label="전화번호" required hint="숫자와 + 만 허용됩니다.">
           <TextInput
             value={form.phoneNumber}
-            onChange={(value) => updateField('phoneNumber', value)}
+            onChange={(value) => updateField('phoneNumber', formatPhoneNumber(value))}
             placeholder="예: 010-1234-5678"
           />
         </Field>

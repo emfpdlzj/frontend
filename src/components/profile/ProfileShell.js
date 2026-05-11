@@ -7,8 +7,10 @@ import plusIcon from '../../assets/profile/plus_icon.png';
 import { profileApi } from '../../api/profileApi';
 import { useAuth } from '../../auth/AuthContext';
 import { STORAGE_KEYS } from '../../config/appConfig';
+import { FILE_UPLOAD_POLICY } from '../../config/securityPolicy';
 import { useProfiles } from '../../hooks/useProfiles';
 import { normalizeBirthDate } from '../../utils/birthDate';
+import { validateFileUpload } from '../../utils/fileValidation';
 import { formatPhoneNumber, getFieldFormatMessage } from '../../utils/formValidation';
 import { LoadingView } from '../common/LoadingView';
 import { StatusMessage } from '../common/StatusMessage';
@@ -520,11 +522,10 @@ export function ProfileShell() {
       return;
     }
 
-    const normalizedName = selectedFile.name.toLowerCase();
-    const isPdf = selectedFile.type === 'application/pdf' || normalizedName.endsWith('.pdf');
+    const fileValidation = validateFileUpload(selectedFile, FILE_UPLOAD_POLICY.portfolioPdf);
 
-    if (!isPdf) {
-      setFormError('PDF 파일만 업로드할 수 있습니다.');
+    if (!fileValidation.ok) {
+      setFormError(fileValidation.reason);
       return;
     }
 

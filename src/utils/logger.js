@@ -33,6 +33,7 @@ const resolveLogLevel = () => {
 const ACTIVE_LOG_LEVEL = resolveLogLevel();
 const REDACTED_VALUE = '[REDACTED]';
 const SENSITIVE_KEY_PATTERN = /authorization|password|passwd|token|secret|credential|api[-_]?key|session|jwt/i;
+const SENSITIVE_TEXT_PATTERN = /(bearer\s+)[a-z0-9._~+/=-]+|([?&](?:code|token|access_token|refresh_token)=)[^&\s]+/gi;
 
 const shouldLog = (level) => LOG_LEVELS[level] <= LOG_LEVELS[ACTIVE_LOG_LEVEL];
 
@@ -65,6 +66,20 @@ const getConsoleMethod = (level) => {
 export const sanitizeLogMeta = (value, seen = new WeakSet()) => {
   if (value === null || value === undefined) {
     return value;
+  }
+
+  if (typeof value === 'string') {
+    return value.replace(SENSITIVE_TEXT_PATTERN, (match, bearerPrefix, queryPrefix) => {
+      if (bearerPrefix) {
+        return `${bearerPrefix}${REDACTED_VALUE}`;
+      }
+
+      if (queryPrefix) {
+        return `${queryPrefix}${REDACTED_VALUE}`;
+      }
+
+      return REDACTED_VALUE;
+    });
   }
 
   if (typeof value !== 'object') {

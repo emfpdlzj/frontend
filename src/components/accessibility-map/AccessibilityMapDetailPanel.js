@@ -127,7 +127,13 @@ export function AccessibilityMapDetailPanel({
           <>
             <div className="accessibility-map__company-card">
               {job.companyInfo.logoUrl ? (
-                <img className="accessibility-map__company-logo" src={job.companyInfo.logoUrl} alt={`${job.companyInfo.name} 로고`} />
+                <img
+                  className="accessibility-map__company-logo"
+                  src={job.companyInfo.logoUrl}
+                  alt={`${job.companyInfo.name} 로고`}
+                  loading="lazy"
+                  decoding="async"
+                />
               ) : (
                 <div className="accessibility-map__company-logo-fallback" aria-hidden="true" />
               )}
@@ -229,7 +235,7 @@ export function AccessibilityMapDetailPanel({
               <ul className="accessibility-map__accessibility-list">
                 {accessibility.detailItems.map(([title, description, status]) => (
                   <li key={`${title}-${status}`}>
-                    <img className="accessibility-map__warning-icon" src={warningIcon} alt="접근성 상태 아이콘" />
+                    <img className="accessibility-map__warning-icon" src={warningIcon} alt="접근성 상태 아이콘" loading="lazy" decoding="async" />
                     <div>
                       <strong>{title}</strong>
                       <p>{description}</p>
@@ -241,7 +247,7 @@ export function AccessibilityMapDetailPanel({
             </section>
 
             <div className="accessibility-map__source-note">
-              <img src={infoIcon} alt="데이터 출처 안내 아이콘" />
+              <img src={infoIcon} alt="데이터 출처 안내 아이콘" loading="lazy" decoding="async" />
               <span><strong>데이터 출처</strong> · {accessibility.source.replace('데이터 출처 · ', '')}</span>
             </div>
           </>

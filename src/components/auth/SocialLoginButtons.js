@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { oauthUtils } from '../../utils/oauth';
 import kakaoLogo from '../../assets/login/kakao-logo.png';
@@ -18,15 +19,22 @@ const providers = [
   }
 ];
 
-export function SocialLoginButtons({ onError }) {
+export function SocialLoginButtons({ onError, navigateTo = (url) => window.location.assign(url) }) {
   const location = useLocation();
+  const [pendingProvider, setPendingProvider] = useState('');
 
   const handleLoginClick = (provider) => {
+    if (pendingProvider) {
+      return;
+    }
+
     try {
+      setPendingProvider(provider);
       oauthUtils.saveReturnTo(`${location.pathname}${location.search}${location.hash}`);
       const authorizeUrl = oauthUtils.buildAuthorizeUrl(provider);
-      window.location.assign(authorizeUrl);
+      navigateTo(authorizeUrl);
     } catch (error) {
+      setPendingProvider('');
       onError?.(error.message);
     }
   };
@@ -38,10 +46,11 @@ export function SocialLoginButtons({ onError }) {
           key={provider.key}
           type="button"
           className={provider.className}
+          disabled={Boolean(pendingProvider)}
           onClick={() => handleLoginClick(provider.key)}
         >
           <img className="social-button__logo" src={provider.logo} alt={`${provider.label} 로고`} />
-          <span>{provider.label}</span>
+          <span>{pendingProvider === provider.key ? '로그인 화면으로 이동 중...' : provider.label}</span>
         </button>
       ))}
     </div>

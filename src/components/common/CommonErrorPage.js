@@ -1,4 +1,5 @@
 import logoBig from '../../assets/logo_big.png';
+import { Link, useNavigate } from 'react-router-dom';
 
 const ERROR_PAGE_CONTENT = {
   403: {
@@ -17,11 +18,17 @@ const ERROR_PAGE_CONTENT = {
 
 export function CommonErrorPage({ status = 500, title, description, actionHref = '/', actionLabel = '홈으로 이동' }) {
   const content = ERROR_PAGE_CONTENT[status] || ERROR_PAGE_CONTENT[500];
+  const navigate = useNavigate();
+  const canGoBack = typeof window !== 'undefined' && window.history.length > 1;
+
+  const handleGoBack = () => {
+    navigate(-1);
+  };
 
   return (
     <main className="common-error-page" aria-labelledby="common-error-title">
       <section className="common-error-page__content">
-        <img className="common-error-page__logo" src={logoBig} alt="BridgeWork" />
+        <img className="common-error-page__logo" src={logoBig} alt="BridgeWork" loading="lazy" decoding="async" />
         <p className="common-error-page__status">{status}</p>
         <h1 id="common-error-title">{title || content.title}</h1>
         <p className="common-error-page__description">{description || content.description}</p>
@@ -39,9 +46,16 @@ export function CommonErrorPage({ status = 500, title, description, actionHref =
           </a>
         </div>
 
-        <a className="common-error-page__home-button" href={actionHref}>
-          {actionLabel}
-        </a>
+        <div className="common-error-page__actions">
+          {canGoBack ? (
+            <button type="button" className="common-error-page__back-button" onClick={handleGoBack}>
+              이전 화면으로 이동
+            </button>
+          ) : null}
+          <Link className="common-error-page__home-button" to={actionHref}>
+            {actionLabel}
+          </Link>
+        </div>
       </section>
     </main>
   );

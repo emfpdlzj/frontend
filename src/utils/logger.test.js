@@ -66,4 +66,10 @@ describe('sanitizeLogMeta', () => {
       self: '[Circular]'
     });
   });
+
+  it('redacts bearer tokens and auth query values embedded in strings', () => {
+    expect(
+      sanitizeLogMeta('Authorization: Bearer token-value https://example.com/callback?code=oauth-code&state=ok')
+    ).toBe('Authorization: Bearer [REDACTED] https://example.com/callback?code=[REDACTED]&state=ok');
+  });
 });
