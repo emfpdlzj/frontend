@@ -11,6 +11,8 @@ import { ROUTE_PATHS } from '../../config/routes';
 import { useLocale } from '../../i18n/LocaleContext';
 
 const footerPolicies = [
+  { id: 'about', label: '서비스 소개', to: ROUTE_PATHS.about },
+  { id: 'faq', label: 'FAQ', to: ROUTE_PATHS.faq },
   { id: 'terms', labelKey: 'footer.terms', to: ROUTE_PATHS.terms },
   { id: 'privacy-policy', labelKey: 'footer.privacy', to: ROUTE_PATHS.privacy },
   { id: 'privacy-consent', labelKey: 'footer.privacyConsent', to: getPolicyPath('privacy-consent') },
@@ -63,7 +65,7 @@ export function AppFooter() {
           <div className="app-footer__policy-list" aria-label={t('footer.policies')}>
             {footerPolicies.map((policy) => (
               <Link key={policy.id} className="app-footer__policy" to={localizePath(policy.to)}>
-                {t(policy.labelKey)}
+                {policy.label || t(policy.labelKey)}
               </Link>
             ))}
           </div>

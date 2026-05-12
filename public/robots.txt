@@ -1,12 +1,7 @@
 User-agent: *
 Allow: /
-Allow: /settings/policies/
-Allow: /ko/settings/policies/
-Allow: /en/settings/policies/
-Allow: /ja/settings/policies/
-Allow: /zh/settings/policies/
 
-# Authenticated or session-specific pages should not be indexed.
+# Authenticated, session-specific, or API-like client routes should not be indexed.
 Disallow: /login
 Disallow: /signup
 Disallow: /profile
@@ -15,35 +10,49 @@ Disallow: /jobs
 Disallow: /accessibility-map
 Disallow: /settings
 Disallow: /auth/
-
-# Localized authenticated routes.
+Disallow: /api
 Disallow: /ko/login
-Disallow: /ko/signup
-Disallow: /ko/profile
-Disallow: /ko/my/
-Disallow: /ko/jobs
-Disallow: /ko/accessibility-map
-Disallow: /ko/settings
 Disallow: /en/login
-Disallow: /en/signup
-Disallow: /en/profile
-Disallow: /en/my/
-Disallow: /en/jobs
-Disallow: /en/accessibility-map
-Disallow: /en/settings
 Disallow: /ja/login
-Disallow: /ja/signup
-Disallow: /ja/profile
-Disallow: /ja/my/
-Disallow: /ja/jobs
-Disallow: /ja/accessibility-map
-Disallow: /ja/settings
 Disallow: /zh/login
+Disallow: /ko/signup
+Disallow: /en/signup
+Disallow: /ja/signup
 Disallow: /zh/signup
+Disallow: /ko/profile
+Disallow: /en/profile
+Disallow: /ja/profile
 Disallow: /zh/profile
+Disallow: /ko/my/
+Disallow: /en/my/
+Disallow: /ja/my/
 Disallow: /zh/my/
+Disallow: /ko/jobs
+Disallow: /en/jobs
+Disallow: /ja/jobs
 Disallow: /zh/jobs
+Disallow: /ko/accessibility-map
+Disallow: /en/accessibility-map
+Disallow: /ja/accessibility-map
 Disallow: /zh/accessibility-map
+Disallow: /ko/settings
+Disallow: /en/settings
+Disallow: /ja/settings
 Disallow: /zh/settings
+Disallow: /ko/auth/
+Disallow: /en/auth/
+Disallow: /ja/auth/
+Disallow: /zh/auth/
+Disallow: /ko/api
+Disallow: /en/api
+Disallow: /ja/api
+Disallow: /zh/api
+
+# Public policy documents live below /settings/policies and are safe to crawl.
+Allow: /settings/policies/
+Allow: /ko/settings/policies/
+Allow: /en/settings/policies/
+Allow: /ja/settings/policies/
+Allow: /zh/settings/policies/
 
 Sitemap: https://www.bridgework.cloud/sitemap.xml

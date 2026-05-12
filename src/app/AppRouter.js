@@ -10,6 +10,8 @@ import { buildLocalizedPath, DEFAULT_LOCALE, isSupportedLocale } from '../i18n/l
 import { OAuthCallbackPage } from '../pages/OAuthCallbackPage';
 
 const MainPage = lazy(() => import('../pages/MainPage').then((module) => ({ default: module.MainPage })));
+const AboutPage = lazy(() => import('../pages/AboutPage').then((module) => ({ default: module.AboutPage })));
+const FaqPage = lazy(() => import('../pages/FaqPage').then((module) => ({ default: module.FaqPage })));
 const SignupPage = lazy(() => import('../pages/SignupPage').then((module) => ({ default: module.SignupPage })));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
 const AccessibilityMapPage = lazy(() => import('../pages/AccessibilityMapPage').then((module) => ({ default: module.AccessibilityMapPage })));
@@ -85,6 +87,8 @@ export function AppRouter() {
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path={ROUTE_PATHS.root} element={<LegacyRouteRedirect to={ROUTE_PATHS.root} />} />
+        <Route path={ROUTE_PATHS.about} element={<LegacyRouteRedirect to={ROUTE_PATHS.about} />} />
+        <Route path={ROUTE_PATHS.faq} element={<LegacyRouteRedirect to={ROUTE_PATHS.faq} />} />
         <Route path={ROUTE_PATHS.login} element={<LegacyRouteRedirect to={ROUTE_PATHS.root} />} />
         <Route path={ROUTE_PATHS.accessibilityMap} element={<LegacyRouteRedirect to={ROUTE_PATHS.accessibilityMap} />} />
         <Route path={ROUTE_PATHS.jobs} element={<LegacyRouteRedirect to={ROUTE_PATHS.jobs} />} />
@@ -97,6 +101,8 @@ export function AppRouter() {
         <Route path={ROUTE_PATHS.policyDetail} element={<LegacyRouteRedirect to={ROUTE_PATHS.policyDetail} />} />
 
         <Route path={LOCALIZED_ROUTE_PATHS.root} element={<LocaleRoute><MainPage /></LocaleRoute>} />
+        <Route path={LOCALIZED_ROUTE_PATHS.about} element={<LocaleRoute><AboutPage /></LocaleRoute>} />
+        <Route path={LOCALIZED_ROUTE_PATHS.faq} element={<LocaleRoute><FaqPage /></LocaleRoute>} />
         <Route path={LOCALIZED_ROUTE_PATHS.login} element={<LocaleRoute><LocalizedNavigate to={ROUTE_PATHS.root} /></LocaleRoute>} />
         <Route path={LOCALIZED_ROUTE_PATHS.accessibilityMap} element={<LocaleRoute><AuthRoute><AccessibilityMapPage /></AuthRoute></LocaleRoute>} />
         <Route path={LOCALIZED_ROUTE_PATHS.jobs} element={<LocaleRoute><AuthRoute><JobsPage /></AuthRoute></LocaleRoute>} />

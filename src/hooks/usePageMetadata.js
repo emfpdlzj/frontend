@@ -3,6 +3,8 @@ import { useLocation } from 'react-router-dom';
 import { buildAbsoluteUrl, buildAlternateUrls, buildCanonicalUrl, getPageMetadata, SITE_NAME } from '../config/pageMetadata';
 import { stripLocaleFromPathname } from '../i18n/locales';
 
+const STRUCTURED_DATA_ELEMENT_ID = 'bridgework-page-jsonld';
+
 function setMetaAttribute(selector, attribute, value) {
   let element = document.head.querySelector(selector);
 
@@ -47,6 +49,24 @@ function setAlternateLinks(alternateUrls) {
   });
 }
 
+function setStructuredData(structuredData) {
+  const existing = document.head.querySelector(`#${STRUCTURED_DATA_ELEMENT_ID}`);
+
+  if (!structuredData) {
+    existing?.remove();
+    return;
+  }
+
+  const element = existing || document.createElement('script');
+  element.setAttribute('id', STRUCTURED_DATA_ELEMENT_ID);
+  element.setAttribute('type', 'application/ld+json');
+  element.textContent = JSON.stringify(structuredData);
+
+  if (!existing) {
+    document.head.appendChild(element);
+  }
+}
+
 export function usePageMetadata() {
   const location = useLocation();
 
@@ -56,11 +76,15 @@ export function usePageMetadata() {
     const canonicalUrl = buildCanonicalUrl(location.pathname);
     const alternateUrls = buildAlternateUrls(location.pathname);
     const imageUrl = buildAbsoluteUrl(metadata.imagePath);
+    const structuredData = typeof metadata.structuredData === 'function'
+      ? metadata.structuredData()
+      : metadata.structuredData;
 
     document.title = metadata.title;
     setLinkAttribute('link[rel="canonical"]', 'canonical', canonicalUrl);
     setAlternateLinks(alternateUrls);
     setMetaAttribute('meta[name="description"]', 'content', metadata.description);
+    setMetaAttribute('meta[name="robots"]', 'content', metadata.robots || 'index,follow');
     setMetaAttribute('meta[property="og:type"]', 'content', metadata.type);
     setMetaAttribute('meta[property="og:url"]', 'content', canonicalUrl);
     setMetaAttribute('meta[property="og:site_name"]', 'content', SITE_NAME);
@@ -71,11 +95,12 @@ export function usePageMetadata() {
     setMetaAttribute('meta[property="og:image:type"]', 'content', 'image/png');
     setMetaAttribute('meta[property="og:image:width"]', 'content', '1200');
     setMetaAttribute('meta[property="og:image:height"]', 'content', '630');
-    setMetaAttribute('meta[property="og:image:alt"]', 'content', 'Bridge Work 서비스 소개 이미지');
+    setMetaAttribute('meta[property="og:image:alt"]', 'content', 'BridgeWork 서비스 소개 이미지');
     setMetaAttribute('meta[name="twitter:card"]', 'content', 'summary_large_image');
     setMetaAttribute('meta[name="twitter:title"]', 'content', metadata.title);
     setMetaAttribute('meta[name="twitter:description"]', 'content', metadata.description);
     setMetaAttribute('meta[name="twitter:url"]', 'content', canonicalUrl);
     setMetaAttribute('meta[name="twitter:image"]', 'content', imageUrl);
+    setStructuredData(structuredData);
   }, [location.pathname]);
 }
