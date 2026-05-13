@@ -119,7 +119,7 @@ describe('buildRecommendationStateFromPayload', () => {
       id: 'job-ai-1',
       title: '사무 보조원',
       company: '브릿지워크',
-      score: 78,
+      score: 82,
       employmentType: '계약직',
       salaryType: '월급',
       mapPoint: {
@@ -129,12 +129,12 @@ describe('buildRecommendationStateFromPayload', () => {
     });
     expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
       '접근성 점수',
-      '접근성 점수는 78점입니다.',
-      '주의 필요'
+      '전체 추천 점수는 82점이고, 화면에는 A등급으로 표시됩니다.',
+      '접근 양호'
     ]);
     expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
       '근무지 좌표',
-      '지도에서 근무지 위치를 확인할 수 있습니다. (37.5665, 126.9780)',
+      '근무지 위치가 지도에 표시됩니다. 좌표는 위도 37.5665, 경도 126.9780입니다.',
       '접근 양호'
     ]);
     expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
@@ -170,7 +170,7 @@ describe('buildRecommendationStateFromPayload', () => {
 
     expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
       '접근성 점수',
-      '접근성 점수는 47점입니다.',
+      '전체 추천 점수는 47점이고, 화면에는 C등급으로 표시됩니다.',
       '접근 어려움'
     ]);
   });
@@ -213,7 +213,7 @@ describe('buildRecommendationStateFromPayload', () => {
       }
     });
 
-    expect(state.jobs[0].score).toBe(81);
+    expect(state.jobs[0].score).toBe(82);
     expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
       '교통 접근 근거',
       '근무지 주변 대중교통 또는 교통약자 이동지원 데이터가 1건, 최근접 약 120m 확인됩니다.',

@@ -3,7 +3,7 @@ import { buildAlternateUrls, buildCanonicalPath, buildCanonicalUrl, getPageMetad
 describe('getPageMetadata', () => {
   it('returns route metadata for major pages', () => {
     expect(getPageMetadata('/jobs')).toMatchObject({
-      title: '스크랩 공고 관리 | BridgeWork',
+      title: '스크랩한 공고 | BridgeWork',
       path: '/jobs',
       robots: 'noindex,nofollow'
     });

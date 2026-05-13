@@ -193,12 +193,12 @@ const onboardingInputFields = [
 
 const detailProfileGroups = [
   {
-    label: '통근·근무환경',
-    fields: ['commuteRange', 'preferredWorkEnvironments', 'avoidedWorkEnvironments', 'requiredSupports']
+    label: '추가 연락',
+    fields: ['emergencyContact']
   },
   {
-    label: '세부 경력',
-    fields: ['careerDetail', 'projectExperience', 'careerGapReason']
+    label: '세부 학력·경력',
+    fields: ['careerSummary', 'educationSummary', 'projectExperience', 'careerGapReason']
   },
   {
     label: '자격·포트폴리오',
@@ -206,19 +206,19 @@ const detailProfileGroups = [
   },
   {
     label: '상세 장애·지원',
-    fields: ['disabilityDescription', 'assistiveDevices', 'workSupportRequirements']
+    fields: ['disabilityDescription', 'assistiveDevices', 'workSupportRequirements', 'requiredSupports']
   },
   {
     label: '희망 근무조건',
-    fields: ['expectedSalary', 'workTimePreference', 'remoteAvailableYn']
+    fields: ['workAvailability', 'expectedSalary', 'workTimePreference', 'remoteAvailableYn', 'commuteRange']
   },
   {
     label: '소개 보강',
-    fields: ['jobFitDescription', 'careerGoal', 'strengthsWeaknesses']
+    fields: ['motivation', 'jobFitDescription', 'careerGoal', 'strengthsWeaknesses']
   },
   {
-    label: '추가 연락·기타',
-    fields: ['emergencyContact', 'militaryService', 'patrioticVeteranYn', 'snsUrl']
+    label: '기타 정보',
+    fields: ['militaryService', 'patrioticVeteranYn', 'snsUrl']
   }
 ];
 
@@ -714,7 +714,7 @@ function TextField({ label, required, placeholder, value, onChange, onBlur, hint
       </span>
       <span className="onboarding-input-wrap">
         <input
-          value={value}
+          value={value ?? ''}
           placeholder={placeholder}
           inputMode={inputMode}
           autoComplete={autoComplete}
@@ -948,8 +948,8 @@ function CompletionPanel({ summary, onBack, onProfile }) {
         </div>
         <div>
           <dt>추가 항목</dt>
-          <dd>{summary.remainingDetailGroupCount}개 묶음</dd>
-          <span>{summary.remainingDetailFieldCount}개 선택 정보</span>
+          <dd>{summary.remainingDetailFieldCount}개</dd>
+          <span>{summary.remainingDetailGroupCount}개 묶음 선택 정보</span>
         </div>
         <div>
           <dt>예상 시간</dt>

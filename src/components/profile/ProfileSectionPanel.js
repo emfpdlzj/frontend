@@ -229,9 +229,6 @@ function EducationPanel({ profile, onChange }) {
         <Field label="학력 요약">
           <TextArea value={profile.educationSummary} onChange={(value) => onChange('educationSummary', value)} rows={4} />
         </Field>
-        <Field label="세부 담당 업무">
-          <TextArea value={profile.careerDetail} onChange={(value) => onChange('careerDetail', value)} rows={4} />
-        </Field>
         <Field label="프로젝트 경험">
           <TextArea value={profile.projectExperience} onChange={(value) => onChange('projectExperience', value)} rows={4} />
         </Field>
@@ -245,7 +242,21 @@ function EducationPanel({ profile, onChange }) {
 
 function JobPanel({ profile, onChange }) {
   const options = useSignupOptions();
-  const selectedJobs = splitJobValues(profile.targetJob);
+  const selectedJobs = useMemo(
+    () => resolveSelectedJobValues(profile.targetJob, options.jobCategories),
+    [options.jobCategories, profile.targetJob]
+  );
+
+  useEffect(() => {
+    if (options.status !== 'success') {
+      return;
+    }
+
+    const normalizedTargetJob = selectedJobs.join(', ');
+    if (normalizedTargetJob && normalizedTargetJob !== text(profile.targetJob)) {
+      onChange('targetJob', normalizedTargetJob);
+    }
+  }, [onChange, options.status, profile.targetJob, selectedJobs]);
 
   const toggleTargetJob = (job) => {
     const nextJobs = selectedJobs.includes(job)
@@ -302,6 +313,72 @@ function splitJobValues(value) {
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function flattenJobOptions(categories = []) {
+  return categories.flatMap((category) =>
+    category.groups.flatMap((group) => group.jobs.map((job) => ({
+      job,
+      path: `${category.label} ${group.label} ${job}`
+    })))
+  );
+}
+
+function normalizeJobText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[()[\]{}·ㆍ,./_-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getSimilarityScore(source, target) {
+  const sourceTerms = new Set(normalizeJobText(source).split(' ').filter((term) => term.length >= 2));
+  const targetTerms = new Set(normalizeJobText(target).split(' ').filter((term) => term.length >= 2));
+
+  if (!sourceTerms.size || !targetTerms.size) {
+    return 0;
+  }
+
+  let score = 0;
+  sourceTerms.forEach((term) => {
+    targetTerms.forEach((candidate) => {
+      if (term === candidate) {
+        score += 3;
+      } else if (term.includes(candidate) || candidate.includes(term)) {
+        score += 1;
+      }
+    });
+  });
+
+  return score;
+}
+
+function resolveSelectedJobValues(value, categories = []) {
+  const values = splitJobValues(value);
+  const options = flattenJobOptions(categories);
+
+  if (!options.length) {
+    return values;
+  }
+
+  return values
+    .map((item) => {
+      const exactMatch = options.find(({ job }) => job === item);
+      if (exactMatch) {
+        return exactMatch.job;
+      }
+
+      const bestMatch = options
+        .map((option) => ({
+          job: option.job,
+          score: Math.max(getSimilarityScore(item, option.job), getSimilarityScore(item, option.path))
+        }))
+        .sort((left, right) => right.score - left.score)[0];
+
+      return bestMatch?.score > 0 ? bestMatch.job : item;
+    })
+    .filter((item, index, list) => item && list.indexOf(item) === index);
 }
 
 function ProfileOptionState({ kind, message }) {
@@ -612,10 +689,10 @@ function RequiredMark() {
   return <em aria-label="필수">*</em>;
 }
 
-function Input({ icon, suffix, onChange, ...props }) {
+function Input({ icon, suffix, onChange, value, ...props }) {
   return (
     <span className="profile-input-wrap">
-      <input className="profile-input" {...props} onChange={(event) => onChange(event.target.value)} />
+      <input className="profile-input" {...props} value={value ?? ''} onChange={(event) => onChange(event.target.value)} />
       {suffix ? <span className="profile-input-suffix">{suffix}</span> : null}
       {icon ? <img src={icon} alt="입력 항목 아이콘" /> : null}
     </span>

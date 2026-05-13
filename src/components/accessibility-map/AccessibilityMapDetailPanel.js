@@ -1,8 +1,65 @@
+import { useEffect, useId, useState } from 'react';
 import infoIcon from '../../assets/accessibility-map/info-icon.png';
+import badConvenienceIcon from '../../assets/accessibility-map/info_icon/bad_conv.png';
+import badTransferIcon from '../../assets/accessibility-map/info_icon/bad_transfer.png';
+import badWalkerIcon from '../../assets/accessibility-map/info_icon/bad_walker.png';
+import dangerAccessibilityIcon from '../../assets/accessibility-map/info_icon/error_accessibillity.png';
+import dangerLocationIcon from '../../assets/accessibility-map/info_icon/error_location..png';
+import goodAccessibilityIcon from '../../assets/accessibility-map/info_icon/good_accessibility.png';
+import goodConvenienceIcon from '../../assets/accessibility-map/info_icon/good_conv.png';
+import goodLocationIcon from '../../assets/accessibility-map/info_icon/good_location.png';
+import goodTransferIcon from '../../assets/accessibility-map/info_icon/good_transfer.png';
+import goodWalkerIcon from '../../assets/accessibility-map/info_icon/good_walker.png';
+import warningAccessibilityIcon from '../../assets/accessibility-map/info_icon/warning_accessibility.png';
+import warningConvenienceIcon from '../../assets/accessibility-map/info_icon/warning_conv.png';
+import warningLocationIcon from '../../assets/accessibility-map/info_icon/waring_location..png';
+import warningTransferIcon from '../../assets/accessibility-map/info_icon/warning_transfer.png';
+import warningWalkerIcon from '../../assets/accessibility-map/info_icon/warning_walker.png';
 import timeIcon from '../../assets/accessibility-map/time-icon.png';
 import transferIcon from '../../assets/accessibility-map/transfer-icon.svg';
 import walkIcon from '../../assets/accessibility-map/walk-icon.png';
-import warningIcon from '../../assets/accessibility-map/warning-icon.svg';
+import { formatRecommendationExplanationText } from '../../utils/recommendationExplanationText';
+import { LlmExplanationProgress } from '../common/LlmExplanationProgress';
+
+const DETAIL_STATUS_TONE = {
+  '접근 양호': 'good',
+  '공고 제공 정보': 'good',
+  '주의 필요': 'warning',
+  '접근 어려움': 'danger'
+};
+
+const DETAIL_STATUS_ICON_MAP = {
+  accessibility: {
+    good: goodAccessibilityIcon,
+    warning: warningAccessibilityIcon,
+    danger: dangerAccessibilityIcon,
+    neutral: warningAccessibilityIcon
+  },
+  location: {
+    good: goodLocationIcon,
+    warning: warningLocationIcon,
+    danger: dangerLocationIcon,
+    neutral: warningLocationIcon
+  },
+  transfer: {
+    good: goodTransferIcon,
+    warning: warningTransferIcon,
+    danger: badTransferIcon,
+    neutral: warningTransferIcon
+  },
+  walker: {
+    good: goodWalkerIcon,
+    warning: warningWalkerIcon,
+    danger: badWalkerIcon,
+    neutral: warningWalkerIcon
+  },
+  convenience: {
+    good: goodConvenienceIcon,
+    warning: warningConvenienceIcon,
+    danger: badConvenienceIcon,
+    neutral: warningConvenienceIcon
+  }
+};
 
 function MetaIcon({ type }) {
   if (type === 'time') {
@@ -14,23 +71,161 @@ function MetaIcon({ type }) {
   return <img className="accessibility-map__meta-icon is-walk" src={walkIcon} alt="도보 이동 아이콘" />;
 }
 
-function DetailStatusBadge({ label }) {
-  const tone =
-    label === '접근 양호' ? 'good' : label === '주의 필요' ? 'warning' : label === '접근 어려움' ? 'danger' : 'neutral';
+export function DetailStatusBadge({ label }) {
+  const tone = getDetailStatusTone(label);
 
   return <span className={`accessibility-map__status-pill is-${tone}`}>{label}</span>;
+}
+
+export function getMiniBadgeClassName(badge) {
+  if (badge === '공공') {
+    return 'is-public';
+  }
+  if (badge === 'A등급') {
+    return 'is-grade is-grade-a';
+  }
+  if (badge === 'B등급') {
+    return 'is-grade is-grade-b';
+  }
+  if (badge === 'C등급') {
+    return 'is-grade is-grade-c';
+  }
+  return 'is-workplace';
+}
+
+function getDetailStatusTone(label) {
+  return DETAIL_STATUS_TONE[label] || 'neutral';
+}
+
+export function getScoreGradeTone(score) {
+  if (typeof score !== 'number') {
+    return 'neutral';
+  }
+  if (score >= 80) {
+    return 'good';
+  }
+  if (score >= 60) {
+    return 'warning';
+  }
+  return 'danger';
+}
+
+function getDetailIconCategory(title) {
+  if (title.includes('근무지') || title.includes('좌표') || title.includes('위치')) {
+    return 'location';
+  }
+  if (title.includes('교통')) {
+    return 'transfer';
+  }
+  if (title.includes('보행')) {
+    return 'walker';
+  }
+  if (title.includes('휠체어') || title.includes('편의시설')) {
+    return 'convenience';
+  }
+  return 'accessibility';
+}
+
+export function AccessibilityDetailIcon({ title, status }) {
+  const category = getDetailIconCategory(title);
+  const tone = getDetailStatusTone(status);
+  const icon = DETAIL_STATUS_ICON_MAP[category]?.[tone] || DETAIL_STATUS_ICON_MAP.accessibility.neutral;
+
+  return (
+    <img
+      className="accessibility-map__detail-status-icon"
+      src={icon}
+      alt={`${title} ${status} 아이콘`}
+      loading="lazy"
+      decoding="async"
+    />
+  );
+}
+
+function getVisibleCommuteStats(commuteStats = []) {
+  return [
+    ['time', commuteStats[0]],
+    ['transfer', commuteStats[1]],
+    ['walk', commuteStats[2]]
+  ].filter(([, value]) => value && value !== '-');
 }
 
 function formatScoreLabel(score) {
   return typeof score === 'number' ? `${score}점` : '확인 필요';
 }
 
-function openNaverMapSearch(address) {
-  if (!address || address === '-') {
-    return;
+function getDisplayGradeFromScore(score) {
+  if (typeof score !== 'number') {
+    return '확인 필요';
   }
+  if (score >= 80) {
+    return 'A등급';
+  }
+  if (score >= 60) {
+    return 'B등급';
+  }
+  return 'C등급';
+}
 
-  window.open(`https://map.naver.com/p/search/${encodeURIComponent(address)}`, '_blank', 'noopener,noreferrer');
+const ACCESSIBILITY_SCORE_HELP_TEXT = [
+  '접근성 점수는 공고 정보, 회사 정보, 근무지 주변 이동 정보를 함께 보고 계산합니다.',
+  'AI 스코어링을 켜면 선택한 내 프로필에 맞춰 점수를 다시 계산합니다.',
+  'AI 스코어링을 끄면 저장된 공고 정보를 기준으로 보여주고, 화면에서 고른 필터만 적용합니다.',
+  '근로지원인 수행기관은 지도에 위치만 표시되며 점수에는 들어가지 않습니다.',
+  '이 점수는 지원을 돕는 참고 정보입니다. 실제 출퇴근 경로와 사업장 환경은 지원 전 다시 확인해주세요.'
+];
+
+export function AccessibilityScoreHelpButton({ className = '', interactive = true }) {
+  const tooltipId = useId();
+  const trigger = interactive ? (
+    <button
+      type="button"
+      className="accessibility-map__question-button"
+      aria-label="접근성 점수 산정 기준 안내"
+      aria-describedby={tooltipId}
+    >
+      ?
+    </button>
+  ) : (
+    <span className="accessibility-map__question-button" aria-hidden="true">
+      ?
+    </span>
+  );
+
+  return (
+    <span className={`accessibility-map__question ${className}`.trim()}>
+      {trigger}
+      <span id={tooltipId} className="accessibility-map__question-tooltip" role="tooltip">
+        {ACCESSIBILITY_SCORE_HELP_TEXT.map((text) => (
+          <span key={text}>{text}</span>
+        ))}
+      </span>
+    </span>
+  );
+}
+
+function getScoreRingOffset(score) {
+  if (typeof score !== 'number' || !Number.isFinite(score)) {
+    return 100;
+  }
+  return 100 - Math.max(0, Math.min(100, score));
+}
+
+export function ScoreRing({ className, score, animationKey = 0 }) {
+  return (
+    <div
+      className={className}
+      style={{ '--score-ring-offset': String(getScoreRingOffset(score)) }}
+      aria-label={typeof score === 'number' ? `${score}점` : '점수 확인 필요'}
+    >
+      <svg className="score-ring__chart" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+        <circle className="score-ring__track" cx="60" cy="60" r="52" />
+        <circle key={`${animationKey}-${score ?? 'empty'}`} className="score-ring__value" cx="60" cy="60" r="52" pathLength="100" />
+      </svg>
+      <strong>{typeof score === 'number' ? score : '-'}</strong>
+      <span>{typeof score === 'number' ? '/ 100' : ''}</span>
+    </div>
+  );
 }
 
 export function AccessibilityMapDetailPanel({
@@ -40,13 +235,32 @@ export function AccessibilityMapDetailPanel({
   explanation,
   explanationViewState,
   explanationErrorMessage,
-  onChangeTab
+  onChangeTab,
+  onScrap,
+  scrapErrorMessage = ''
 }) {
   const accessibility = job.accessibilityByPersona[selectedPersonaKey];
-  const recommendationReasons = explanation?.recommendationReasons || explanation?.aiResponse?.result?.recommendation_reasons || [];
-  const cautionPoints = explanation?.cautionPoints || explanation?.aiResponse?.result?.caution_points || [];
-  const checklist = explanation?.checklist || explanation?.aiResponse?.result?.checklist || [];
+  const scoreTone = getScoreGradeTone(job.score);
+  const [scoreRingAnimationKey, setScoreRingAnimationKey] = useState(0);
+  const visibleCommuteStats = getVisibleCommuteStats(accessibility.commuteStats);
   const shortSummary = explanation?.shortSummary || explanation?.aiResponse?.result?.short_summary || '';
+  const nextStepSummary = explanation?.nextStepSummary || explanation?.aiResponse?.result?.next_step_summary || '';
+  const recommendedPrograms = explanation?.recommendedPrograms || explanation?.aiResponse?.result?.recommended_programs || [];
+  const normalizedShortSummary = formatRecommendationExplanationText(shortSummary, job.score);
+
+  useEffect(() => {
+    if (selectedTab !== 'accessibility') {
+      return undefined;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      setScoreRingAnimationKey((key) => key + 1);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [job.id, job.score, selectedTab]);
 
   return (
     <aside className="accessibility-map__detail-panel" aria-label="공고 상세 패널">
@@ -56,9 +270,7 @@ export function AccessibilityMapDetailPanel({
             {job.badges.map((badge) => (
               <span
                 key={badge}
-                className={`accessibility-map__mini-badge ${
-                  badge === '공공' ? 'is-public' : badge.includes('등급') ? 'is-grade' : 'is-workplace'
-                }`}
+                className={`accessibility-map__mini-badge ${getMiniBadgeClassName(badge)}`}
               >
                 {badge}
               </span>
@@ -90,15 +302,6 @@ export function AccessibilityMapDetailPanel({
           >
             공고정보
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={selectedTab === 'company'}
-            className={`accessibility-map__tab-button${selectedTab === 'company' ? ' is-active' : ''}`}
-            onClick={() => onChangeTab('company')}
-          >
-            기업정보
-          </button>
         </div>
       </header>
 
@@ -123,77 +326,47 @@ export function AccessibilityMapDetailPanel({
           </>
         ) : null}
 
-        {selectedTab === 'company' ? (
-          <>
-            <div className="accessibility-map__company-card">
-              {job.companyInfo.logoUrl ? (
-                <img
-                  className="accessibility-map__company-logo"
-                  src={job.companyInfo.logoUrl}
-                  alt={`${job.companyInfo.name} 로고`}
-                  loading="lazy"
-                  decoding="async"
-                />
-              ) : (
-                <div className="accessibility-map__company-logo-fallback" aria-hidden="true" />
-              )}
-              <div>
-                <strong>{job.companyInfo.name}</strong>
-                <p>{job.companyInfo.type}</p>
-              </div>
-            </div>
-            <section className="accessibility-map__detail-section">
-              <h3>사업장 주소</h3>
-              <div className="accessibility-map__muted-box">{job.companyInfo.address}</div>
-            </section>
-            <div className="accessibility-map__company-grid">
-              <div className="accessibility-map__muted-box">
-                <span>기업 형태</span>
-                <strong>{job.companyInfo.type}</strong>
-              </div>
-              <div className="accessibility-map__muted-box is-accent">
-                <span>표준사업장</span>
-                <strong>{job.companyInfo.workplaceType}</strong>
-              </div>
-            </div>
-            <section className="accessibility-map__detail-section">
-              <h3>장애인 고용 현황</h3>
-              <div className="accessibility-map__hiring-card">
-                <div className="accessibility-map__hiring-header">
-                  <strong>{job.companyInfo.hiringRate}</strong>
-                  <span>법정 의무율 {job.companyInfo.legalRate}</span>
-                </div>
-                <p>{job.companyInfo.hiringSummary}</p>
-              </div>
-            </section>
-          </>
-        ) : null}
-
         {selectedTab === 'accessibility' ? (
           <>
             <section className="accessibility-map__score-card">
               <div className="accessibility-map__score-header">
-                <h3>접근성 점수</h3>
-                <button type="button" className="accessibility-map__question-button" aria-label="접근성 점수 안내">
-                  ?
-                </button>
+                <div className="accessibility-map__score-title">
+                  <h3>접근성 점수</h3>
+                  <AccessibilityScoreHelpButton />
+                </div>
+                <span className={`accessibility-map__score-badge is-${scoreTone}`}>{getDisplayGradeFromScore(job.score)}</span>
               </div>
               <div className="accessibility-map__score-body">
-                <div className="accessibility-map__score-ring">
-                  <strong>{job.score}</strong>
-                  <span>{typeof job.score === 'number' ? '/ 100' : ''}</span>
-                </div>
+                <ScoreRing className={`accessibility-map__score-ring is-${scoreTone}`} score={job.score} animationKey={scoreRingAnimationKey} />
                 <div className="accessibility-map__score-summary">
-                  <span className="accessibility-map__score-badge">{accessibility.panelBadge}</span>
-                  <strong>{accessibility.headline}</strong>
-                  <p>{accessibility.description}</p>
+                  {explanationViewState === 'loading' ? (
+                    <LlmExplanationProgress
+                      className="llm-explanation-progress--score"
+                      title="추천 요약 생성 중"
+                      description="접근성 점수 근거와 지원 전 확인할 내용을 정리하고 있습니다."
+                    />
+                  ) : null}
+                  {explanationViewState === 'error' ? (
+                    <p role="alert">{explanationErrorMessage || '추천 요약을 불러오지 못했습니다.'}</p>
+                  ) : null}
+                  {explanationViewState === 'success' ? (
+                    <>
+                      <span className="jobs-detail__eyebrow">추천 요약</span>
+                      <strong>{normalizedShortSummary || '추천 설명을 확인했습니다.'}</strong>
+                    </>
+                  ) : null}
+                  {explanationViewState !== 'loading' && explanationViewState !== 'error' && explanationViewState !== 'success' ? (
+                    <strong>추천 요약을 불러오면 이곳에 표시됩니다.</strong>
+                  ) : null}
                 </div>
               </div>
-              <div className="accessibility-map__score-stats">
-                <span><MetaIcon type="time" /> {accessibility.commuteStats[0]}</span>
-                <span><MetaIcon type="transfer" /> {accessibility.commuteStats[1]}</span>
-                <span><MetaIcon type="walk" /> {accessibility.commuteStats[2]}</span>
-              </div>
+              {visibleCommuteStats.length ? (
+                <div className="accessibility-map__score-stats">
+                  {visibleCommuteStats.map(([type, value]) => (
+                    <span key={type}><MetaIcon type={type} /> {value}</span>
+                  ))}
+                </div>
+              ) : null}
               <div className="accessibility-map__score-legend">
                 <span className="is-good">문제 없음</span>
                 <span className="is-warning">주의</span>
@@ -203,39 +376,11 @@ export function AccessibilityMapDetailPanel({
             </section>
 
             <section className="accessibility-map__detail-section">
-              <h3>추천 설명</h3>
-              {explanationViewState === 'loading' ? (
-                <div className="accessibility-map__muted-box jobs-feedback--animated-dots" role="status" aria-live="polite">
-                  로딩중
-                  <span className="jobs-feedback__dots" aria-hidden="true" />
-                </div>
-              ) : null}
-              {explanationViewState === 'error' ? (
-                <div className="accessibility-map__muted-box" role="alert">
-                  {explanationErrorMessage || '추천 설명을 불러오지 못했습니다.'}
-                </div>
-              ) : null}
-              {explanationViewState === 'success' ? (
-                <div className="jobs-detail__explanation-card">
-                  <strong>{shortSummary || '추천 설명을 확인했습니다.'}</strong>
-                  <ul className="jobs-detail__status-list">
-                    {[...recommendationReasons, ...cautionPoints, ...checklist].map((item, index) => (
-                      <li key={`${item}-${index}`}>
-                        <span>{index < recommendationReasons.length ? '추천 이유' : index < recommendationReasons.length + cautionPoints.length ? '주의점' : '체크리스트'}</span>
-                        <p>{item}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </section>
-
-            <section className="accessibility-map__detail-section">
-              <h3>상세정보</h3>
+              <h3>상세정보 요약</h3>
               <ul className="accessibility-map__accessibility-list">
                 {accessibility.detailItems.map(([title, description, status]) => (
                   <li key={`${title}-${status}`}>
-                    <img className="accessibility-map__warning-icon" src={warningIcon} alt="접근성 상태 아이콘" loading="lazy" decoding="async" />
+                    <AccessibilityDetailIcon title={title} status={status} />
                     <div>
                       <strong>{title}</strong>
                       <p>{description}</p>
@@ -246,6 +391,31 @@ export function AccessibilityMapDetailPanel({
               </ul>
             </section>
 
+            {recommendedPrograms.length ? (
+              <section className="accessibility-map__detail-section">
+                <div className="jobs-detail__explanation-card">
+                  <section className="jobs-detail__explanation-section">
+                    <h4>이런 준비가 도움이 될 수 있어요</h4>
+                    {nextStepSummary ? <p>{nextStepSummary}</p> : null}
+                    <strong className="jobs-detail__subheading">추천 프로그램</strong>
+                    <ul className="jobs-detail__program-list">
+                      {recommendedPrograms.map((program, index) => (
+                        <li key={`${program.sourceType || program.source_type}-${program.recordId || program.record_id}-${program.title}-${index}`}>
+                          <strong>{program.title}</strong>
+                          {program.reason ? <p>{program.reason}</p> : null}
+                          {program.providerName || program.provider_name || program.startDate || program.start_date ? (
+                            <span>
+                              {[program.providerName || program.provider_name, program.startDate || program.start_date].filter(Boolean).join(' · ')}
+                            </span>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                </div>
+              </section>
+            ) : null}
+
             <div className="accessibility-map__source-note">
               <img src={infoIcon} alt="데이터 출처 안내 아이콘" loading="lazy" decoding="async" />
               <span><strong>데이터 출처</strong> · {accessibility.source.replace('데이터 출처 · ', '')}</span>
@@ -255,18 +425,19 @@ export function AccessibilityMapDetailPanel({
       </div>
 
       <footer className="accessibility-map__action-bar">
-        <button type="button" className="accessibility-map__icon-action" aria-label="관심 공고 저장 API 확인 필요" disabled>
-          ♡
-        </button>
+        {scrapErrorMessage ? (
+          <div className="accessibility-map__scrap-error" role="alert">{scrapErrorMessage}</div>
+        ) : null}
         <button
           type="button"
-          className="secondary-button accessibility-map__route-button"
-          disabled={!job.companyInfo.address || job.companyInfo.address === '-'}
-          onClick={() => openNaverMapSearch(job.companyInfo.address)}
+          className="primary-button accessibility-map__scrap-button"
+          aria-label={job.scrappedByMe ? '스크랩 취소 확인 열기' : '공고 스크랩'}
+          disabled={!job.postingId}
+          onClick={onScrap}
         >
-          경로 안내
+          {!job.postingId ? '스크랩 불가' : job.scrappedByMe ? '스크랩 완료' : '공고 스크랩'}
         </button>
-        <button type="button" className="primary-button accessibility-map__apply-button" disabled>
+        <button type="button" className="secondary-button accessibility-map__apply-button" disabled>
           지원 정보 확인 필요
         </button>
       </footer>

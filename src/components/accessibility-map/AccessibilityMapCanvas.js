@@ -42,28 +42,63 @@ function getSafeMarkerType(type) {
   return ['office', 'support-agency'].includes(type) ? type : 'support-agency';
 }
 
+function getSafeOfficeMarkerTone(tone) {
+  return ['good', 'warning', 'danger'].includes(tone) ? tone : 'warning';
+}
+
 function createMarkerElement(marker) {
   const markerType = getSafeMarkerType(marker.type);
+  if (markerType === 'support-agency') {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'accessibility-map__company-marker is-support-agency';
+    wrapper.setAttribute('aria-hidden', 'true');
+
+    const image = document.createElement('img');
+    image.src = companyMapMarker;
+    image.alt = '근로지원기관 위치 마커 아이콘';
+
+    const label = document.createElement('span');
+    label.textContent = marker.displayLabel || marker.label || '';
+
+    wrapper.append(image, label);
+    return wrapper;
+  }
+
+  const tone = getSafeOfficeMarkerTone(marker.tone);
   const wrapper = document.createElement('div');
-  wrapper.className = `accessibility-map__company-marker is-${markerType}`;
+  wrapper.className = `accessibility-map__job-map-marker is-${tone}${marker.isSelected ? ' is-selected' : ''}`;
   wrapper.setAttribute('aria-hidden', 'true');
 
-  const image = document.createElement('img');
-  image.src = companyMapMarker;
-  image.alt = markerType === 'office' ? '회사 위치 마커 아이콘' : '근로지원기관 위치 마커 아이콘';
+  const dot = document.createElement('span');
+  dot.className = 'accessibility-map__job-map-marker-dot';
 
-  const label = document.createElement('span');
-  label.textContent = marker.displayLabel || marker.label || '';
+  const label = document.createElement('strong');
+  label.textContent = marker.displayLabel || marker.label || '회사';
 
-  wrapper.append(image, label);
+  const divider = document.createElement('span');
+  divider.className = 'accessibility-map__job-map-marker-divider';
+
+  const score = document.createElement('em');
+  score.textContent = typeof marker.score === 'number' ? String(marker.score) : '확인';
+
+  wrapper.append(dot, label, divider, score);
   return wrapper;
 }
 
 function createMarkerIcon(marker) {
-  if (marker.type === 'office' || marker.type === 'support-agency') {
+  if (marker.type === 'support-agency') {
     return {
       content: createMarkerElement(marker),
       anchor: new window.naver.maps.Point(90, 25)
+    };
+  }
+
+  if (marker.type === 'office') {
+    return {
+      content: createMarkerElement(marker),
+      anchor: marker.isSelected
+        ? new window.naver.maps.Point(76, 54)
+        : new window.naver.maps.Point(76, 22)
     };
   }
 
@@ -130,6 +165,7 @@ function AccessibilityMapCanvasComponent({
   onSelectProfile,
   onRequireLogin,
   onRequestCurrentLocation,
+  onSelectMarker,
   onToggleSupportAgencies,
   onRetry
 }) {
@@ -322,15 +358,23 @@ function AccessibilityMapCanvasComponent({
 
     markerRefs.current.forEach((marker) => marker.setMap(null));
     markerRefs.current = renderableMarkers
-      .map((marker) =>
-        new window.naver.maps.Marker({
+      .map((marker) => {
+        const mapMarker = new window.naver.maps.Marker({
           position: new window.naver.maps.LatLng(Number(marker.lat), Number(marker.lng)),
           map: mapInstanceRef.current,
           title: marker.label,
           icon: createMarkerIcon(marker)
-        })
-      );
-  }, [mapScriptStatus, renderableMarkers, viewState]);
+        });
+
+        if (marker.type === 'office') {
+          window.naver.maps.Event.addListener(mapMarker, 'click', () => {
+            onSelectMarker?.(marker.id);
+          });
+        }
+
+        return mapMarker;
+      });
+  }, [mapScriptStatus, onSelectMarker, renderableMarkers, viewState]);
 
   useEffect(
     () => () => {
@@ -525,15 +569,15 @@ function AccessibilityMapCanvasComponent({
           ) : null}
         </div>
       ) : null}
+      <img
+        className="accessibility-map__score-panel-image"
+        src={accessibilityScorePanel}
+        alt="접근성 점수 기준: A 80 이상, B 60~79, C 60 미만"
+        loading="lazy"
+        decoding="async"
+      />
       {hasAppliedConditions ? (
         <>
-          <img
-            className="accessibility-map__score-panel-image"
-            src={accessibilityScorePanel}
-            alt="접근성 점수 기준: A 80 이상, B 60~79, C 60 미만"
-            loading="lazy"
-            decoding="async"
-          />
           <label className="accessibility-map__support-agency-toggle">
             <input
               type="checkbox"

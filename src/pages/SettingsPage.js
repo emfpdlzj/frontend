@@ -21,38 +21,10 @@ import { useLocale } from '../i18n/LocaleContext';
 const settingsMenu = [
   { id: 'account', label: '계정', group: '자주 사용' },
   { id: 'accessibility', label: '접근성', group: '자주 사용' },
-  { id: 'notifications', label: '알림', group: '자주 사용' },
   { id: 'privacy', label: '내 데이터', group: '개인정보' },
   { id: 'support', label: '고객센터', group: '도움말' },
   { id: 'policies', label: '약관', group: '정보' },
   { id: 'danger', label: '회원탈퇴', group: '위험' }
-];
-
-const notificationGroups = [
-  {
-    title: '중요 알림',
-    description: '계정 보안, 서비스 공지, 인증 관련 알림입니다.',
-    items: [
-      ['emailNotification', '이메일 알림', '보안 및 계정 알림'],
-      ['smsNotification', '문자 알림', '인증과 긴급 안내'],
-      ['kakaoNotification', '카카오 알림톡', '주요 서비스 안내'],
-      ['serviceNoticeNotification', '서비스 공지', '장애, 보안, 약관 변경']
-    ]
-  },
-  {
-    title: '추천 알림',
-    description: '프로필과 관심 공고를 기준으로 받는 알림입니다.',
-    items: [
-      ['recommendationNotification', '추천 공고', '선택 프로필 기준 새 공고'],
-      ['deadlineNotification', '공고 마감', '관심 공고 마감 전 안내'],
-      ['accessibilityUpdateNotification', '접근성 정보 업데이트', '지도 및 공공데이터 갱신']
-    ]
-  },
-  {
-    title: '선택 수신',
-    description: '서비스 소식과 이벤트성 안내입니다. 언제든 철회할 수 있습니다.',
-    items: [['marketingConsent', '마케팅 정보 수신', '선택 동의 항목']]
-  }
 ];
 
 const privacyItems = [
@@ -201,7 +173,7 @@ function AccountField({ id, label, type, value, readOnly = false }) {
   return (
     <label className="settings-field settings-field--compact" htmlFor={id}>
       <span>{label}</span>
-      <input id={id} type={type} value={value} readOnly={readOnly} aria-readonly={readOnly} />
+      <input id={id} type={type} value={value ?? ''} readOnly={readOnly} aria-readonly={readOnly} />
     </label>
   );
 }
@@ -507,31 +479,6 @@ export function SettingsPage() {
 
           </SettingsSection>
 
-          <SettingsSection id="notifications" title="알림 설정" description="알림은 중요도와 사용 목적에 따라 나누어 관리합니다." tone="primary">
-            <div className="settings-notification-groups">
-              {notificationGroups.map((group) => (
-                <section key={group.title} className="settings-notification-group" aria-labelledby={`${group.title}-title`}>
-                  <div className="settings-notification-group__header">
-                    <h3 id={`${group.title}-title`}>{group.title}</h3>
-                    <p>{group.description}</p>
-                  </div>
-                  <div className="settings-toggle-list settings-toggle-list--rows">
-                    {group.items.map(([key, label, description]) => (
-                      <SettingsToggle
-                        key={key}
-                        id={key}
-                        label={label}
-                        description={description}
-                        checked={preferences[key]}
-                        onChange={(value) => handlePreferenceChange(key, value)}
-                      />
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          </SettingsSection>
-
           <SettingsSection id="privacy" title="내 데이터 관리" description="동의 상태와 데이터 요청을 한곳에서 확인합니다.">
             <div className="settings-data-layout">
               <div className="settings-consent-grid">
@@ -591,7 +538,7 @@ export function SettingsPage() {
                   aria-label="카톡 상담채널 새 창으로 열기"
                 >
                   <img src={kakaoLogo} alt="카카오톡 아이콘" />
-                  카톡 상담채널
+                  카톡상담채널
                 </a>
                 <span>
                   문의 메일:{' '}

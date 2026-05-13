@@ -1,3 +1,6 @@
+import { LlmExplanationProgress } from '../common/LlmExplanationProgress';
+import { formatRecommendationExplanationList, formatRecommendationExplanationText } from '../../utils/recommendationExplanationText';
+
 const tabItems = [
   ['job', '공고 정보'],
   ['match', '직무 적합도'],
@@ -14,7 +17,7 @@ const checklistLabels = {
   requirements: '공고 요구조건 확인 여부'
 };
 
-function DefinitionGrid({ items }) {
+export function DefinitionGrid({ items }) {
   return (
     <dl className="jobs-detail__definition-grid">
       {items.map(([label, value]) => (
@@ -31,14 +34,16 @@ function NoticeBox({ children }) {
   return <div className="jobs-detail__notice">{children}</div>;
 }
 
-function normalizeExplanation(explanation) {
+function normalizeExplanation(explanation, score) {
   const result = explanation?.aiResponse?.result || {};
 
   return {
-    shortSummary: explanation?.shortSummary || result.short_summary || '',
-    recommendationReasons: explanation?.recommendationReasons || result.recommendation_reasons || [],
-    cautionPoints: explanation?.cautionPoints || result.caution_points || [],
-    checklist: explanation?.checklist || result.checklist || []
+    shortSummary: formatRecommendationExplanationText(explanation?.shortSummary || result.short_summary || '', score),
+    recommendationReasons: formatRecommendationExplanationList(explanation?.recommendationReasons || result.recommendation_reasons || [], score),
+    cautionPoints: formatRecommendationExplanationList(explanation?.cautionPoints || result.caution_points || [], score),
+    checklist: formatRecommendationExplanationList(explanation?.checklist || result.checklist || [], score),
+    nextStepSummary: formatRecommendationExplanationText(explanation?.nextStepSummary || result.next_step_summary || '', score),
+    recommendedPrograms: explanation?.recommendedPrograms || result.recommended_programs || []
   };
 }
 
@@ -98,12 +103,12 @@ export function JobDetailPanel({
     ['인증 상태', job.companyInfo.certification],
     ['담당기관', job.companyInfo.agency]
   ];
-  const llmExplanation = normalizeExplanation(explanation);
-  const llmExplanationItems = [
-    ...llmExplanation.recommendationReasons.map((text) => ['추천 이유', text]),
-    ...llmExplanation.cautionPoints.map((text) => ['주의점', text]),
-    ...llmExplanation.checklist.map((text) => ['체크리스트', text])
-  ];
+  const llmExplanation = normalizeExplanation(explanation, job.match?.score);
+  const llmExplanationSections = [
+    ['왜 추천되었나요?', llmExplanation.recommendationReasons],
+    ['지원 전에 확인해보면 좋아요', llmExplanation.checklist],
+    ['참고해주세요', llmExplanation.cautionPoints]
+  ].filter(([, items]) => items.length);
 
   return (
     <aside className="jobs-detail" aria-label="선택된 공고 상세">
@@ -198,23 +203,46 @@ export function JobDetailPanel({
             <section className="jobs-detail__section" aria-label="AI 추천 설명">
               <h3>AI 추천 설명</h3>
               {explanationViewState === 'loading' ? (
-                <NoticeBox>추천 설명을 불러오는 중입니다.</NoticeBox>
+                <LlmExplanationProgress description="공고 조건, 프로필 적합도, 확인 필요 항목을 정리하고 있습니다." />
               ) : null}
               {explanationViewState === 'error' ? (
                 <NoticeBox>{explanationErrorMessage || '추천 설명을 불러오지 못했습니다.'}</NoticeBox>
               ) : null}
               {explanationViewState === 'success' ? (
-                llmExplanationItems.length ? (
+                llmExplanationSections.length ? (
                   <div className="jobs-detail__explanation-card">
+                    <span className="jobs-detail__eyebrow">추천 요약</span>
                     <strong>{llmExplanation.shortSummary || '추천 설명을 확인했습니다.'}</strong>
-                    <ul className="jobs-detail__status-list">
-                      {llmExplanationItems.map(([label, text], index) => (
-                        <li key={`${label}-${text}-${index}`}>
-                          <span>{label}</span>
-                          <p>{text}</p>
-                        </li>
-                      ))}
-                    </ul>
+                    {llmExplanationSections.map(([title, items]) => (
+                      <section className="jobs-detail__explanation-section" key={title}>
+                        <h4>{title}</h4>
+                        <ul>
+                          {items.map((text, index) => (
+                            <li key={`${title}-${text}-${index}`}>{text}</li>
+                          ))}
+                        </ul>
+                      </section>
+                    ))}
+                    {llmExplanation.recommendedPrograms.length ? (
+                      <section className="jobs-detail__explanation-section">
+                        <h4>이런 준비가 도움이 될 수 있어요</h4>
+                        {llmExplanation.nextStepSummary ? <p>{llmExplanation.nextStepSummary}</p> : null}
+                        <strong className="jobs-detail__subheading">추천 프로그램</strong>
+                        <ul className="jobs-detail__program-list">
+                          {llmExplanation.recommendedPrograms.map((program, index) => (
+                            <li key={`${program.sourceType || program.source_type}-${program.recordId || program.record_id}-${program.title}-${index}`}>
+                              <strong>{program.title}</strong>
+                              {program.reason ? <p>{program.reason}</p> : null}
+                              {program.providerName || program.provider_name || program.startDate || program.start_date ? (
+                                <span>
+                                  {[program.providerName || program.provider_name, program.startDate || program.start_date].filter(Boolean).join(' · ')}
+                                </span>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    ) : null}
                   </div>
                 ) : (
                   <NoticeBox>추천 설명 세부 항목이 없습니다. 공고 정보와 적합도 점수를 함께 확인해주세요.</NoticeBox>

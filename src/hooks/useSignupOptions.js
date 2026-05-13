@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { optionsApi } from '../api/optionsApi';
+import { getNextDailyCacheExpiryAt, isDailyCacheExpired } from '../cache/dailyCacheExpiry';
 import { STORAGE_KEYS } from '../config/appConfig';
 import { toJobCategories } from '../utils/jobCategories';
 
@@ -11,17 +12,6 @@ const initialState = {
   error: '',
   employmentTypes: [],
   jobCategories: []
-};
-
-const getNextCacheExpiryAt = (now = new Date()) => {
-  const nextExpiry = new Date(now);
-  nextExpiry.setHours(2, 0, 0, 0);
-
-  if (now.getTime() >= nextExpiry.getTime()) {
-    nextExpiry.setDate(nextExpiry.getDate() + 1);
-  }
-
-  return nextExpiry.getTime();
 };
 
 const isValidOptionsData = (data) =>
@@ -46,7 +36,7 @@ const readCachedSignupOptions = () => {
 
     const cached = JSON.parse(raw);
 
-    if (cached?.version !== CACHE_VERSION || !isValidOptionsData(cached?.data) || Date.now() >= cached.expiresAt) {
+    if (cached?.version !== CACHE_VERSION || !isValidOptionsData(cached?.data) || isDailyCacheExpired(cached.expiresAt)) {
       window.localStorage.removeItem(STORAGE_KEYS.signupOptionsCache);
       return null;
     }
@@ -59,7 +49,7 @@ const readCachedSignupOptions = () => {
 };
 
 const writeCachedSignupOptions = (data) => {
-  const expiresAt = getNextCacheExpiryAt();
+  const expiresAt = getNextDailyCacheExpiryAt();
 
   try {
     window.localStorage.setItem(

@@ -4,6 +4,7 @@ import { postingApi } from '../api/postingApi';
 import { profileApi } from '../api/profileApi';
 import { explainRecommendation, fetchQuickJobRecommendations, fetchRecommendTaskStatus } from '../api/recommendApi';
 import { useAuth } from '../auth/AuthContext';
+import { getNextDailyCacheExpiryAt, isDailyCacheExpired } from '../cache/dailyCacheExpiry';
 import { getCachedRecommendation, getRecommendationCacheKey, setCachedRecommendation } from '../cache/recommendationCache';
 import { useJobFilterOptions } from '../hooks/useJobFilterOptions';
 import arrowDown from '../assets/accessibility-map/arrow_down.png';
@@ -11,14 +12,19 @@ import profileIcon from '../assets/accessibility-map/profile-icon.png';
 import settingIcon from '../assets/accessibility-map/setting-icon.png';
 import { ROUTE_PATHS } from '../config/routes';
 import { useLocale } from '../i18n/LocaleContext';
+import { formatRecommendationExplanationList, formatRecommendationExplanationText } from '../utils/recommendationExplanationText';
 import { getProfileScoringSignature } from '../utils/profileScoringSignature';
 import { filterAccessibilityMapJobs } from '../hooks/useAccessibilityMap';
 import { LoginModal } from '../components/auth/LoginModal';
+import { DefinitionGrid } from '../components/jobs/JobDetailPanel';
+import { AccessibilityScoreHelpButton } from '../components/accessibility-map/AccessibilityMapDetailPanel';
+import { LlmExplanationProgress } from '../components/common/LlmExplanationProgress';
 
 const FILTER_ALL_VALUE = '전체';
 const RECOMMEND_TASK_POLL_INTERVAL_MS = 2500;
+const POPULAR_AUTOPLAY_INTERVAL_MS = 3600;
 const QUICK_PENDING_TASK_STORAGE_KEY = 'bridgework.quick.pending.task';
-const QUICK_EXPLAIN_CACHE_STORAGE_KEY = 'bridgework.quick.explain.cache.v1';
+const QUICK_EXPLAIN_CACHE_STORAGE_KEY = 'bridgework.quick.explain.cache.v2';
 
 const delay = (ms) =>
   new Promise((resolve) => {
@@ -55,7 +61,11 @@ const readPendingQuickTask = () => {
       return null;
     }
     const parsed = JSON.parse(raw);
-    return parsed?.requestId ? parsed : null;
+    if (!parsed?.requestId || isDailyCacheExpired(parsed.expiresAt)) {
+      window.localStorage.removeItem(QUICK_PENDING_TASK_STORAGE_KEY);
+      return null;
+    }
+    return parsed;
   } catch (error) {
     return null;
   }
@@ -70,6 +80,7 @@ const writePendingQuickTask = (requestId, profileId, aiEnabled, filters) => {
         profileId,
         aiEnabled,
         filters,
+        expiresAt: getNextDailyCacheExpiryAt(),
         updatedAt: Date.now()
       })
     );
@@ -93,7 +104,21 @@ const readQuickExplainCache = () => {
       return {};
     }
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    if (!parsed || typeof parsed !== 'object') {
+      return {};
+    }
+
+    const entries = Object.entries(parsed).filter(([, entry]) => (
+      entry &&
+      typeof entry === 'object' &&
+      !isDailyCacheExpired(entry.expiresAt) &&
+      entry.payload
+    ));
+    const nextCache = Object.fromEntries(entries);
+    if (entries.length !== Object.keys(parsed).length) {
+      window.localStorage.setItem(QUICK_EXPLAIN_CACHE_STORAGE_KEY, JSON.stringify(nextCache));
+    }
+    return nextCache;
   } catch (error) {
     return {};
   }
@@ -104,7 +129,7 @@ const getCachedQuickExplain = (cacheKey) => {
     return null;
   }
   const cache = readQuickExplainCache();
-  return cache[cacheKey] || null;
+  return cache[cacheKey]?.payload || null;
 };
 
 const setCachedQuickExplain = (cacheKey, payload) => {
@@ -112,7 +137,10 @@ const setCachedQuickExplain = (cacheKey, payload) => {
     return;
   }
   const cache = readQuickExplainCache();
-  cache[cacheKey] = payload;
+  cache[cacheKey] = {
+    expiresAt: getNextDailyCacheExpiryAt(),
+    payload
+  };
   try {
     window.localStorage.setItem(QUICK_EXPLAIN_CACHE_STORAGE_KEY, JSON.stringify(cache));
   } catch (error) {
@@ -481,9 +509,9 @@ const buildQuickExplainPayload = ({ job, profile, detail }) => {
     profile: explainProfile,
     job: explainJob,
     job_fit_score: typeof job?.fitScore === 'number' ? job.fitScore : null,
-    reasons: [],
-    risk_factors: [],
-    evidence_items: []
+    reasons: normalizeQuickList(job?.recommendationReasons),
+    risk_factors: normalizeQuickList(job?.riskFactors),
+    evidence_items: normalizeQuickEvidenceItems(job?.evidenceItems)
   };
 };
 
@@ -525,14 +553,107 @@ const toQuickFallbackDetail = (job) => ({
   statusUpdatedAt: '없음',
   createdAt: '없음',
   updatedAt: '없음',
-  scrapCount: 0,
-  scrappedByMe: false
+  scrapCount: Number(job?.scrapCount || 0),
+  scrappedByMe: Boolean(job?.scrappedByMe)
 });
 
 const getQuickFitScore = (item) => {
   const score = item?.job_fit_score ?? item?.jobFitScore ?? item?.score;
   return typeof score === 'number' && Number.isFinite(score) ? score : null;
 };
+
+function normalizeQuickList(value) {
+  return Array.isArray(value) ? value.filter(Boolean) : [];
+}
+
+function normalizeQuickEvidenceItems(value) {
+  return normalizeQuickList(value).map((item) => ({
+    source_type: item?.source_type || item?.sourceType || '',
+    source_name: item?.source_name || item?.sourceName || '',
+    description: item?.description || '',
+    distance_meters: item?.distance_meters ?? item?.distanceMeters ?? null,
+    source_table: item?.source_table || item?.sourceTable || null,
+    record_id: item?.record_id ?? item?.recordId ?? null,
+    fields: item?.fields && typeof item.fields === 'object' ? item.fields : {}
+  })).filter((item) => item.source_type && item.source_name);
+}
+
+
+const getQuickGrade = (score) => {
+  if (typeof score !== 'number' || !Number.isFinite(score)) {
+    return null;
+  }
+  if (score >= 80) {
+    return 'A등급';
+  }
+  if (score >= 60) {
+    return 'B등급';
+  }
+  return 'C등급';
+};
+
+const getQuickGradeClassName = (grade) => {
+  if (grade === 'A등급') {
+    return 'is-grade-a';
+  }
+  if (grade === 'B등급') {
+    return 'is-grade-b';
+  }
+  if (grade === 'C등급') {
+    return 'is-grade-c';
+  }
+  return '';
+};
+
+const getQuickScoreTone = (score) => {
+  if (typeof score !== 'number' || !Number.isFinite(score)) {
+    return 'neutral';
+  }
+  if (score >= 80) {
+    return 'good';
+  }
+  if (score >= 60) {
+    return 'warning';
+  }
+  return 'danger';
+};
+
+const getQuickScoreHeadline = (score) => {
+  if (typeof score !== 'number' || !Number.isFinite(score)) {
+    return '확인 필요';
+  }
+  if (score >= 80) {
+    return '높은 적합도';
+  }
+  if (score >= 60) {
+    return '검토 가능';
+  }
+  return '추가 확인 필요';
+};
+
+const getScoreRingOffset = (score) => {
+  if (typeof score !== 'number' || !Number.isFinite(score)) {
+    return 100;
+  }
+  return 100 - Math.max(0, Math.min(100, score));
+};
+
+function ScoreRing({ className, score }) {
+  return (
+    <div
+      className={className}
+      style={{ '--score-ring-offset': String(getScoreRingOffset(score)) }}
+      aria-label={typeof score === 'number' ? `${score}점` : '점수 확인 필요'}
+    >
+      <svg className="score-ring__chart" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+        <circle className="score-ring__track" cx="60" cy="60" r="52" />
+        <circle className="score-ring__value" cx="60" cy="60" r="52" pathLength="100" />
+      </svg>
+      <strong>{typeof score === 'number' ? score : '-'}</strong>
+      <span>{typeof score === 'number' ? '/ 100' : ''}</span>
+    </div>
+  );
+}
 
 const normalizeQuickJob = (item, index) => {
   const job = item?.job || item;
@@ -549,6 +670,9 @@ const normalizeQuickJob = (item, index) => {
   const termDate = job?.term_date || job?.termDate || '';
   const registeredAt = job?.registered_at || job?.registeredAt || '';
   const fitScore = getQuickFitScore(item);
+  const fitGrade = getQuickGrade(fitScore);
+  const fitTone = getQuickScoreTone(fitScore);
+  const scrapCount = Number(item?.scrapCount ?? item?.scrap_count ?? job?.scrapCount ?? job?.scrap_count ?? 0);
 
   return {
     id: String(externalId || `${companyName}-${jobTitle}-${index}`),
@@ -566,6 +690,13 @@ const normalizeQuickJob = (item, index) => {
     registeredDateText: parseDateText(registeredAt),
     fitScore,
     fitLabel: typeof fitScore === 'number' ? `${fitScore}점` : '없음',
+    fitGrade,
+    fitTone,
+    scrapCount: Number.isFinite(scrapCount) ? scrapCount : 0,
+    scrappedByMe: Boolean(item?.scrappedByMe ?? item?.scrapped_by_me ?? job?.scrappedByMe ?? job?.scrapped_by_me),
+    recommendationReasons: normalizeQuickList(item?.reasons || item?.recommendationReasons),
+    riskFactors: normalizeQuickList(item?.risk_factors || item?.riskFactors),
+    evidenceItems: normalizeQuickEvidenceItems(item?.evidence_items || item?.evidenceItems || job?.evidence_items || job?.evidenceItems),
     totalMinutes: item?.total_minutes ?? item?.totalMinutes ?? scoreDetail?.total_minutes ?? scoreDetail?.totalMinutes ?? job?.total_minutes ?? job?.totalMinutes ?? null,
     workLatitude: job?.work_lat ?? job?.workLat ?? job?.geoLatitude ?? job?.geo_latitude ?? null,
     workLongitude: job?.work_lng ?? job?.workLng ?? job?.geoLongitude ?? job?.geo_longitude ?? null,
@@ -647,10 +778,20 @@ function HomeLoadingModal({ isOpen }) {
   return (
     <div className="home-loading-modal" role="status" aria-live="polite" aria-label="추천 결과를 준비하고 있습니다.">
       <div className="home-loading-modal__panel">
-        <strong>추천 결과를 준비하고 있습니다.</strong>
+        <div className="loading-spinner" aria-hidden="true" />
+        <h2>추천 결과를 준비하고 있습니다</h2>
         <p>요청이 끝날 때까지 페이지를 다시 열어도 진행 상태가 이어집니다.</p>
       </div>
     </div>
+  );
+}
+
+function PostingDetailInfoSection({ title, children }) {
+  return (
+    <section className="scrap-detail-card posting-detail-modal__info-section">
+      <h3>{title}</h3>
+      {children}
+    </section>
   );
 }
 
@@ -663,6 +804,43 @@ function PopularPostingDetailModal({
   onClose,
   onScrap
 }) {
+  const scrapButtonLabel = !detail?.postingId ? '스크랩 불가' : detail?.scrappedByMe ? '스크랩 완료' : '공고 스크랩';
+  const isScrapDisabled = !detail?.postingId || detail?.scrappedByMe || detail?.postingStatus !== 'ACTIVE';
+  const hasQuickFitScore = typeof quickFitScore === 'number';
+  const deadlineText = detail ? parseDateText(detail.termDate) || '없음' : '';
+  const registeredText = detail ? detail.offerRegisteredAt || detail.registeredAt || '없음' : '';
+  const summaryItems = detail ? [
+    ['근무지', detail.workAddress],
+    ['연락처', detail.contactNumber],
+    ['임금', detail.salaryText],
+    ['모집마감일', deadlineText]
+  ] : [];
+  const workConditionItems = detail ? [
+    ['고용형태', detail.employmentType],
+    ['입사유형', detail.enterType],
+    ['공고등록일', registeredText],
+    ['담당기관', detail.agencyName],
+    ['매칭 주소', detail.geoMatchedAddress]
+  ] : [];
+  const workEnvironmentItems = detail ? [
+    ['양손 사용', detail.envBothHands],
+    ['시력', detail.envEyesight],
+    ['듣기·말하기', detail.envLstnTalk],
+    ['손작업', detail.envHandWork],
+    ['들어올리기', detail.envLiftPower],
+    ['서기·걷기', detail.envStndWalk]
+  ] : [];
+  const requirementItems = detail ? [
+    ['요구경력', detail.requiredCareer],
+    ['요구학력', detail.requiredEducation],
+    ['요구전공', detail.requiredMajor],
+    ['요구자격증', detail.requiredLicenses]
+  ] : [];
+  const formattedQuickSummary = formatRecommendationExplanationText(quickExplainState.data?.shortSummary, quickFitScore);
+  const formattedQuickNextStepSummary = formatRecommendationExplanationText(quickExplainState.data?.nextStepSummary, quickFitScore);
+  const formattedQuickChecklist = formatRecommendationExplanationList(quickExplainState.data?.checklist, quickFitScore);
+  const formattedQuickCautionPoints = formatRecommendationExplanationList(quickExplainState.data?.cautionPoints, quickFitScore);
+
   return (
     <div className="login-modal-backdrop" onMouseDown={(event) => {
       if (event.target === event.currentTarget) {
@@ -684,67 +862,100 @@ function PopularPostingDetailModal({
                 <p>{detail.companyName}</p>
               </div>
               <div className="posting-detail-modal__summary">
-                <span>{detail.postingStatus === 'ACTIVE' ? '진행중' : '마감'}</span>
-                <span>스크랩 {detail.scrapCount}건</span>
-                {detail.dueLabel ? <span>{detail.dueLabel}</span> : null}
+                <div className="posting-detail-modal__summary-meta">
+                  <span>{detail.postingStatus === 'ACTIVE' ? '진행중' : '마감'}</span>
+                  <span className="posting-detail-modal__scrap-count" aria-label={`스크랩 ${detail.scrapCount}건`}>
+                    <span>스크랩</span>
+                    <strong>{detail.scrapCount}</strong>
+                    <span>건</span>
+                  </span>
+                  {detail.dueLabel ? <span>{detail.dueLabel}</span> : null}
+                </div>
+                <button
+                  type="button"
+                  className="primary-button posting-detail-modal__scrap-button"
+                  disabled={isScrapDisabled}
+                  onClick={onScrap}
+                >
+                  {scrapButtonLabel}
+                </button>
               </div>
-              {(typeof quickFitScore === 'number' || quickExplainState.status !== 'idle') ? (
+              <section className="jobs-detail__summary posting-detail-modal__key-summary" aria-label="공고 핵심 요약">
+                {summaryItems.map(([label, value]) => (
+                  <div key={label}>
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                  </div>
+                ))}
+              </section>
+              {(hasQuickFitScore || quickExplainState.status !== 'idle') ? (
                 <section className="jobs-detail__section" aria-label="직무 적합도 및 추천 설명">
-                  <h3>AI 직무 적합도 및 추천 설명</h3>
-                  {typeof quickFitScore === 'number' ? (
+                  <div className="jobs-detail__section-title">
+                    <h3>AI 직무 적합도 및 추천 설명</h3>
+                    <AccessibilityScoreHelpButton />
+                  </div>
+                  {(hasQuickFitScore || quickExplainState.status !== 'idle') ? (
                     <div className="jobs-detail__score-card">
-                      <span>직무 적합도 점수</span>
-                      <strong>{quickFitScore}점</strong>
-                      <em>{quickFitScore >= 70 ? '적합' : '검토 필요'}</em>
+                      <ScoreRing className={`jobs-detail__score-ring is-${getQuickScoreTone(quickFitScore)}`} score={quickFitScore} />
+                      <div className="jobs-detail__score-summary">
+                        <span>직무 적합도 점수</span>
+                        <em>{hasQuickFitScore ? `${quickFitScore}점` : '확인 필요'}</em>
+                        <p>
+                          {hasQuickFitScore
+                            ? (quickFitScore >= 70 ? '프로필 직무와 공고 조건이 유사합니다.' : '지원 전 직무 조건 확인이 필요합니다.')
+                            : '추천 설명을 기준으로 공고 조건을 확인해 주세요.'}
+                        </p>
+                      </div>
                     </div>
                   ) : null}
                   {quickExplainState.status === 'loading' ? (
-                    <div className="jobs-feedback jobs-feedback--animated-dots" role="status" aria-live="polite">
-                      추천 설명을 불러오는 중입니다
-                      <span className="jobs-feedback__dots" aria-hidden="true" />
-                    </div>
+                    <LlmExplanationProgress description="공고 조건과 선택한 프로필 기준으로 추천 이유를 생성하고 있습니다." />
                   ) : null}
                   {quickExplainState.status === 'error' ? <div className="jobs-feedback is-error" role="alert">{quickExplainState.error}</div> : null}
                   {quickExplainState.status === 'success' && quickExplainState.data ? (
                     <>
-                      {quickExplainState.data.shortSummary ? (
-                        <div className="jobs-detail__notice">{quickExplainState.data.shortSummary}</div>
+                      {formattedQuickSummary ? (
+                        <div className="jobs-detail__notice jobs-detail__notice--quick">
+                          <span className="jobs-detail__eyebrow">추천 요약</span>
+                          <strong>{formattedQuickSummary}</strong>
+                        </div>
                       ) : null}
-                      {Array.isArray(quickExplainState.data.recommendationReasons) && quickExplainState.data.recommendationReasons.length ? (
-                        <div className="jobs-detail__section jobs-detail__explanation-card">
-                          <h3>추천 이유</h3>
-                          <ul className="jobs-detail__status-list">
-                            {quickExplainState.data.recommendationReasons.map((item) => (
-                              <li key={`reason-${item}`}>
-                                <span>추천 이유</span>
-                                <p>{item}</p>
+                      {Array.isArray(quickExplainState.data.recommendedPrograms) && quickExplainState.data.recommendedPrograms.length ? (
+                        <div className="jobs-detail__section jobs-detail__explanation-card jobs-detail__explanation-card--quick">
+                          <h3>이런 준비가 도움이 될 수 있어요</h3>
+                          {formattedQuickNextStepSummary ? <p>{formattedQuickNextStepSummary}</p> : null}
+                          <strong className="jobs-detail__subheading">교육·취업역량 추천</strong>
+                          <ul className="jobs-detail__program-list">
+                            {quickExplainState.data.recommendedPrograms.map((program, index) => (
+                              <li key={`${program.sourceType || program.source_type}-${program.recordId || program.record_id}-${program.title}-${index}`}>
+                                <strong>{program.title}</strong>
+                                {program.reason ? <p>{program.reason}</p> : null}
+                                {program.providerName || program.provider_name || program.startDate || program.start_date ? (
+                                  <span>
+                                    {[program.providerName || program.provider_name, program.startDate || program.start_date].filter(Boolean).join(' · ')}
+                                  </span>
+                                ) : null}
                               </li>
                             ))}
                           </ul>
                         </div>
                       ) : null}
-                      {Array.isArray(quickExplainState.data.cautionPoints) && quickExplainState.data.cautionPoints.length ? (
-                        <div className="jobs-detail__section jobs-detail__explanation-card">
-                          <h3>주의 사항</h3>
-                          <ul className="jobs-detail__status-list">
-                            {quickExplainState.data.cautionPoints.map((item) => (
-                              <li key={`caution-${item}`}>
-                                <span>주의</span>
-                                <p>{item}</p>
-                              </li>
+                      {formattedQuickChecklist.length ? (
+                        <div className="jobs-detail__section jobs-detail__explanation-card jobs-detail__explanation-card--quick">
+                          <h3>지원 전에 확인해보면 좋아요</h3>
+                          <ul className="jobs-detail__bullet-list">
+                            {formattedQuickChecklist.map((item) => (
+                              <li key={`check-${item}`}>{item}</li>
                             ))}
                           </ul>
                         </div>
                       ) : null}
-                      {Array.isArray(quickExplainState.data.checklist) && quickExplainState.data.checklist.length ? (
-                        <div className="jobs-detail__section jobs-detail__explanation-card">
-                          <h3>체크리스트</h3>
-                          <ul className="jobs-detail__status-list">
-                            {quickExplainState.data.checklist.map((item) => (
-                              <li key={`check-${item}`}>
-                                <span>체크</span>
-                                <p>{item}</p>
-                              </li>
+                      {formattedQuickCautionPoints.length ? (
+                        <div className="jobs-detail__section jobs-detail__explanation-card jobs-detail__explanation-card--quick">
+                          <h3>참고해주세요</h3>
+                          <ul className="jobs-detail__bullet-list">
+                            {formattedQuickCautionPoints.map((item) => (
+                              <li key={`caution-${item}`}>{item}</li>
                             ))}
                           </ul>
                         </div>
@@ -753,41 +964,16 @@ function PopularPostingDetailModal({
                   ) : null}
                 </section>
               ) : null}
-              <dl className="jobs-detail__definition-grid">
-                <div><dt>근무지 주소</dt><dd>{detail.workAddress}</dd></div>
-                <div><dt>연락처</dt><dd>{detail.contactNumber}</dd></div>
-                <div><dt>고용형태</dt><dd>{detail.employmentType}</dd></div>
-                <div><dt>입사유형</dt><dd>{detail.enterType}</dd></div>
-                <div><dt>작업환경(양손 사용)</dt><dd>{detail.envBothHands}</dd></div>
-                <div><dt>작업환경(시력)</dt><dd>{detail.envEyesight}</dd></div>
-                <div><dt>작업환경(듣기·말하기)</dt><dd>{detail.envLstnTalk}</dd></div>
-                <div><dt>작업환경(손작업)</dt><dd>{detail.envHandWork}</dd></div>
-                <div><dt>작업환경(들어올리기)</dt><dd>{detail.envLiftPower}</dd></div>
-                <div><dt>작업환경(서기·걷기)</dt><dd>{detail.envStndWalk}</dd></div>
-                <div><dt>임금</dt><dd>{detail.salaryText}</dd></div>
-                <div><dt>모집마감일</dt><dd>{parseDateText(detail.termDate) || '없음'}</dd></div>
-                <div><dt>공고등록일</dt><dd>{detail.offerRegisteredAt || detail.registeredAt || '없음'}</dd></div>
-                <div><dt>요구경력</dt><dd>{detail.requiredCareer}</dd></div>
-                <div><dt>요구학력</dt><dd>{detail.requiredEducation}</dd></div>
-                <div><dt>요구전공</dt><dd>{detail.requiredMajor}</dd></div>
-                <div><dt>요구자격증</dt><dd>{detail.requiredLicenses}</dd></div>
-                <div><dt>담당기관</dt><dd>{detail.agencyName}</dd></div>
-                <div><dt>원본 주소</dt><dd>{detail.geoOriginalAddress}</dd></div>
-                <div><dt>매칭 주소</dt><dd>{detail.geoMatchedAddress}</dd></div>
-                <div><dt>위도</dt><dd>{detail.geoLatitude ?? '없음'}</dd></div>
-                <div><dt>경도</dt><dd>{detail.geoLongitude ?? '없음'}</dd></div>
-                <div><dt>원천 번호(rno)</dt><dd>{detail.rno}</dd></div>
-                <div><dt>원천 순번(rnum)</dt><dd>{detail.rnum}</dd></div>
-              </dl>
-              <div className="posting-detail-modal__actions">
-                <button
-                  type="button"
-                  className="primary-button"
-                  disabled={!detail.postingId || detail.scrappedByMe || detail.postingStatus !== 'ACTIVE'}
-                  onClick={onScrap}
-                >
-                  {!detail.postingId ? '스크랩 불가' : detail.scrappedByMe ? '스크랩 완료' : '공고 스크랩'}
-                </button>
+              <div className="posting-detail-modal__info-stack">
+                <PostingDetailInfoSection title="근무 조건">
+                  <DefinitionGrid items={workConditionItems} />
+                </PostingDetailInfoSection>
+                <PostingDetailInfoSection title="작업 환경">
+                  <DefinitionGrid items={workEnvironmentItems} />
+                </PostingDetailInfoSection>
+                <PostingDetailInfoSection title="지원 요건">
+                  <DefinitionGrid items={requirementItems} />
+                </PostingDetailInfoSection>
               </div>
             </>
           ) : null}
@@ -820,7 +1006,11 @@ function ScrapConfirmModal({ pending, onConfirm, onClose }) {
             <button
               type="button"
               className="logout-confirm-modal__button logout-confirm-modal__button--confirm"
-              onClick={onConfirm}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onConfirm();
+              }}
               disabled={pending}
             >
               {pending ? '처리 중' : '스크랩'}
@@ -835,90 +1025,140 @@ function ScrapConfirmModal({ pending, onConfirm, onClose }) {
 function JobCategoryCascadeFilter({ categories, value, onChange }) {
   const safeCategories = useMemo(() => (Array.isArray(categories) ? categories : []), [categories]);
   const selectedPath = useMemo(() => {
+    const defaultPrimary = safeCategories[0] || null;
+    const defaultSecondary = defaultPrimary?.groups?.[0] || null;
+
     if (!value || value === FILTER_ALL_VALUE) {
-      return { primary: '', secondary: '' };
+      return { primary: defaultPrimary?.label || '', secondary: defaultSecondary?.label || '', job: '' };
     }
 
     for (const category of safeCategories) {
       if (category.label === value) {
-        return { primary: category.label, secondary: '' };
+        return { primary: category.label, secondary: '', job: '' };
       }
 
-      for (const group of category.groups) {
+      for (const group of category.groups || []) {
         if (group.label === value) {
-          return { primary: category.label, secondary: group.label };
+          return { primary: category.label, secondary: group.label, job: '' };
         }
 
-        if (group.jobs.includes(value)) {
-          return { primary: category.label, secondary: group.label };
+        if ((group.jobs || []).includes(value)) {
+          return { primary: category.label, secondary: group.label, job: value };
         }
       }
     }
 
-    return { primary: '', secondary: '' };
+    return { primary: defaultPrimary?.label || '', secondary: defaultSecondary?.label || '', job: '' };
   }, [safeCategories, value]);
 
   const [primaryValue, setPrimaryValue] = useState(selectedPath.primary);
   const [secondaryValue, setSecondaryValue] = useState(selectedPath.secondary);
   const primaryCategory = safeCategories.find((category) => category.label === primaryValue) || null;
-  const secondaryGroup = primaryCategory?.groups.find((group) => group.label === secondaryValue) || null;
+  const secondaryGroup = primaryCategory?.groups?.find((group) => group.label === secondaryValue) || null;
+  const selectedLabel = value && value !== FILTER_ALL_VALUE ? value : '전체';
+  const selectedPathLabel = [selectedPath.primary, selectedPath.secondary, selectedPath.job].filter(Boolean).join(' > ') || selectedLabel;
 
   useEffect(() => {
     setPrimaryValue(selectedPath.primary);
     setSecondaryValue(selectedPath.secondary);
   }, [selectedPath.primary, selectedPath.secondary]);
 
-  const handlePrimaryChange = (nextPrimary) => {
-    setPrimaryValue(nextPrimary);
-    setSecondaryValue('');
-    onChange(nextPrimary || FILTER_ALL_VALUE);
+  const handlePrimarySelect = (category) => {
+    setPrimaryValue(category.label);
+    setSecondaryValue(category.groups?.[0]?.label || '');
+    onChange(category.label || FILTER_ALL_VALUE);
   };
 
-  const handleSecondaryChange = (nextSecondary) => {
-    setSecondaryValue(nextSecondary);
-    onChange(nextSecondary || primaryValue || FILTER_ALL_VALUE);
+  const handleSecondarySelect = (group) => {
+    setSecondaryValue(group.label);
+    onChange(group.label || primaryValue || FILTER_ALL_VALUE);
   };
 
-  const handleJobChange = (nextJob) => {
-    onChange(nextJob === FILTER_ALL_VALUE ? secondaryValue || primaryValue || FILTER_ALL_VALUE : nextJob);
+  const handleReset = () => {
+    const defaultPrimary = safeCategories[0] || null;
+    setPrimaryValue(defaultPrimary?.label || '');
+    setSecondaryValue(defaultPrimary?.groups?.[0]?.label || '');
+    onChange(FILTER_ALL_VALUE);
   };
 
   return (
-    <div className="accessibility-map__cascade-filter" aria-label="희망 직무 1차, 2차, 3차 선택">
-      <label>
-        <span>1차</span>
-        <select value={primaryValue} onChange={(event) => handlePrimaryChange(event.target.value)}>
-          <option value="">전체</option>
-          {safeCategories.map((category) => (
-            <option key={category.label} value={category.label}>
-              {category.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        <span>2차</span>
-        <select value={secondaryValue} disabled={!primaryCategory} onChange={(event) => handleSecondaryChange(event.target.value)}>
-          <option value="">전체</option>
-          {primaryCategory?.groups.map((group) => (
-            <option key={group.label} value={group.label}>
-              {group.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        <span>3차</span>
-        <select value={value && value !== FILTER_ALL_VALUE ? value : FILTER_ALL_VALUE} disabled={!secondaryGroup} onChange={(event) => handleJobChange(event.target.value)}>
-          <option value={FILTER_ALL_VALUE}>전체</option>
-          {secondaryGroup?.jobs.map((job) => (
-            <option key={job} value={job}>
-              {job}
-            </option>
-          ))}
-        </select>
-      </label>
-    </div>
+    <fieldset className="onboarding-choice-group onboarding-job-picker profile-job-picker home-quick__job-picker">
+      <legend className="sr-only">희망 직무 1차, 2차, 3차 선택</legend>
+      <div className={`home-quick__job-picker-summary${selectedLabel !== '전체' ? ' has-selection' : ''}`}>
+        {selectedLabel === '전체' ? (
+          <span>선택: 전체</span>
+        ) : (
+          <button type="button" className="home-quick__job-picker-path" onClick={handleReset} aria-label={`${selectedPathLabel} 선택 해제`}>
+            <span>{selectedPathLabel}</span>
+            <span aria-hidden="true">×</span>
+          </button>
+        )}
+        <button type="button" className="home-quick__job-picker-reset" onClick={handleReset} disabled={selectedLabel === '전체'}>
+          전체
+        </button>
+      </div>
+      {safeCategories.length ? (
+        <div className="onboarding-job-picker__box">
+          <div className="onboarding-job-picker__columns">
+            <JobPickerColumn title="1차 선택" description="분야 선택">
+              {safeCategories.map((category) => (
+                <button
+                  key={category.label}
+                  type="button"
+                  className={`onboarding-job-picker__option ${primaryValue === category.label ? 'is-active' : ''}`}
+                  onClick={() => handlePrimarySelect(category)}
+                >
+                  <span>{category.label}</span>
+                  <span aria-hidden="true">›</span>
+                </button>
+              ))}
+            </JobPickerColumn>
+
+            <JobPickerColumn title="2차 선택" description="세부 직군 선택">
+              {primaryCategory?.groups?.map((group) => (
+                <button
+                  key={group.label}
+                  type="button"
+                  className={`onboarding-job-picker__option ${secondaryValue === group.label ? 'is-active' : ''}`}
+                  onClick={() => handleSecondarySelect(group)}
+                >
+                  <span>{group.label}</span>
+                  <span aria-hidden="true">›</span>
+                </button>
+              )) || <p className="home-quick__job-picker-empty">1차 직무를 선택해 주세요.</p>}
+            </JobPickerColumn>
+
+            <JobPickerColumn title="3차 선택" description="실제 수행 업무 선택">
+              {secondaryGroup?.jobs?.map((job) => (
+                <button
+                  key={job}
+                  type="button"
+                  className={`onboarding-job-picker__option onboarding-job-picker__option--check ${selectedPath.job === job ? 'is-selected' : ''}`}
+                  onClick={() => onChange(job)}
+                  aria-pressed={selectedPath.job === job}
+                >
+                  <span>{job}</span>
+                </button>
+              )) || <p className="home-quick__job-picker-empty">2차 직군을 선택해 주세요.</p>}
+            </JobPickerColumn>
+          </div>
+        </div>
+      ) : (
+        <p className="home-quick__job-picker-empty">선택 가능한 희망 직무 목록이 없습니다.</p>
+      )}
+    </fieldset>
+  );
+}
+
+function JobPickerColumn({ title, description, children }) {
+  return (
+    <section className="onboarding-job-picker__column" aria-label={title}>
+      <div className="onboarding-job-picker__column-head">
+        <h3>{title}</h3>
+        <p>{description}</p>
+      </div>
+      <div className="onboarding-job-picker__list">{children}</div>
+    </section>
   );
 }
 
@@ -943,6 +1183,8 @@ export function MainPage() {
   const filterOptions = useJobFilterOptions();
 
   const [popularState, setPopularState] = useState({ status: 'loading', error: '', items: [] });
+  const [isPopularCarouselPaused, setIsPopularCarouselPaused] = useState(false);
+  const popularScrollerRef = useRef(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -1121,6 +1363,56 @@ export function MainPage() {
   }, []);
 
   useEffect(() => {
+    const scroller = popularScrollerRef.current;
+    const prefersReducedMotion =
+      typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (
+      popularState.status !== 'success' ||
+      popularState.items.length < 2 ||
+      isPopularCarouselPaused ||
+      !scroller ||
+      document.documentElement.dataset.bwReduceMotion === 'on' ||
+      prefersReducedMotion
+    ) {
+      return undefined;
+    }
+
+    const getCardStep = () => {
+      const firstCard = scroller.querySelector('.home-popular__card');
+      if (!firstCard) {
+        return 0;
+      }
+      const styles = window.getComputedStyle(scroller);
+      const gap = Number.parseFloat(styles.columnGap || styles.gap || '0') || 0;
+      return firstCard.getBoundingClientRect().width + gap;
+    };
+
+    const moveToNextCard = () => {
+      if (document.hidden) {
+        return;
+      }
+
+      const step = getCardStep();
+      const maxScrollLeft = scroller.scrollWidth - scroller.clientWidth;
+      if (step <= 0 || maxScrollLeft <= 1) {
+        return;
+      }
+
+      const nextScrollLeft = scroller.scrollLeft + step;
+      const shouldLoop = nextScrollLeft >= maxScrollLeft - step / 2;
+      scroller.scrollTo({
+        left: shouldLoop ? 0 : Math.min(nextScrollLeft, maxScrollLeft),
+        behavior: 'smooth'
+      });
+    };
+
+    const intervalId = window.setInterval(moveToNextCard, POPULAR_AUTOPLAY_INTERVAL_MS);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isPopularCarouselPaused, popularState.items.length, popularState.status]);
+
+  useEffect(() => {
     if (isInitializing) {
       return undefined;
     }
@@ -1165,12 +1457,6 @@ export function MainPage() {
       return;
     }
 
-    setQuickState((prev) => ({
-      ...prev,
-      status: prev.rawJobs.length ? 'refetching' : 'loading',
-      error: ''
-    }));
-
     const selectedProfileObject = profilesState.profiles.find((profile) => getProfileId(profile) === String(profileId)) || null;
     const profileSignature = getProfileScoringSignature(selectedProfileObject);
     const cacheKey = getRecommendationCacheKey({
@@ -1188,6 +1474,12 @@ export function MainPage() {
       setQuickState({ status: cachedJobs.length ? 'success' : 'empty', error: '', rawJobs: cachedJobs });
       return;
     }
+
+    setQuickState((prev) => ({
+      ...prev,
+      status: prev.rawJobs.length ? 'refetching' : 'loading',
+      error: ''
+    }));
 
     const proceedTaskResult = async (taskResult) => {
       if (isDirectQuickResultPayload(taskResult)) {
@@ -1308,33 +1600,9 @@ export function MainPage() {
     };
   }, [isAuthenticated, runQuickRecommendation, selectedProfileId, isAiEnabled, draftFilters]);
 
-  const handleOpenPopularPosting = useCallback(async (postingId) => {
-    if (!isAuthenticated) {
-      setIsLoginModalOpen(true);
-      return;
-    }
-
-    setQuickDetailState({
-      mode: 'popular',
-      fitScore: null,
-      explainStatus: 'idle',
-      explainError: '',
-      explainData: null
-    });
-    setSelectedPostingId(postingId);
-    setDetailModalOpen(true);
-    setDetailState({ status: 'loading', error: '', data: null });
-
-    try {
-      const detail = await callWithAuth((accessToken) => postingApi.getPostingDetail(postingId, { accessToken }));
-      setDetailState({ status: 'success', error: '', data: normalizePostingDetail(detail) });
-    } catch (error) {
-      setDetailState({ status: 'error', error: error.message || '공고 상세를 불러오지 못했습니다.', data: null });
-    }
-  }, [callWithAuth, isAuthenticated]);
-
-  const loadQuickExplanation = useCallback(async (job, profileObject, detailObject = null) => {
-    if (!job || !profileObject || !selectedProfileId || !appliedAiEnabled || typeof job.fitScore !== 'number') {
+  const loadQuickExplanation = useCallback(async (job, profileObject, detailObject = null, options = {}) => {
+    const { requireFitScore = true } = options;
+    if (!job || !profileObject || !selectedProfileId || !appliedAiEnabled || (requireFitScore && typeof job.fitScore !== 'number')) {
       setQuickDetailState((prev) => ({
         ...prev,
         explainStatus: 'idle',
@@ -1416,6 +1684,32 @@ export function MainPage() {
       }));
     }
   }, [appliedAiEnabled, callWithAuth, selectedProfileId]);
+
+  const handleOpenPopularPosting = useCallback(async (postingId) => {
+    if (!isAuthenticated) {
+      setIsLoginModalOpen(true);
+      return;
+    }
+
+    setQuickDetailState({
+      mode: 'popular',
+      fitScore: null,
+      explainStatus: 'idle',
+      explainError: '',
+      explainData: null
+    });
+    setSelectedPostingId(postingId);
+    setDetailModalOpen(true);
+    setDetailState({ status: 'loading', error: '', data: null });
+
+    try {
+      const detail = await callWithAuth((accessToken) => postingApi.getPostingDetail(postingId, { accessToken }));
+      const normalizedDetail = normalizePostingDetail(detail);
+      setDetailState({ status: 'success', error: '', data: normalizedDetail });
+    } catch (error) {
+      setDetailState({ status: 'error', error: error.message || '공고 상세를 불러오지 못했습니다.', data: null });
+    }
+  }, [callWithAuth, isAuthenticated]);
 
   const handleOpenQuickPosting = useCallback(async (job) => {
     if (!job) {
@@ -1507,7 +1801,7 @@ export function MainPage() {
           data: {
             ...prev.data,
             scrappedByMe: true,
-            scrapCount: prev.data.scrapCount + 1
+            scrapCount: prev.data.scrappedByMe ? prev.data.scrapCount : prev.data.scrapCount + 1
           }
         };
       });
@@ -1518,6 +1812,19 @@ export function MainPage() {
           item.postingId === selectedPostingId
             ? { ...item, scrapCount: item.scrapCount + 1 }
             : item
+        )
+      }));
+
+      setQuickState((prev) => ({
+        ...prev,
+        rawJobs: prev.rawJobs.map((job) =>
+          Number(job.postingId) === Number(selectedPostingId)
+            ? {
+                ...job,
+                scrappedByMe: true,
+                scrapCount: job.scrappedByMe ? job.scrapCount : job.scrapCount + 1
+              }
+            : job
         )
       }));
 
@@ -1553,7 +1860,10 @@ export function MainPage() {
         <section className="home-popular home-section-entrance home-section-entrance--popular" aria-labelledby="popular-postings-title">
           <div className="home-section-head">
             <div>
-              <h2 id="popular-postings-title">인기 공고 TOP 20</h2>
+              <div className="home-section-title-with-help">
+                <h2 id="popular-postings-title">인기 공고 TOP 20</h2>
+                <AccessibilityScoreHelpButton />
+              </div>
             </div>
           </div>
 
@@ -1561,7 +1871,19 @@ export function MainPage() {
           {popularState.status === 'error' ? <div className="home-feedback is-error" role="alert">{popularState.error}</div> : null}
 
           {popularState.status === 'success' ? (
-            <div className="home-popular__scroller" aria-label="인기 공고 목록">
+            <div
+              ref={popularScrollerRef}
+              className="home-popular__scroller"
+              aria-label="인기 공고 목록"
+              onMouseEnter={() => setIsPopularCarouselPaused(true)}
+              onMouseLeave={() => setIsPopularCarouselPaused(false)}
+              onFocusCapture={() => setIsPopularCarouselPaused(true)}
+              onBlurCapture={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) {
+                  setIsPopularCarouselPaused(false);
+                }
+              }}
+            >
               {popularState.items.map((item) => (
                 <button
                   key={item.postingId}
@@ -1589,7 +1911,10 @@ export function MainPage() {
         <section className="home-quick home-section-entrance home-section-entrance--quick" aria-labelledby="quick-recommend-title">
             <section className="home-overview home-overview--compact" aria-labelledby="quick-recommend-title">
               <div className="home-overview__heading">
-                <h1 id="quick-recommend-title">퀵 맞춤 일자리 추천</h1>
+                <div className="home-section-title-with-help">
+                  <h1 id="quick-recommend-title">퀵 맞춤 일자리 추천</h1>
+                  <AccessibilityScoreHelpButton />
+                </div>
                 <p>{isAiEnabled ? 'AI 직무 적합도 기반 추천 결과' : '최신 공고 기반 추천 결과'}</p>
               </div>
             </section>
@@ -1795,6 +2120,15 @@ export function MainPage() {
             </div>
 
             <section className="home-quick__results" aria-label="퀵 추천 결과">
+              {!isGuestUser && quickState.status === 'success' ? (
+                <div className="accessibility-map__results-header home-quick__results-header">
+                  <h3>
+                    <span>검색 결과 {filteredQuickJobs.length}개</span>
+                    {quickState.rawJobs.length > filteredQuickJobs.length ? <span> / 전체 {quickState.rawJobs.length}개</span> : null}
+                  </h3>
+                  <span>{appliedAiEnabled ? '직무 적합도 높은순' : '최신순'}</span>
+                </div>
+              ) : null}
               {isGuestUser ? <div className="home-feedback" role="status">로그인 후 퀵 맞춤 일자리 추천 결과를 확인할 수 있습니다.</div> : null}
               {!isGuestUser && profilesState.status === 'loading' ? <div className="home-feedback" role="status">프로필을 불러오는 중입니다.</div> : null}
               {!isGuestUser && profilesState.status === 'error' ? <div className="home-feedback is-error" role="alert">{profilesState.error}</div> : null}
@@ -1813,7 +2147,7 @@ export function MainPage() {
                   {filteredQuickJobs.map((job) => (
                     <button
                       type="button"
-                      className={`home-job-card${appliedAiEnabled && typeof job.fitScore === 'number' && job.fitScore >= 70 ? ' is-recommended' : ''}`}
+                      className={`home-job-card${appliedAiEnabled && typeof job.fitScore === 'number' && job.fitScore >= 80 ? ' is-recommended' : ''}`}
                       key={job.id}
                       onClick={() => handleOpenQuickPosting(job)}
                       aria-label={`${job.title} 상세 보기`}
@@ -1821,6 +2155,9 @@ export function MainPage() {
                       <div className="home-job-card__main">
                         <div className="home-job-card__top">
                           <span className="home-job-company">{job.company}</span>
+                          <span className={`home-job-scrap-count${job.scrappedByMe ? ' is-scrapped' : ''}`}>
+                            {job.scrappedByMe ? '스크랩 완료' : `스크랩 ${job.scrapCount}건`}
+                          </span>
                         </div>
                         <h3>{job.title}</h3>
                         <p className="home-job-role">{job.location}</p>
@@ -1839,15 +2176,33 @@ export function MainPage() {
                         </dl>
                         <div className="home-job-tags">
                           {appliedAiEnabled ? (
-                            <span className={`home-badge ${job.fitScore && job.fitScore >= 70 ? 'home-badge--match' : 'home-badge--neutral'}`}>
+                            <span className={`home-badge ${job.fitScore && job.fitScore >= 80 ? 'home-badge--match' : 'home-badge--neutral'}`}>
                               직무 적합도 {job.fitLabel}
                             </span>
                           ) : (
                             <span className="home-badge home-badge--neutral">최신 공고 순 정렬</span>
                           )}
+                          {appliedAiEnabled && job.fitGrade ? (
+                            <span className={`accessibility-map__mini-badge home-job-grade-badge is-grade ${getQuickGradeClassName(job.fitGrade)}`}>
+                              {job.fitGrade}
+                            </span>
+                          ) : null}
                           <span className="home-badge home-badge--neutral">AI {appliedAiEnabled ? 'ON' : 'OFF'}</span>
                         </div>
                       </div>
+                      {appliedAiEnabled ? (
+                        <div className="home-job-score-panel" aria-label={`직무 적합도 점수 ${job.fitLabel}`}>
+                          <div className="home-job-score-panel__header">
+                            <strong>직무 적합도 점수</strong>
+                            <AccessibilityScoreHelpButton interactive={false} />
+                          </div>
+                          <ScoreRing className={`home-job-score-ring is-${job.fitTone}`} score={job.fitScore} />
+                          <span className={`accessibility-map__score-badge is-${job.fitTone}`}>
+                            {job.fitGrade ? `${job.fitGrade} · 직무 기준` : '확인 필요'}
+                          </span>
+                          <em>{getQuickScoreHeadline(job.fitScore)}</em>
+                        </div>
+                      ) : null}
                     </button>
                   ))}
                 </div>

@@ -15,6 +15,23 @@ const parseDateText = (value) => {
   return `${raw.slice(0, 4)}.${raw.slice(4, 6)}.${raw.slice(6, 8)}`;
 };
 
+const parseDateTimeText = (value) => {
+  const text = String(value ?? '').trim();
+  if (!text) {
+    return '';
+  }
+
+  const parsed = new Date(text);
+  if (!Number.isNaN(parsed.getTime())) {
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    return `${year}.${month}.${day}`;
+  }
+
+  return parseDateText(text);
+};
+
 const parseRegionFromAddress = (value) => {
   const text = String(value ?? '').trim();
   if (!text) {
@@ -61,68 +78,144 @@ const getDday = (value) => {
   return `D-${diffDays}`;
 };
 
-const normalizeScrapItem = (item) => ({
-  id: String(item?.postingId || ''),
-  postingId: Number(item?.postingId),
-  company: toSafeText(item?.companyName),
-  title: toSafeText(item?.jobTitle),
-  location: parseRegionFromAddress(item?.workAddress),
-  employmentType: toSafeText(item?.employmentType),
-  salary: [item?.salaryType, item?.salary].filter(Boolean).join(' ') || '급여 확인 필요',
-  termDate: item?.termDate || '',
-  dueLabel: getDday(item?.termDate),
-  postingStatus: item?.postingStatus || 'ACTIVE',
-  scrapCount: Number(item?.scrapCount || 0),
-  scrappedAt: item?.scrappedAt || '',
-  registeredAt: parseDateText(item?.registeredAt)
-});
+const getMapCoordinate = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const getStatusLabel = (postingStatus, dueLabel) => {
+  if (postingStatus !== 'ACTIVE' || dueLabel === '마감') {
+    return '마감 공고';
+  }
+  return '진행중 공고';
+};
+
+const buildAccessibilitySummaryItems = (source, score) => {
+  const items = [];
+
+  if (typeof score === 'number') {
+    items.push([
+      '접근성 점수',
+      `${score}점으로 확인되었습니다.`,
+      '접근 양호'
+    ]);
+  }
+
+  if (source?.geoLatitude && source?.geoLongitude) {
+    items.push(['근무지 위치', '연동된 지도 정보입니다.', '접근 양호']);
+  }
+
+  [
+    ['작업환경(양손 사용)', source?.envBothHands],
+    ['작업환경(시력)', source?.envEyesight],
+    ['작업환경(듣기·말하기)', source?.envLstnTalk],
+    ['작업환경(손작업)', source?.envHandWork],
+    ['작업환경(들어올리기)', source?.envLiftPower],
+    ['작업환경(서기·걷기)', source?.envStndWalk]
+  ].forEach(([title, value]) => {
+    const text = String(value ?? '').trim();
+    if (text) {
+      items.push([title, text, '공고 제공 정보']);
+    }
+  });
+
+  return items.slice(0, 6);
+};
+
+const buildPresentFields = (fieldEntries) =>
+  fieldEntries
+    .map(([label, value]) => [label, toSafeText(value, '')])
+    .filter(([, value]) => value);
+
+const normalizeScrapItem = (item) => {
+  const score = null;
+  const dueLabel = getDday(item?.termDate);
+  const postingStatus = item?.postingStatus || 'ACTIVE';
+
+  return {
+    id: String(item?.postingId || ''),
+    postingId: Number(item?.postingId),
+    company: toSafeText(item?.companyName),
+    title: toSafeText(item?.jobTitle),
+    location: parseRegionFromAddress(item?.workAddress),
+    employmentType: toSafeText(item?.employmentType),
+    salary: [item?.salaryType, item?.salary].filter(Boolean).join(' ') || '급여 확인 필요',
+    termDate: item?.termDate || '',
+    dueLabel,
+    postingStatus,
+    statusLabel: getStatusLabel(postingStatus, dueLabel),
+    scrapCount: Number(item?.scrapCount || 0),
+    scrappedAt: item?.scrappedAt || '',
+    scrappedAtText: parseDateTimeText(item?.scrappedAt) || '저장일 확인 필요',
+    registeredAt: parseDateText(item?.registeredAt)
+  };
+};
 
 const normalizeDetail = (detail) => {
   if (!detail) {
     return null;
   }
 
+  const score = null;
+  const dueLabel = getDday(detail.termDate);
+  const mapLat = getMapCoordinate(detail.geoLatitude);
+  const mapLng = getMapCoordinate(detail.geoLongitude);
+  const hasMapPoint = mapLat !== null && mapLng !== null;
+
   return {
     postingId: detail.postingId,
     title: toSafeText(detail.jobTitle),
     company: toSafeText(detail.companyName),
     location: toSafeText(detail.workAddress),
+    region: parseRegionFromAddress(detail.workAddress),
     salary: [detail.salaryType, detail.salary].filter(Boolean).join(' ') || '급여 확인 필요',
     employmentType: toSafeText(detail.employmentType),
     enterType: toSafeText(detail.enterType),
     termDateText: parseDateText(detail.termDate) || '없음',
-    dueLabel: getDday(detail.termDate),
+    dueLabel,
     postingStatus: detail.postingStatus || 'ACTIVE',
+    statusLabel: getStatusLabel(detail.postingStatus || 'ACTIVE', dueLabel),
     scrapCount: Number(detail.scrapCount || 0),
-    fields: [
-      ['모집직종', toSafeText(detail.jobTitle)],
-      ['사업장명', toSafeText(detail.companyName)],
-      ['근무지 주소', toSafeText(detail.workAddress)],
-      ['연락처', toSafeText(detail.contactNumber)],
-      ['고용형태', toSafeText(detail.employmentType)],
-      ['입사유형', toSafeText(detail.enterType)],
-      ['작업환경(양손 사용)', toSafeText(detail.envBothHands)],
-      ['작업환경(시력)', toSafeText(detail.envEyesight)],
-      ['작업환경(듣기·말하기)', toSafeText(detail.envLstnTalk)],
-      ['작업환경(손작업)', toSafeText(detail.envHandWork)],
-      ['작업환경(들어올리기)', toSafeText(detail.envLiftPower)],
-      ['작업환경(서기·걷기)', toSafeText(detail.envStndWalk)],
-      ['임금형태', toSafeText(detail.salaryType)],
-      ['임금', toSafeText(detail.salary)],
-      ['모집마감일', parseDateText(detail.termDate) || '없음'],
-      ['공고등록일', parseDateText(detail.offerRegisteredAt || detail.registeredAt) || '없음'],
-      ['요구경력', toSafeText(detail.requiredCareer)],
-      ['요구학력', toSafeText(detail.requiredEducation)],
-      ['요구전공', toSafeText(detail.requiredMajor)],
-      ['요구자격증', toSafeText(detail.requiredLicenses)],
-      ['담당기관', toSafeText(detail.agencyName)],
-      ['원본 주소', toSafeText(detail.geoOriginalAddress)],
-      ['매칭 주소', toSafeText(detail.geoMatchedAddress)],
-      ['위도', detail.geoLatitude ?? '없음'],
-      ['경도', detail.geoLongitude ?? '없음'],
-      ['원천 번호(rno)', toSafeText(detail.rno)],
-      ['원천 순번(rnum)', toSafeText(detail.rnum)]
-    ]
+    registeredAtText: parseDateText(detail.offerRegisteredAt || detail.registeredAt) || '등록일 확인 필요',
+    scrappedByMe: Boolean(detail.scrappedByMe),
+    accessibilitySummaryItems: buildAccessibilitySummaryItems(detail, score),
+    mapPreview: {
+      available: hasMapPoint,
+      lat: mapLat,
+      lng: mapLng,
+      label: hasMapPoint ? '연동된 지도 정보입니다.' : '지도 위치 데이터가 없습니다.',
+      address: toSafeText(detail.workAddress, '근무지 주소 확인 필요')
+    },
+    jobInfoFields: buildPresentFields([
+      ['모집직종', detail.jobTitle],
+      ['사업장명', detail.companyName],
+      ['근무지 주소', detail.workAddress],
+      ['연락처', detail.contactNumber],
+      ['고용형태', detail.employmentType],
+      ['입사유형', detail.enterType],
+      ['급여형태', detail.salaryType],
+      ['급여', detail.salary],
+      ['모집마감일', parseDateText(detail.termDate)],
+      ['공고등록일', parseDateText(detail.offerRegisteredAt || detail.registeredAt)],
+      ['요구경력', detail.requiredCareer],
+      ['요구학력', detail.requiredEducation],
+      ['요구전공', detail.requiredMajor],
+      ['요구자격증', detail.requiredLicenses],
+      ['담당기관', detail.agencyName]
+    ]),
+    statusFields: buildPresentFields([
+      ['공고 상태', getStatusLabel(detail.postingStatus || 'ACTIVE', dueLabel)],
+      ['전체 스크랩 수', `${Number(detail.scrapCount || 0)}건`],
+      ['내 스크랩 여부', detail.scrappedByMe ? '스크랩 완료' : '스크랩 아님'],
+      ['마감 처리일', parseDateTimeText(detail.closedAt)],
+      ['공고 상태 변경일', parseDateTimeText(detail.statusUpdatedAt)],
+      ['공고 생성일', parseDateTimeText(detail.createdAt)],
+      ['공고 수정일', parseDateTimeText(detail.updatedAt)]
+    ]),
+    geoInfoFields: buildPresentFields([
+      ['원본 주소', detail.geoOriginalAddress],
+      ['매칭 주소', detail.geoMatchedAddress]
+    ])
   };
 };
 

@@ -1,4 +1,4 @@
-const POLICY_UPDATED_AT = '2026.05.01';
+const POLICY_UPDATED_AT = '2026.05.14';
 
 export const POLICY_DOCUMENTS = [
   {

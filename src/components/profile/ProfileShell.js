@@ -2,7 +2,6 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'r
 import { UNSAFE_NavigationContext as NavigationContext } from 'react-router-dom';
 import arrowDownIcon from '../../assets/profile/arrow-down.png';
 import arrowUpWhiteIcon from '../../assets/profile/arrow_up_white.png';
-import editIcon from '../../assets/profile/edit_icon.png';
 import plusIcon from '../../assets/profile/plus_icon.png';
 import { profileApi } from '../../api/profileApi';
 import { useAuth } from '../../auth/AuthContext';
@@ -556,6 +555,7 @@ export function ProfileShell() {
         ...extractedDraft
       }));
 
+      setIsEditMode(true);
       setFormatValidationVisible({});
       showDraftToast('PDF 분석 결과를 반영했습니다. 저장 버튼을 누르면 서버에 반영됩니다.', 'success');
     } catch (error) {
@@ -667,9 +667,6 @@ export function ProfileShell() {
             <div>
               <h1 id="profile-title">
                 {currentProfileTitle}
-                <span className="profile-edit-button is-static" aria-hidden="true">
-                  <img src={editIcon} alt="수정 아이콘" />
-                </span>
               </h1>
               {(isCreateMode || (detailStatus === 'success' && visibleProfile)) ? (
                 <div className="profile-title-name-field">

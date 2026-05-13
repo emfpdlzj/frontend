@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { optionsApi } from '../api/optionsApi';
+import { getNextDailyCacheExpiryAt, isDailyCacheExpired } from '../cache/dailyCacheExpiry';
 import { STORAGE_KEYS } from '../config/appConfig';
 import { toJobCategories } from '../utils/jobCategories';
 
 const CACHE_VERSION = 1;
+const MAX_TIMEOUT_DELAY = 2_147_483_647;
 
 const initialState = {
   status: 'idle',
@@ -61,7 +63,7 @@ const flattenJobTree = (nodes) => {
 
 const isValidCache = (cached) =>
   cached?.version === CACHE_VERSION &&
-  cached?.expiresAt > Date.now() &&
+  !isDailyCacheExpired(cached?.expiresAt) &&
   Array.isArray(cached?.data?.employmentTypes) &&
   Array.isArray(cached?.data?.jobCategories) &&
   Array.isArray(cached?.data?.jobOptions) &&
@@ -81,43 +83,66 @@ const readCache = () => {
       return null;
     }
 
-    return cached.data;
+    return cached;
   } catch (error) {
     return null;
   }
 };
 
 const writeCache = (data) => {
+  const expiresAt = getNextDailyCacheExpiryAt();
+
   try {
     window.localStorage.setItem(
       STORAGE_KEYS.jobFilterOptionsCache,
       JSON.stringify({
         version: CACHE_VERSION,
-        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+        expiresAt,
         data
       })
     );
   } catch (error) {
     // 캐시 저장 실패는 화면 동작을 막지 않는다.
   }
+
+  return expiresAt;
 };
 
 export function useJobFilterOptions() {
   const [state, setState] = useState(initialState);
 
   useEffect(() => {
-    const cached = readCache();
-
-    if (cached) {
-      setState({
-        status: 'success',
-        error: '',
-        ...cached
-      });
-      return undefined;
-    }
-
     const controller = new AbortController();
+    let refreshTimerId;
+
+    const clearCache = () => {
+      try {
+        window.localStorage.removeItem(STORAGE_KEYS.jobFilterOptionsCache);
+      } catch (error) {
+        // 캐시 제거 실패는 다음 API 호출 흐름을 막지 않는다.
+      }
+    };
+
+    const scheduleCacheRefresh = (expiresAt) => {
+      if (!expiresAt) {
+        return;
+      }
+
+      const delay = expiresAt - Date.now();
+      if (delay <= 0) {
+        clearCache();
+        loadOptions();
+        return;
+      }
+
+      refreshTimerId = window.setTimeout(
+        () => {
+          clearCache();
+          loadOptions();
+        },
+        Math.min(delay, MAX_TIMEOUT_DELAY)
+      );
+    };
 
     const loadOptions = async () => {
       setState((prev) => ({
@@ -141,12 +166,13 @@ export function useJobFilterOptions() {
           salaryTypes
         };
 
-        writeCache(data);
+        const expiresAt = writeCache(data);
         setState({
           status: 'success',
           error: '',
           ...data
         });
+        scheduleCacheRefresh(expiresAt);
       } catch (error) {
         if (error.name === 'AbortError') {
           return;
@@ -160,9 +186,28 @@ export function useJobFilterOptions() {
       }
     };
 
+    const cached = readCache();
+    if (cached) {
+      setState({
+        status: 'success',
+        error: '',
+        ...cached.data
+      });
+      scheduleCacheRefresh(cached.expiresAt);
+      return () => {
+        if (refreshTimerId) {
+          window.clearTimeout(refreshTimerId);
+        }
+        controller.abort();
+      };
+    }
+
     loadOptions();
 
     return () => {
+      if (refreshTimerId) {
+        window.clearTimeout(refreshTimerId);
+      }
       controller.abort();
     };
   }, []);

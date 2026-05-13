@@ -19,7 +19,7 @@ export class ApiError extends Error {
 }
 
 const HTTP_STATUS_MESSAGES = {
-  401: '로그인 세션이 만료되었습니다. 다시 로그인해 주세요.',
+  401: '페이지가 유효하지 않습니다. 다시 로그인해 주세요.',
   403: '접근 권한이 없습니다. 필요한 권한을 확인해 주세요.',
   404: '요청한 정보를 찾을 수 없습니다.',
   408: '요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.',
@@ -48,6 +48,14 @@ const stableStringify = (value) => {
 };
 
 const getStatusMessage = (status, fallbackMessage) => {
+  if (status === 401) {
+    return HTTP_STATUS_MESSAGES[401];
+  }
+
+  if (typeof fallbackMessage === 'string' && /jwt|token/i.test(fallbackMessage)) {
+    return HTTP_STATUS_MESSAGES[status] || '페이지가 유효하지 않습니다. 다시 로그인해 주세요.';
+  }
+
   if (fallbackMessage) {
     return fallbackMessage;
   }

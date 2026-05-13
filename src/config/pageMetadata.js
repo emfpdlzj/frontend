@@ -53,8 +53,8 @@ const PAGE_METADATA = Object.freeze({
     robots: 'noindex,nofollow'
   },
   [ROUTE_PATHS.jobs]: {
-    title: '스크랩 공고 관리 | BridgeWork',
-    description: '로그인 후 저장한 공고를 목록과 상세로 확인하고 스크랩을 관리하세요.',
+    title: '스크랩한 공고 | BridgeWork',
+    description: '로그인 후 저장한 공고를 접근성 점수, 추천 이유, 마감 상태 기준으로 다시 비교하세요.',
     robots: 'noindex,nofollow'
   },
   [ROUTE_PATHS.signup]: {

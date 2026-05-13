@@ -3,14 +3,50 @@ import infoIcon from '../../assets/accessibility-map/info-icon.png';
 import triangleDownBlue from '../../assets/accessibility-map/triangle-down-blue.png';
 
 const STATUS_CLASS_BY_BADGE = {
-  공공: 'public',
-  A등급: 'grade',
-  B등급: 'grade',
-  C등급: 'grade',
-  표준사업장: 'workplace'
+  공공: 'is-public',
+  A등급: 'is-grade is-grade-a',
+  B등급: 'is-grade is-grade-b',
+  C등급: 'is-grade is-grade-c',
+  표준사업장: 'is-workplace'
 };
 
-const formatCommuteMinutes = (value) => (typeof value === 'number' ? `${value}분` : value || '-');
+const getScoreBadgeClassName = (score) => {
+  if (typeof score !== 'number' || !Number.isFinite(score)) {
+    return 'is-grade';
+  }
+  if (score >= 80) {
+    return 'is-grade is-grade-a';
+  }
+  if (score >= 60) {
+    return 'is-grade is-grade-b';
+  }
+  return 'is-grade is-grade-c';
+};
+
+const formatScoreBadge = (score) => {
+  if (typeof score !== 'number' || !Number.isFinite(score)) {
+    return null;
+  }
+  return `${Math.round(score)}점`;
+};
+
+const formatCommuteMinutes = (value) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return value || '-';
+  }
+
+  const roundedMinutes = Math.max(0, Math.round(value));
+  const hours = Math.floor(roundedMinutes / 60);
+  const minutes = roundedMinutes % 60;
+
+  if (!hours) {
+    return `${minutes}분`;
+  }
+  if (!minutes) {
+    return `${hours}시간`;
+  }
+  return `${hours}시간 ${minutes}분`;
+};
 
 const getFilterValueSnapshot = (filterGroups) =>
   Object.fromEntries(
@@ -291,7 +327,10 @@ export function TrafficFilterPanel({
       </div>
 
       <div className="accessibility-map__results-header">
-        <h3>검색 결과 {resultCount}개{totalJobCount > resultCount ? ` / 전체 ${totalJobCount}개` : ''}</h3>
+        <h3>
+          <span>검색 결과 {resultCount}개</span>
+          {totalJobCount > resultCount ? <span> / 전체 {totalJobCount}개</span> : null}
+        </h3>
         <div ref={sortMenuRef} className={`accessibility-map__sort${isSortMenuOpen ? ' is-open' : ''}`}>
           <button
             type="button"
@@ -365,12 +404,17 @@ export function TrafficFilterPanel({
                       <span
                         key={badge}
                         className={`accessibility-map__mini-badge ${
-                          STATUS_CLASS_BY_BADGE[badge] ? `is-${STATUS_CLASS_BY_BADGE[badge]}` : ''
+                          STATUS_CLASS_BY_BADGE[badge] || ''
                         }`}
                       >
                         {badge}
                       </span>
                     ))}
+                    {formatScoreBadge(job.score) ? (
+                      <span className={`accessibility-map__mini-badge ${getScoreBadgeClassName(job.score)}`}>
+                        {formatScoreBadge(job.score)}
+                      </span>
+                    ) : null}
                   </div>
                   {job.dueLabel ? <strong className="accessibility-map__dday">{job.dueLabel}</strong> : null}
                 </div>

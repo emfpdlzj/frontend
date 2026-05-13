@@ -16,7 +16,7 @@ import { useProfiles } from './useProfiles';
 const MAP_RECOMMEND_REQUEST_TIMEOUT_MS = 3 * 60 * 1000;
 const MAP_RECOMMEND_POLL_INTERVAL_MS = 2500;
 const FILTER_ALL_VALUE = '전체';
-const VALID_TABS = ['accessibility', 'job', 'company'];
+const VALID_TABS = ['accessibility', 'job'];
 const MAP_PERSONAS = {
   wheelchair: {
     label: '지체'
@@ -365,8 +365,33 @@ const getDistanceKm = (from, to) => {
 const formatCommuteMinutes = (minutes) =>
   Number.isFinite(minutes) ? Math.max(10, Math.round(minutes / 5) * 5) : '-';
 
+const parseDurationMinutes = (value) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (value == null) {
+    return null;
+  }
+
+  const text = String(value).trim();
+  if (!text) {
+    return null;
+  }
+
+  const hourMatch = text.match(/(\d+(?:\.\d+)?)\s*시간/);
+  const minuteMatch = text.match(/(\d+(?:\.\d+)?)\s*분/);
+  if (hourMatch || minuteMatch) {
+    const hours = hourMatch ? Number(hourMatch[1]) : 0;
+    const minutes = minuteMatch ? Number(minuteMatch[1]) : 0;
+    const totalMinutes = hours * 60 + minutes;
+    return Number.isFinite(totalMinutes) ? totalMinutes : null;
+  }
+
+  return toNumberOrNull(value);
+};
+
 const estimateCommuteMinutes = (profile, job, commuteStats) => {
-  const providedMinutes = extractInteger(commuteStats?.[0]);
+  const providedMinutes = parseDurationMinutes(commuteStats?.[0]);
   if (providedMinutes !== null) {
     return providedMinutes;
   }
@@ -484,11 +509,6 @@ const includesAnyTerm = (target, terms) => {
   return terms.some((term) => normalizedTarget.includes(term) || term.includes(normalizedTarget));
 };
 
-const getInitial = (value) => {
-  const normalized = String(value || '확인').trim();
-  return normalized.slice(0, 1) || '확';
-};
-
 const getScoreNumber = (value) => (typeof value === 'number' && Number.isFinite(value) ? value : null);
 
 const getFirstInteger = (...values) => {
@@ -500,6 +520,16 @@ const getFirstInteger = (...values) => {
   }
 
   return null;
+};
+
+const getBooleanValue = (value) => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    return value.toLowerCase() === 'true';
+  }
+  return Boolean(value);
 };
 
 const getJobPostId = (source, job) =>
@@ -525,7 +555,9 @@ const buildExplainScoreDetail = (scoreDetail) => ({
   disability_support_score: toIntegerOrNull(scoreDetail?.disability_support_score ?? scoreDetail?.disabilitySupportScore),
   work_environment_score: toIntegerOrNull(scoreDetail?.work_environment_score ?? scoreDetail?.workEnvironmentScore),
   company_stability_score: toIntegerOrNull(scoreDetail?.company_stability_score ?? scoreDetail?.companyStabilityScore),
-  accessibility_score: toIntegerOrNull(scoreDetail?.accessibility_score ?? scoreDetail?.accessibilityScore)
+  accessibility_score: toIntegerOrNull(scoreDetail?.accessibility_score ?? scoreDetail?.accessibilityScore),
+  distance_score: toIntegerOrNull(scoreDetail?.distance_score ?? scoreDetail?.distanceScore),
+  commute_score: toIntegerOrNull(scoreDetail?.commute_score ?? scoreDetail?.commuteScore)
 });
 
 const normalizeEvidenceItems = (value) => (Array.isArray(value) ? value.filter(Boolean) : []);
@@ -628,10 +660,51 @@ const buildEvidenceDetailItems = (evidenceItems) => {
   ];
 };
 
+const formatDurationMinutes = (value) => {
+  const minutesValue = parseDurationMinutes(value);
+  if (minutesValue === null) {
+    return '';
+  }
+
+  const roundedMinutes = Math.max(0, Math.round(minutesValue));
+  const hours = Math.floor(roundedMinutes / 60);
+  const minutes = roundedMinutes % 60;
+
+  if (!hours) {
+    return `${minutes}분`;
+  }
+  if (!minutes) {
+    return `${hours}시간`;
+  }
+  return `${hours}시간 ${minutes}분`;
+};
+
+const formatTransferCount = (value) => {
+  const transferValue = toNumberOrNull(value);
+  return transferValue === null ? '' : `환승 ${Math.max(0, Math.round(transferValue))}회`;
+};
+
+const formatWalkDistance = (value) => {
+  const stringValue = typeof value === 'string' ? value.trim() : '';
+  if (stringValue && /(?:m|km|미터|킬로미터)/i.test(stringValue)) {
+    return stringValue.startsWith('도보') ? stringValue : `도보 ${stringValue}`;
+  }
+
+  const distanceValue = toNumberOrNull(value);
+  if (distanceValue === null) {
+    return '';
+  }
+
+  return distanceValue >= 1000 ? `도보 ${(distanceValue / 1000).toFixed(1)}km` : `도보 ${Math.round(distanceValue)}m`;
+};
+
 const resolveCommuteStats = (source, aiResult, scoreDetail) => {
+  const transitTime = aiResult?.transit_time || aiResult?.transitTime || {};
   const totalMinutes = getFirstPresentValue(
     scoreDetail?.total_minutes,
     scoreDetail?.totalMinutes,
+    transitTime?.duration_minutes,
+    transitTime?.durationMinutes,
     aiResult?.total_minutes,
     aiResult?.totalMinutes,
     source?.totalMinutes,
@@ -640,37 +713,39 @@ const resolveCommuteStats = (source, aiResult, scoreDetail) => {
   const transferCount = getFirstPresentValue(
     scoreDetail?.transfer_count,
     scoreDetail?.transferCount,
+    transitTime?.transfer_count,
+    transitTime?.transferCount,
     aiResult?.transfer_count,
     aiResult?.transferCount,
     source?.transferCount,
     source?.transfer_count
   );
-  const walkInfo = getFirstPresentValue(
-    scoreDetail?.walk_minutes,
-    scoreDetail?.walkMinutes,
+  const walkDistance = getFirstPresentValue(
     scoreDetail?.walk_distance_meters,
     scoreDetail?.walkDistanceMeters,
-    aiResult?.walk_minutes,
-    aiResult?.walkMinutes,
+    transitTime?.walk_distance_meters,
+    transitTime?.walkDistanceMeters,
     aiResult?.walk_distance_meters,
     aiResult?.walkDistanceMeters,
-    source?.walkMinutes,
-    source?.walk_minutes,
     source?.walkDistanceMeters,
     source?.walk_distance_meters
   );
+  const walkMinutes = getFirstPresentValue(
+    scoreDetail?.walk_minutes,
+    scoreDetail?.walkMinutes,
+    aiResult?.walk_minutes,
+    aiResult?.walkMinutes,
+    source?.walkMinutes,
+    source?.walk_minutes
+  );
 
-  const totalText = totalMinutes != null && totalMinutes !== ''
-    ? `총 ${String(totalMinutes).trim()}분`
-    : '-';
-  const transferText = transferCount != null && transferCount !== ''
-    ? `환승 ${String(transferCount).trim()}회`
-    : '-';
-  const walkText = walkInfo != null && walkInfo !== ''
-    ? String(walkInfo).trim().includes('m') || String(walkInfo).trim().includes('분')
-      ? String(walkInfo).trim()
-      : `${String(walkInfo).trim()}`
-    : '-';
+  const totalText = totalMinutes != null && totalMinutes !== '' ? `총 ${formatDurationMinutes(totalMinutes)}` : '';
+  const transferText = transferCount != null && transferCount !== '' ? formatTransferCount(transferCount) : '';
+  const walkText = walkDistance != null && walkDistance !== ''
+    ? formatWalkDistance(walkDistance)
+    : walkMinutes != null && walkMinutes !== ''
+      ? `도보 ${formatDurationMinutes(walkMinutes)}`
+      : '';
 
   return [totalText, transferText, walkText];
 };
@@ -695,7 +770,7 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult, profile = n
     toNumberOrNull(aiResult?.accessibility_score) ??
     toNumberOrNull(aiResult?.accessibilityScore) ??
     totalScore;
-  const displayScore = accessibilityScore ?? totalScore;
+  const displayScore = totalScore ?? accessibilityScore;
   const grade = getScoreGrade(displayScore);
   const tone = getAccessibilityTone(displayScore);
   const title = getJobTitle(job) || '-';
@@ -711,40 +786,24 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult, profile = n
   const dueLabel = getDday(termDate);
   const dueDateText = dueLabel ? `${deadlineDate} 마감` : '';
   const id = getJobExternalId(job) || `${company}-${title}-${termDate || ''}`;
+  const postingId = getJobPostId(job, job);
   const geoLatitude = getGeoLatitude(job);
   const geoLongitude = getGeoLongitude(job);
   const commuteStats = resolveCommuteStats(job, aiResult, scoreDetail);
   const commuteMinutes = estimateCommuteMinutes(profile, job, commuteStats);
-  const companyType = getFirstPresentValue(
-    job?.companyType,
-    job?.company_type,
-    job?.busplaType,
-    job?.buspla_type
-  );
-  const companyLogoUrl = getFirstPresentValue(
-    job?.companyLogoUrl,
-    job?.company_logo_url,
-    job?.logoUrl,
-    job?.logo_url
-  );
-  const workplaceType = getFirstPresentValue(
-    job?.workplaceType,
-    job?.workplace_type,
-    job?.isStandardWorkplace,
-    job?.is_standard_workplace
-  );
-  const hiringRate = getFirstPresentValue(job?.disabilityHiringRate, job?.disability_hiring_rate, job?.hiringRate, job?.hiring_rate);
-  const legalRate = getFirstPresentValue(job?.legalObligationRate, job?.legal_obligation_rate, job?.legalRate, job?.legal_rate);
   const evidenceDetailItems = buildEvidenceDetailItems(evidenceItems);
   const evidenceSourceSummary = getEvidenceSourceSummary(evidenceItems);
 
   return {
     id,
+    postingId,
     externalId: getJobExternalId(job) || '',
+    scrapCount: Number(getFirstPresentValue(job?.scrapCount, job?.scrap_count, aiResult?.scrapCount, aiResult?.scrap_count) || 0),
+    scrappedByMe: getBooleanValue(getFirstPresentValue(job?.scrappedByMe, job?.scrapped_by_me, aiResult?.scrappedByMe, aiResult?.scrapped_by_me)),
     source: job,
     company,
     title,
-    badges: ['공공', grade].filter(Boolean),
+    badges: [grade].filter(Boolean),
     dueLabel,
     dueDateText,
     dateRangeText: getDateRangeText(job),
@@ -761,23 +820,13 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult, profile = n
     riskFactors,
     jobInfo: buildJobInfo(job, recruitmentPeriodText, salaryText),
     companyInfo: {
-      name: company,
-      logoUrl: toNullableText(companyLogoUrl),
-      type: toSafeText(companyType),
-      address,
-      initial: getInitial(company),
-      workplaceType: toSafeText(workplaceType),
-      hiringRate: toSafeText(hiringRate),
-      legalRate: toSafeText(legalRate),
-      hiringSummary: hiringRate && legalRate
-        ? `장애인 고용률 ${String(hiringRate).trim()}, 법정 의무율 ${String(legalRate).trim()}`
-        : '-'
+      address
     },
     accessibilityByPersona: Object.fromEntries(
       Object.keys(MAP_PERSONAS).map((personaKey) => [
         personaKey,
         {
-          panelBadge: `${grade} · ${MAP_PERSONAS[personaKey].label} 기준`,
+          panelBadge: grade,
           headline: tone.headline,
           description: tone.description,
           commuteStats,
@@ -786,14 +835,14 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult, profile = n
               '접근성 점수',
               displayScore === null || displayScore === undefined
                 ? '점수 데이터가 없어 확인이 필요합니다.'
-                : `접근성 점수는 ${displayScore}점입니다.`,
+                : `전체 추천 점수는 ${displayScore}점이고, 화면에는 ${grade}으로 표시됩니다.`,
               getAccessibilityStatusFromScore(displayScore)
             ],
             [
               '근무지 좌표',
               geoLatitude && geoLongitude
-                ? `지도에서 근무지 위치를 확인할 수 있습니다. (${Number(geoLatitude).toFixed(4)}, ${Number(geoLongitude).toFixed(4)})`
-                : '근무지 좌표 데이터가 없어 위치 확인이 필요합니다.',
+                ? `근무지 위치가 지도에 표시됩니다. 좌표는 위도 ${Number(geoLatitude).toFixed(4)}, 경도 ${Number(geoLongitude).toFixed(4)}입니다.`
+                : '근무지 좌표가 없어 지도 위치와 실제 주소를 함께 확인해야 합니다.',
               geoLatitude && geoLongitude ? '접근 양호' : '주의 필요'
             ],
             ...evidenceDetailItems
@@ -841,20 +890,20 @@ const normalizeProfiles = (profiles, selectedProfile) =>
 const getMapMarkerDisplayLabel = (label) => {
   const normalized = String(label || '이름 확인 필요')
     .replace(/\s+/g, ' ')
-    .replace(/^\(?주\)?\s*/i, '')
-    .replace(/^㈜\s*/i, '')
     .replace(/^주식회사\s*/i, '')
     .replace(/^유한회사\s*/i, '')
     .replace(/^사단법인\s*/i, '')
     .replace(/^재단법인\s*/i, '')
     .replace(/^사회복지법인\s*/i, '')
+    .replace(/^㈜\s*/i, '')
+    .replace(/^\(주\)\s*/i, '')
     .trim();
 
-  if ([...normalized].length <= 12) {
+  if ([...normalized].length <= 14) {
     return normalized;
   }
 
-  return `${[...normalized].slice(0, 11).join('')}...`;
+  return `${[...normalized].slice(0, 13).join('')}...`;
 };
 
 const buildMapViewport = (jobs, selectedJob) => {
@@ -869,13 +918,30 @@ const buildMapViewport = (jobs, selectedJob) => {
   };
 };
 
-const buildMapMarkers = (jobs) =>
+const getMapMarkerTone = (score) => {
+  const scoreNumber = getScoreNumber(score);
+  if (scoreNumber === null) {
+    return 'warning';
+  }
+  if (scoreNumber >= 80) {
+    return 'good';
+  }
+  if (scoreNumber >= 60) {
+    return 'warning';
+  }
+  return 'danger';
+};
+
+const buildMapMarkers = (jobs, selectedJobId) =>
   jobs
     .filter((job) => job.mapPoint)
     .map((job) => ({
       id: job.id,
       label: job.company,
       displayLabel: getMapMarkerDisplayLabel(job.company),
+      score: getScoreNumber(job.score),
+      tone: getMapMarkerTone(job.score),
+      isSelected: job.id === selectedJobId,
       lat: job.mapPoint.lat,
       lng: job.mapPoint.lng,
       type: 'office'
@@ -1503,7 +1569,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     () => filteredJobs.find((job) => job.id === selectedJobId) || filteredJobs[0] || null,
     [filteredJobs, selectedJobId]
   );
-  const jobMarkers = useMemo(() => buildMapMarkers(filteredJobs), [filteredJobs]);
+  const jobMarkers = useMemo(() => buildMapMarkers(filteredJobs, selectedJobId), [filteredJobs, selectedJobId]);
   const supportAgencyMarkers = useMemo(
     () => (showSupportAgencies ? buildSupportAgencyMarkers(supportAgencyState.agencies) : []),
     [showSupportAgencies, supportAgencyState.agencies]
@@ -1681,6 +1747,22 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     setReloadKey((current) => current + 1);
   }, []);
 
+  const markJobScrapped = useCallback((jobId, scrapped = true) => {
+    clearRecommendationCache();
+    setRecommendationState((prev) => ({
+      ...prev,
+      jobs: prev.jobs.map((job) =>
+        job.id === jobId
+          ? {
+              ...job,
+              scrappedByMe: scrapped,
+              scrapCount: Math.max(0, Number(job.scrapCount || 0) + (scrapped ? 1 : -1))
+            }
+          : job
+      )
+    }));
+  }, []);
+
   const applyFilters = useCallback((filters) => {
     setSelectedFilters(filters || {});
     setAppliedAiEnabled(isAiEnabled);
@@ -1738,6 +1820,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     setShowSupportAgencies,
     toggleAiScoring,
     applyFilters,
-    reloadRecommendations
+    reloadRecommendations,
+    markJobScrapped
   };
 }
