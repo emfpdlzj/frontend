@@ -28,12 +28,17 @@ const footerSocials = [
   { id: 'facebook', label: 'Facebook', icon: facebookIcon },
   { id: 'blog', label: 'Blog', icon: blogIcon }
 ];
+const SNS_OPENING_MESSAGE = '현재 SNS 개설중입니다.';
 
 export function AppFooter() {
   const { localizePath, t } = useLocale();
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSocialClick = () => {
+    window.alert(SNS_OPENING_MESSAGE);
   };
 
   return (
@@ -53,7 +58,7 @@ export function AppFooter() {
           <ul className="app-footer__social-list" aria-label={t('footer.socials')}>
             {footerSocials.map((social) => (
               <li key={social.id}>
-                <button className="app-footer__social-item" type="button" aria-label={social.label}>
+                <button className="app-footer__social-item" type="button" aria-label={social.label} onClick={handleSocialClick}>
                   <img src={social.icon} alt={`${social.label} 아이콘`} />
                 </button>
               </li>
