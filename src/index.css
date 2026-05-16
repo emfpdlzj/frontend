@@ -769,6 +769,10 @@ html[data-bw-reduce-motion='off'] .score-ring__value {
   animation: scoreRingFill 760ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+html[data-bw-reduce-motion='off'] .score-ring--no-animate .score-ring__value {
+  animation: none;
+}
+
 @keyframes scoreRingFill {
   from {
     stroke-dashoffset: 100;
@@ -7013,6 +7017,15 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 
 .home-quick__profile-panel .accessibility-map__profile-trigger {
   width: 100%;
+}
+
+.home-quick .home-quick__filter-panel.accessibility-map__filter-panel {
+  /* 홈 퀵 필터는 지도 화면과 달리 패널 내부 스크롤을 사용하지 않는다. */
+  height: auto;
+  min-height: 0;
+  overflow-y: visible;
+  overscroll-behavior: auto;
+  border-right: 1px solid #dbe5f3;
 }
 
 .accessibility-map__profile-trigger {
