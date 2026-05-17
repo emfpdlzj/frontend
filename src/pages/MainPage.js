@@ -19,6 +19,7 @@ import { LoginModal } from '../components/auth/LoginModal';
 import { DefinitionGrid } from '../components/jobs/JobDetailPanel';
 import { AccessibilityScoreHelpButton } from '../components/accessibility-map/AccessibilityMapDetailPanel';
 import { LlmExplanationProgress } from '../components/common/LlmExplanationProgress';
+import { translateUiText } from '../i18n/uiTextTranslations';
 
 const FILTER_ALL_VALUE = '전체';
 const RECOMMEND_TASK_POLL_INTERVAL_MS = 2500;
@@ -835,16 +836,21 @@ async function waitForRecommendTask(callWithAuth, requestId, signal) {
 }
 
 function HomeLoadingModal({ isOpen }) {
+  const { locale } = useLocale();
+
   if (!isOpen) {
     return null;
   }
 
+  const title = translateUiText('추천 결과를 준비하고 있습니다', locale);
+  const description = translateUiText('요청이 끝날 때까지 페이지를 다시 열어도 진행 상태가 이어집니다.', locale);
+
   return (
-    <div className="home-loading-modal" role="status" aria-live="polite" aria-label="추천 결과를 준비하고 있습니다.">
+    <div className="home-loading-modal" role="status" aria-live="polite" aria-label={translateUiText('추천 결과를 준비하고 있습니다.', locale)}>
       <div className="home-loading-modal__panel">
         <div className="loading-spinner" aria-hidden="true" />
-        <h2>추천 결과를 준비하고 있습니다</h2>
-        <p>요청이 끝날 때까지 페이지를 다시 열어도 진행 상태가 이어집니다.</p>
+        <h2>{title}</h2>
+        <p>{description}</p>
       </div>
     </div>
   );
@@ -922,8 +928,8 @@ function PopularPostingDetailModal({
           {detail ? (
             <>
               <div className="login-modal__heading">
-                <h2 id="popular-posting-detail-title" className="login-modal__title">{detail.jobTitle}</h2>
-                <p>{detail.companyName}</p>
+                <h2 id="popular-posting-detail-title" className="login-modal__title" data-i18n-skip>{detail.jobTitle}</h2>
+                <p data-i18n-skip>{detail.companyName}</p>
               </div>
               <div className="posting-detail-modal__summary">
                 <div className="posting-detail-modal__summary-meta">
@@ -948,7 +954,7 @@ function PopularPostingDetailModal({
                 {summaryItems.map(([label, value]) => (
                   <div key={label}>
                     <span>{label}</span>
-                    <strong>{value}</strong>
+                    <strong data-i18n-skip>{value}</strong>
                   </div>
                 ))}
               </section>
@@ -1030,13 +1036,13 @@ function PopularPostingDetailModal({
               ) : null}
               <div className="posting-detail-modal__info-stack">
                 <PostingDetailInfoSection title="근무 조건">
-                  <DefinitionGrid items={workConditionItems} />
+                  <DefinitionGrid items={workConditionItems} skipValues />
                 </PostingDetailInfoSection>
                 <PostingDetailInfoSection title="작업 환경">
-                  <DefinitionGrid items={workEnvironmentItems} />
+                  <DefinitionGrid items={workEnvironmentItems} skipValues />
                 </PostingDetailInfoSection>
                 <PostingDetailInfoSection title="지원 요건">
-                  <DefinitionGrid items={requirementItems} />
+                  <DefinitionGrid items={requirementItems} skipValues />
                 </PostingDetailInfoSection>
               </div>
             </>
@@ -2223,18 +2229,18 @@ export function MainPage() {
                             {job.scrappedByMe ? '스크랩 완료' : `스크랩 ${job.scrapCount}건`}
                           </span>
                         </div>
-                        <h3>{job.title}</h3>
-                        <p className="home-job-role">{job.location}</p>
+                        <h3 data-i18n-skip>{job.title}</h3>
+                        <p className="home-job-role" data-i18n-skip>{job.location}</p>
                         <dl className="home-job-meta" aria-label={`${job.title} 공고 정보`}>
                           <div>
                             <dt>통근</dt>
                             <dd>
-                              {job.commuteEstimate?.label || '확인 필요'}
+                              <span data-i18n-skip>{job.commuteEstimate?.label || '확인 필요'}</span>
                               {job.commuteEstimate?.source === 'estimated' ? <span className="home-job-meta__hint">예상</span> : null}
                             </dd>
                           </div>
-                          <div><dt>급여</dt><dd>{job.salary}</dd></div>
-                          <div><dt>고용형태</dt><dd>{job.employmentType}</dd></div>
+                          <div><dt>급여</dt><dd data-i18n-skip>{job.salary}</dd></div>
+                          <div><dt>고용형태</dt><dd data-i18n-skip>{job.employmentType}</dd></div>
                           <div><dt>등록일</dt><dd>{job.registeredDateText || '없음'}</dd></div>
                           {job.dueLabel ? <div><dt>마감</dt><dd>{job.dueLabel}</dd></div> : null}
                         </dl>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { LoadingView } from '../components/common/LoadingView';
 import { PageShell } from '../components/common/PageShell';
 import { StatusMessage } from '../components/common/StatusMessage';
@@ -7,11 +7,28 @@ import { useAuth } from '../auth/AuthContext';
 import { oauthUtils } from '../utils/oauth';
 import { ROUTE_PATHS } from '../config/routes';
 import { useLocale } from '../i18n/LocaleContext';
+import { buildLocalizedPath, getLocaleFromPathname } from '../i18n/locales';
+
+export function getCallbackLocale(pathname, returnTo, fallbackLocale) {
+  const returnToLocale = getLocaleFromPathname(returnTo);
+  if (returnToLocale && returnToLocale !== 'ko') {
+    return returnToLocale;
+  }
+
+  return getLocaleFromPathname(pathname) || fallbackLocale;
+}
+
+export function getPostLoginPath({ pathname, returnTo, fallbackLocale, signupRequired }) {
+  const targetLocale = getCallbackLocale(pathname, returnTo, fallbackLocale);
+  const targetPath = signupRequired ? ROUTE_PATHS.signup : returnTo;
+  return buildLocalizedPath(targetPath, targetLocale);
+}
 
 export function OAuthCallbackPage({ provider }) {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
-  const { localizePath } = useLocale();
+  const { locale } = useLocale();
   const { isAuthenticated, isInitializing, loginWithSocialCode } = useAuth();
   const hasCallbackResult =
     searchParams.has('code') || searchParams.has('error') || searchParams.has('error_description');
@@ -58,12 +75,14 @@ export function OAuthCallbackPage({ provider }) {
           controller.signal
         );
 
-        if (result.signupRequired) {
-          navigate(localizePath(ROUTE_PATHS.signup), { replace: true });
-          return;
-        }
+        const returnTo = oauthUtils.consumeReturnTo();
 
-        navigate(localizePath(oauthUtils.consumeReturnTo()), {
+        navigate(getPostLoginPath({
+          pathname: location.pathname,
+          returnTo,
+          fallbackLocale: locale,
+          signupRequired: result.signupRequired
+        }), {
           replace: true,
           state: result.withdrawalCanceled ? { withdrawalRestored: true } : null
         });
@@ -77,10 +96,21 @@ export function OAuthCallbackPage({ provider }) {
     return () => {
       controller.abort();
     };
-  }, [localizePath, loginWithSocialCode, navigate, provider, searchParams]);
+  }, [locale, location.pathname, loginWithSocialCode, navigate, provider, searchParams]);
 
   if (!isInitializing && isAuthenticated && !hasCallbackResult) {
-    return <Navigate to={localizePath(oauthUtils.consumeReturnTo())} replace />;
+    const returnTo = oauthUtils.consumeReturnTo();
+    return (
+      <Navigate
+        to={getPostLoginPath({
+          pathname: location.pathname,
+          returnTo,
+          fallbackLocale: locale,
+          signupRequired: false
+        })}
+        replace
+      />
+    );
   }
 
   return (

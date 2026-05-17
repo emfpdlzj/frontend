@@ -554,8 +554,8 @@ export function SettingsPage() {
             <div className="settings-policy-highlight">
               {highlightedPolicyItems.map((policy) => (
                 <Link key={policy.id} to={localizePath(getPolicyPath(policy.id))} className="settings-policy-featured">
-                  <strong>{policy.title}</strong>
-                  <span>{policy.summary}</span>
+                  <strong data-i18n-skip>{policy.title}</strong>
+                  <span data-i18n-skip>{policy.summary}</span>
                   <small>마지막 수정일 {policy.updatedAt}</small>
                 </Link>
               ))}
@@ -565,7 +565,7 @@ export function SettingsPage() {
               <div className="settings-policy-list">
                 {POLICY_DOCUMENTS.map((policy) => (
                   <Link key={policy.id} to={localizePath(getPolicyPath(policy.id))} className="settings-policy-row">
-                    <span>{policy.title}</span>
+                    <span data-i18n-skip>{policy.title}</span>
                     <small>마지막 수정일 {policy.updatedAt}</small>
                     <span aria-hidden="true">›</span>
                   </Link>

@@ -105,7 +105,7 @@ flowchart LR
 
 서비스 소개, FAQ, 약관, 개인정보처리방침처럼 공개 가능한 페이지는 검색 노출을 고려하고, 인증이 필요한 화면은 색인되지 않도록 분리했습니다.
 
-- locale 기반 라우팅: `ko`, `en`, `ja`, `zh`
+- locale 기반 라우팅: `ko`, `en`, `ja`, `zh-CN`
 - 페이지별 title/description/robots meta 설정
 - 빌드 시 `sitemap.xml`, `robots.txt` 생성
 - 공개 정책 문서 route 색인 허용
@@ -137,7 +137,7 @@ flowchart LR
 | 개인정보처리방침 | `/:locale/privacy` | 개인정보처리방침 | 공개 |
 | OAuth callback | `/auth/kakao/callback`, `/auth/naver/callback` | 소셜 로그인 callback | 공개 |
 
-locale 없는 기존 경로는 기본 locale 경로로 리다이렉트됩니다.
+locale 없는 기존 경로는 기본 locale 경로로 리다이렉트됩니다. 기존 중국어 경로 `/zh`는 `/zh-CN`으로 정규화됩니다.
 
 ## 주요 API 연동
 

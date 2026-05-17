@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import logo from '../../assets/header/logo.png';
 import logoText from '../../assets/header/logo-text.png';
 import searchIcon from '../../assets/header/search.png';
@@ -7,17 +7,16 @@ import { useMapSearch } from '../../accessibility/MapSearchContext';
 import { ROUTE_PATHS } from '../../config/routes';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useLocale } from '../../i18n/LocaleContext';
-import { stripLocaleFromPathname } from '../../i18n/locales';
-
-const LOCALE_PATCH_IN_PROGRESS_MESSAGE = '현재 다국어 패치 진행중입니다.';
 
 export function AppHeader({ showMapSearch = false }) {
-  const location = useLocation();
   const { locale, supportedLocales, switchLocale, localizePath, t } = useLocale();
   const { searchEnabled, submittedQuery, submitQuery } = useMapSearch();
   const [searchInput, setSearchInput] = useState('');
+  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
+  const languageMenuRef = useRef(null);
   const debouncedSearchInput = useDebouncedValue(searchInput, 300);
-  const isHomePage = stripLocaleFromPathname(location.pathname) === '/';
+  const currentLocaleIndex = supportedLocales.findIndex((item) => item.code === locale);
+  const currentLocale = supportedLocales[currentLocaleIndex] || supportedLocales[0];
 
   useEffect(() => {
     setSearchInput(submittedQuery);
@@ -31,41 +30,38 @@ export function AppHeader({ showMapSearch = false }) {
     submitQuery(debouncedSearchInput);
   }, [debouncedSearchInput, searchEnabled, submitQuery, submittedQuery]);
 
+  useEffect(() => {
+    if (!isLanguageMenuOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event) => {
+      if (!languageMenuRef.current?.contains(event.target)) {
+        setIsLanguageMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsLanguageMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isLanguageMenuOpen]);
+
   const handleSearchSubmit = (event) => {
     event.preventDefault();
     if (!searchEnabled) {
       return;
     }
     submitQuery(searchInput);
-  };
-
-  const blockLocaleSelectIfHome = (event) => {
-    if (!isHomePage) {
-      return false;
-    }
-    event.preventDefault();
-    window.alert(LOCALE_PATCH_IN_PROGRESS_MESSAGE);
-    return true;
-  };
-
-  const handleLocaleSelectChange = (event) => {
-    if (blockLocaleSelectIfHome(event)) {
-      return;
-    }
-    switchLocale(event.target.value);
-  };
-
-  const handleLocaleSelectMouseDown = (event) => {
-    blockLocaleSelectIfHome(event);
-  };
-
-  const handleLocaleSelectKeyDown = (event) => {
-    if (!isHomePage) {
-      return;
-    }
-    if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar' || event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      blockLocaleSelectIfHome(event);
-    }
   };
 
   return (
@@ -104,25 +100,40 @@ export function AppHeader({ showMapSearch = false }) {
         </form>
       ) : null}
 
-      <div className="app-header__actions" aria-label={t('common.languageSelect')}>
-        <label className="sr-only" htmlFor="app-header-locale">
-          {t('common.languageSelect')}
-        </label>
-        <select
-          id="app-header-locale"
-          className="app-header__locale-select"
-          value={locale}
-          aria-label={t('common.languageSelect')}
-          onMouseDown={handleLocaleSelectMouseDown}
-          onKeyDown={handleLocaleSelectKeyDown}
-          onChange={handleLocaleSelectChange}
+      <div className="app-header__actions" ref={languageMenuRef}>
+        <button
+          type="button"
+          className="app-header__translate-button"
+          aria-haspopup="menu"
+          aria-expanded={isLanguageMenuOpen}
+          aria-label={`${t('common.languageSelect')}: ${currentLocale.label}`}
+          onClick={() => setIsLanguageMenuOpen((current) => !current)}
         >
-          {supportedLocales.map((item) => (
-            <option key={item.code} value={item.code}>
-              {item.shortLabel}
-            </option>
-          ))}
-        </select>
+          <span aria-hidden="true">{t('common.translateButton')}</span>
+          <strong>{currentLocale.shortLabel}</strong>
+        </button>
+        {isLanguageMenuOpen ? (
+          <div className="app-header__language-menu" role="menu" aria-label={t('common.languageSelect')}>
+            {supportedLocales.map((item) => (
+              <button
+                key={item.code}
+                type="button"
+                role="menuitemradio"
+                aria-checked={item.code === locale}
+                className={`app-header__language-option${item.code === locale ? ' is-active' : ''}`}
+                onClick={() => {
+                  setIsLanguageMenuOpen(false);
+                  if (item.code !== locale) {
+                    switchLocale(item.code);
+                  }
+                }}
+              >
+                <span>{item.label}</span>
+                <strong>{item.shortLabel}</strong>
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
     </header>
   );

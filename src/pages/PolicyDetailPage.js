@@ -1,4 +1,5 @@
 import { Link, Navigate, useParams } from 'react-router-dom';
+import { LegalTranslationNotice } from '../components/common/LegalTranslationNotice';
 import { POLICY_DOCUMENTS, POLICY_DOCUMENT_MAP, getPolicyPath } from '../config/policyDocuments';
 import { ROUTE_PATHS } from '../config/routes';
 import { useLocale } from '../i18n/LocaleContext';
@@ -26,7 +27,7 @@ export function PolicyDetailPage() {
                 className={`policy-detail-page__nav-link${item.id === policy.id ? ' is-active' : ''}`}
                 to={localizePath(getPolicyPath(item.id))}
               >
-                {item.title}
+                <span data-i18n-skip>{item.title}</span>
               </Link>
             ))}
           </nav>
@@ -35,8 +36,8 @@ export function PolicyDetailPage() {
         <article className="policy-detail-page__content">
           <header className="policy-detail-page__header">
             <span>Bridgework 정책 문서</span>
-            <h1 id="policy-detail-title">{policy.title}</h1>
-            <p>{policy.summary}</p>
+            <h1 id="policy-detail-title" data-i18n-skip>{policy.title}</h1>
+            <p data-i18n-skip>{policy.summary}</p>
             <dl>
               <div>
                 <dt>마지막 수정일</dt>
@@ -49,7 +50,9 @@ export function PolicyDetailPage() {
             </dl>
           </header>
 
-          <div className="policy-detail-page__body">
+          <LegalTranslationNotice />
+
+          <div className="policy-detail-page__body" data-i18n-skip>
             {policy.sections.map((section, index) => (
               <section key={section.title} aria-labelledby={`policy-section-${index}`}>
                 <h2 id={`policy-section-${index}`}>{section.title}</h2>

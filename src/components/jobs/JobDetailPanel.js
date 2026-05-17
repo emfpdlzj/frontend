@@ -17,13 +17,13 @@ const checklistLabels = {
   requirements: '공고 요구조건 확인 여부'
 };
 
-export function DefinitionGrid({ items }) {
+export function DefinitionGrid({ items, skipValues = false }) {
   return (
     <dl className="jobs-detail__definition-grid">
       {items.map(([label, value]) => (
         <div key={label}>
           <dt>{label}</dt>
-          <dd>{value}</dd>
+          <dd {...(skipValues ? { 'data-i18n-skip': true } : {})}>{value}</dd>
         </div>
       ))}
     </dl>
@@ -131,29 +131,29 @@ export function JobDetailPanel({
             </button>
           </div>
         </div>
-        <h2>{job.title}</h2>
-        <p>{job.company}</p>
+        <h2 data-i18n-skip>{job.title}</h2>
+        <p data-i18n-skip>{job.company}</p>
         <JobBadgeRow job={job} />
         <section className="jobs-detail__summary" aria-label="공고 핵심 요약">
           <div>
             <span>급여</span>
-            <strong>{job.salary}</strong>
+            <strong data-i18n-skip>{job.salary}</strong>
           </div>
           <div>
             <span>근무지역</span>
-            <strong>{job.location}</strong>
+            <strong data-i18n-skip>{job.location}</strong>
           </div>
           <div>
             <span>고용형태</span>
-            <strong>{job.employmentType}</strong>
+            <strong data-i18n-skip>{job.employmentType}</strong>
           </div>
           <div>
             <span>입사유형</span>
-            <strong>{job.source.enterType}</strong>
+            <strong data-i18n-skip>{job.source.enterType}</strong>
           </div>
           <div>
             <span>모집기간</span>
-            <strong>{job.recruitmentPeriod}</strong>
+            <strong data-i18n-skip>{job.recruitmentPeriod}</strong>
           </div>
         </section>
         <div className="jobs-detail__tabs" role="tablist" aria-label="공고 상세 탭">
@@ -186,7 +186,7 @@ export function JobDetailPanel({
           <NoticeBox>AI 직무 적합도를 켜면 선택 프로필 기준으로 공고와의 일치도를 확인할 수 있습니다.</NoticeBox>
         ) : null}
 
-        {selectedTab === 'job' ? <DefinitionGrid items={jobInfo} /> : null}
+        {selectedTab === 'job' ? <DefinitionGrid items={jobInfo} skipValues /> : null}
 
         {selectedTab === 'match' && isAiEnabled ? (
           <section className="jobs-detail__match" aria-label="직무 적합도 상세">
@@ -288,7 +288,7 @@ export function JobDetailPanel({
 
         {selectedTab === 'company' ? (
           <>
-            <DefinitionGrid items={companyInfo} />
+            <DefinitionGrid items={companyInfo} skipValues />
             <NoticeBox>
               기업 안정성/채용 친화도는 접근성 지도 화면의 종합 점수 대상이므로 여기서는 간단한 참고 정보로만 표시합니다.
             </NoticeBox>

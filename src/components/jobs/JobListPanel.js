@@ -75,7 +75,7 @@ export function JobListPanel({ jobs, totalJobCount, selectedJobId, isAiEnabled, 
                 onClick={() => onSelectJob(job.id)}
               >
                 <div className="jobs-card__top">
-                  <span className="jobs-card__company">{job.company}</span>
+                  <span className="jobs-card__company" data-i18n-skip>{job.company}</span>
                   {job.dueLabel ? (
                     <strong className="jobs-card__dday" aria-label={`마감까지 ${job.dueLabel.replace('D-', '')}일`}>
                       {job.dueLabel}
@@ -83,23 +83,23 @@ export function JobListPanel({ jobs, totalJobCount, selectedJobId, isAiEnabled, 
                   ) : null}
                 </div>
                 <div className="jobs-card__headline">
-                  <strong className="jobs-card__title">{job.title}</strong>
+                  <strong className="jobs-card__title" data-i18n-skip>{job.title}</strong>
                   {isSelected ? <em>현재 선택됨</em> : null}
                 </div>
                 <div className="jobs-card__badges" aria-label="공고 배지">
-                  <span>{job.occupation}</span>
+                  <span data-i18n-skip>{job.occupation}</span>
                   {job.isStandardWorkplace ? <span>표준사업장</span> : null}
                   {job.prefersDisabled ? <span>장애인 우대</span> : null}
                 </div>
                 <dl className="jobs-card__quick-meta">
-                  <div><dt>지역</dt><dd>{job.location}</dd></div>
-                  <div><dt>{job.source.salaryType}</dt><dd>{job.salary}</dd></div>
-                  <div><dt>입사유형</dt><dd>{job.source.enterType}</dd></div>
+                  <div><dt>지역</dt><dd data-i18n-skip>{job.location}</dd></div>
+                  <div><dt data-i18n-skip>{job.source.salaryType}</dt><dd data-i18n-skip>{job.salary}</dd></div>
+                  <div><dt>입사유형</dt><dd data-i18n-skip>{job.source.enterType}</dd></div>
                 </dl>
                 <dl className="jobs-card__sub-meta">
-                  <div><dt>고용형태</dt><dd>{job.employmentType}</dd></div>
-                  <div><dt>요구경력</dt><dd>{job.experience}</dd></div>
-                  <div><dt>요구학력</dt><dd>{job.education}</dd></div>
+                  <div><dt>고용형태</dt><dd data-i18n-skip>{job.employmentType}</dd></div>
+                  <div><dt>요구경력</dt><dd data-i18n-skip>{job.experience}</dd></div>
+                  <div><dt>요구학력</dt><dd data-i18n-skip>{job.education}</dd></div>
                 </dl>
                 <MatchSummary job={job} isAiEnabled={isAiEnabled} />
               </button>

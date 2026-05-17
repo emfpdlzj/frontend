@@ -6,7 +6,7 @@ import { LoadingView } from '../components/common/LoadingView';
 import { PageShell } from '../components/common/PageShell';
 import { AUTH_PROVIDER_ROUTES, LEGACY_ROUTE_PATHS, LOCALIZED_ROUTE_PATHS, ROUTE_PATHS } from '../config/routes';
 import { useLocale } from '../i18n/LocaleContext';
-import { buildLocalizedPath, DEFAULT_LOCALE, isSupportedLocale } from '../i18n/locales';
+import { buildLocalizedPath, DEFAULT_LOCALE, isSupportedLocale, normalizeLocale } from '../i18n/locales';
 import { OAuthCallbackPage } from '../pages/OAuthCallbackPage';
 
 const MainPage = lazy(() => import('../pages/MainPage').then((module) => ({ default: module.MainPage })));
@@ -58,9 +58,14 @@ function AuthRoute({ children, requiredRole }) {
 function LocaleRoute({ children }) {
   const { locale } = useParams();
   const location = useLocation();
+  const normalizedLocale = normalizeLocale(locale);
 
   if (!isSupportedLocale(locale)) {
     return <Navigate to={buildLocalizedPath(`${location.pathname}${location.search}${location.hash}`, DEFAULT_LOCALE)} replace />;
+  }
+
+  if (normalizedLocale !== locale) {
+    return <Navigate to={buildLocalizedPath(`${location.pathname}${location.search}${location.hash}`, normalizedLocale)} replace />;
   }
 
   return children;

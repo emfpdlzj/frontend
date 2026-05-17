@@ -279,10 +279,10 @@ export function AccessibilityMapDetailPanel({
           {job.dueDateText ? <span>{job.dueDateText}</span> : null}
         </div>
         <div className="accessibility-map__title-row">
-          <h2>{job.title}</h2>
+          <h2 data-i18n-skip>{job.title}</h2>
           {job.dueLabel ? <strong>{job.dueLabel}</strong> : null}
         </div>
-        <p>{job.company}</p>
+        <p data-i18n-skip>{job.company}</p>
         <div className="accessibility-map__tab-row" role="tablist" aria-label="상세 정보 탭">
           <button
             type="button"
@@ -312,14 +312,14 @@ export function AccessibilityMapDetailPanel({
               {job.dueLabel ? <div className="accessibility-map__highlight-badge">{job.dueLabel}</div> : null}
               <div>
                 <strong>모집 마감까지</strong>
-                <p>{job.dateRangeText}</p>
+                <p data-i18n-skip>{job.dateRangeText}</p>
               </div>
             </div>
             <dl className="accessibility-map__definition-list">
               {job.jobInfo.map(([label, value]) => (
                 <div key={label}>
                   <dt>{label}</dt>
-                  <dd>{value}</dd>
+                  <dd data-i18n-skip>{value}</dd>
                 </div>
               ))}
             </dl>

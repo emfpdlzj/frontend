@@ -2,9 +2,9 @@ export const DEFAULT_LOCALE = 'ko';
 
 export const SUPPORTED_LOCALES = Object.freeze([
   { code: 'ko', htmlLang: 'ko-KR', label: '한국어', shortLabel: 'KO' },
-  { code: 'zh', htmlLang: 'zh-CN', label: '中文', shortLabel: 'ZH' },
   { code: 'en', htmlLang: 'en', label: 'English', shortLabel: 'EN' },
-  { code: 'ja', htmlLang: 'ja', label: '日本語', shortLabel: 'JA' }
+  { code: 'ja', htmlLang: 'ja', label: '日本語', shortLabel: 'JA' },
+  { code: 'zh-CN', htmlLang: 'zh-CN', label: '中文简体', shortLabel: 'ZH' }
 ]);
 
 export const SUPPORTED_LOCALE_CODES = SUPPORTED_LOCALES.map((locale) => locale.code);
@@ -12,22 +12,31 @@ export const SUPPORTED_LOCALE_CODES = SUPPORTED_LOCALES.map((locale) => locale.c
 export const LOCALE_PATTERN = SUPPORTED_LOCALE_CODES.join('|');
 
 const SUPPORTED_LOCALE_SET = new Set(SUPPORTED_LOCALE_CODES);
+const LEGACY_LOCALE_ALIASES = Object.freeze({
+  zh: 'zh-CN'
+});
+
+function canonicalizeLocale(value) {
+  return LEGACY_LOCALE_ALIASES[value] || value;
+}
 
 export function isSupportedLocale(value) {
-  return SUPPORTED_LOCALE_SET.has(value);
+  return SUPPORTED_LOCALE_SET.has(canonicalizeLocale(value));
 }
 
 export function normalizeLocale(value) {
-  return isSupportedLocale(value) ? value : DEFAULT_LOCALE;
+  const canonicalLocale = canonicalizeLocale(value);
+  return SUPPORTED_LOCALE_SET.has(canonicalLocale) ? canonicalLocale : DEFAULT_LOCALE;
 }
 
 export function getLocaleMeta(locale) {
-  return SUPPORTED_LOCALES.find((item) => item.code === locale) || SUPPORTED_LOCALES[0];
+  const normalizedLocale = normalizeLocale(locale);
+  return SUPPORTED_LOCALES.find((item) => item.code === normalizedLocale) || SUPPORTED_LOCALES[0];
 }
 
 export function getLocaleFromPathname(pathname) {
   const [, firstSegment = ''] = String(pathname || '').split('/');
-  return isSupportedLocale(firstSegment) ? firstSegment : DEFAULT_LOCALE;
+  return normalizeLocale(firstSegment);
 }
 
 export function stripLocaleFromPathname(pathname) {

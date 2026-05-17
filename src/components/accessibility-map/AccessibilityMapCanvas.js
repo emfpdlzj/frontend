@@ -1,6 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import accessibilityScorePanel from '../../assets/accessibility-map/accessibility-score-panel.png';
 import arrowDown from '../../assets/accessibility-map/arrow_down.png';
 import companyMapMarker from '../../assets/accessibility-map/company-map-marker.png';
 import profileIcon from '../../assets/accessibility-map/profile-icon.png';
@@ -19,6 +18,11 @@ const MARKER_GRID_DECIMALS_BY_ZOOM = [
   [13, 4],
   [10, 3],
   [0, 2]
+];
+const SCORE_LEGEND_ITEMS = [
+  { grade: 'A', label: '80 이상', tone: 'good' },
+  { grade: 'B', label: '60 ~ 79', tone: 'warning' },
+  { grade: 'C', label: '60 미만', tone: 'danger' }
 ];
 
 function createNaverLatLng(location) {
@@ -569,13 +573,18 @@ function AccessibilityMapCanvasComponent({
           ) : null}
         </div>
       ) : null}
-      <img
-        className="accessibility-map__score-panel-image"
-        src={accessibilityScorePanel}
-        alt="접근성 점수 기준: A 80 이상, B 60~79, C 60 미만"
-        loading="lazy"
-        decoding="async"
-      />
+      <section className="accessibility-map__score-map-legend" aria-label="접근성 점수 기준">
+        <h2>접근성 점수</h2>
+        <ul>
+          {SCORE_LEGEND_ITEMS.map((item) => (
+            <li key={item.grade}>
+              <span className={`accessibility-map__score-map-dot is-${item.tone}`} aria-hidden="true" />
+              <strong>{item.grade}</strong>
+              <span>{item.label}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
       {hasAppliedConditions ? (
         <>
           <label className="accessibility-map__support-agency-toggle">

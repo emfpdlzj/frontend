@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import {
   buildLocalizedPath,
   DEFAULT_LOCALE,
@@ -22,7 +22,6 @@ const LocaleContext = createContext({
 
 export function LocaleProvider({ children }) {
   const location = useLocation();
-  const navigate = useNavigate();
   const locale = getLocaleFromPathname(location.pathname);
   const localeMeta = getLocaleMeta(locale);
 
@@ -40,12 +39,11 @@ export function LocaleProvider({ children }) {
       switchLocale: (nextLocale) => {
         const normalizedNextLocale = normalizeLocale(nextLocale);
         const pathnameWithoutLocale = stripLocaleFromPathname(location.pathname);
-        navigate(buildLocalizedPath(`${pathnameWithoutLocale}${location.search}${location.hash}`, normalizedNextLocale), {
-          replace: false
-        });
+        const nextPath = buildLocalizedPath(`${pathnameWithoutLocale}${location.search}${location.hash}`, normalizedNextLocale);
+        window.location.assign(nextPath);
       }
     }),
-    [locale, localeMeta, location.hash, location.pathname, location.search, navigate]
+    [locale, localeMeta, location.hash, location.pathname, location.search]
   );
 
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;

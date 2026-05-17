@@ -8,22 +8,29 @@ import { LoginModal } from '../components/auth/LoginModal';
 import { StatusMessage } from '../components/common/StatusMessage';
 import { useAuth } from '../auth/AuthContext';
 import { useAccessibilityMap } from '../hooks/useAccessibilityMap';
+import { useLocale } from '../i18n/LocaleContext';
+import { translateUiText } from '../i18n/uiTextTranslations';
 
 function isWithinSouthKoreaBounds(latitude, longitude) {
   return latitude >= 33 && latitude <= 39.5 && longitude >= 124 && longitude <= 132;
 }
 
 function MapLoadingModal({ isOpen }) {
+  const { locale } = useLocale();
+
   if (!isOpen) {
     return null;
   }
 
+  const title = translateUiText('접근성 지도 분석 중입니다', locale);
+  const description = translateUiText('요청이 완료될 때까지 이 화면을 다시 열어도 진행 상태가 이어집니다.', locale);
+
   return (
-    <div className="home-loading-modal" role="status" aria-live="polite" aria-label="지도 추천 결과를 준비하고 있습니다.">
+    <div className="home-loading-modal" role="status" aria-live="polite" aria-label={translateUiText('지도 추천 결과를 준비하고 있습니다.', locale)}>
       <div className="home-loading-modal__panel">
         <div className="loading-spinner" aria-hidden="true" />
-        <h2>접근성 지도 분석 중입니다</h2>
-        <p>요청이 완료될 때까지 이 화면을 다시 열어도 진행 상태가 이어집니다.</p>
+        <h2>{title}</h2>
+        <p>{description}</p>
       </div>
     </div>
   );

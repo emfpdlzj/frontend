@@ -114,11 +114,11 @@ function ScrapListPanel({ scraps, selectedPostingId, onSelect }) {
               onClick={() => onSelect(item.postingId)}
             >
               <div className="jobs-card__top">
-                <span className="jobs-card__company">{item.company}</span>
+                <span className="jobs-card__company" data-i18n-skip>{item.company}</span>
                 {item.dueLabel ? <strong className="jobs-card__dday">{item.dueLabel}</strong> : null}
               </div>
               <div className="jobs-card__headline">
-                <strong className="jobs-card__title">{item.title}</strong>
+                <strong className="jobs-card__title" data-i18n-skip>{item.title}</strong>
               </div>
               <div className="jobs-card__badges" aria-label="공고 상태">
                 <span>{item.statusLabel}</span>
@@ -126,9 +126,9 @@ function ScrapListPanel({ scraps, selectedPostingId, onSelect }) {
                 <span>스크랩 {item.scrapCount}건</span>
               </div>
               <dl className="jobs-card__quick-meta">
-                <div><dt>지역</dt><dd>{item.location}</dd></div>
-                <div><dt>급여</dt><dd>{item.salary}</dd></div>
-                <div><dt>고용형태</dt><dd>{item.employmentType}</dd></div>
+                <div><dt>지역</dt><dd data-i18n-skip>{item.location}</dd></div>
+                <div><dt>급여</dt><dd data-i18n-skip>{item.salary}</dd></div>
+                <div><dt>고용형태</dt><dd data-i18n-skip>{item.employmentType}</dd></div>
               </dl>
             </button>
           );
@@ -320,8 +320,8 @@ function ScrapDetailPanel({ detail, detailViewState, detailErrorMessage, onDelet
             </button>
           </div>
         </div>
-        <h2>{detail.title}</h2>
-        <p>{detail.company}</p>
+        <h2 data-i18n-skip>{detail.title}</h2>
+        <p data-i18n-skip>{detail.company}</p>
         <section className="jobs-detail__summary" aria-label="공고 핵심 요약">
           <div>
             <span>공고 상태</span>
@@ -329,15 +329,15 @@ function ScrapDetailPanel({ detail, detailViewState, detailErrorMessage, onDelet
           </div>
           <div>
             <span>급여</span>
-            <strong>{detail.salary}</strong>
+            <strong data-i18n-skip>{detail.salary}</strong>
           </div>
           <div>
             <span>고용형태</span>
-            <strong>{detail.employmentType}</strong>
+            <strong data-i18n-skip>{detail.employmentType}</strong>
           </div>
           <div>
             <span>근무지역</span>
-            <strong>{detail.region}</strong>
+            <strong data-i18n-skip>{detail.region}</strong>
           </div>
         </section>
       </header>
@@ -366,7 +366,7 @@ function ScrapDetailPanel({ detail, detailViewState, detailErrorMessage, onDelet
                   <AccessibilityDetailIcon title={title} status={status} />
                   <div>
                     <strong>{title}</strong>
-                    <p>{description}</p>
+                    <p data-i18n-skip>{description}</p>
                   </div>
                   <DetailStatusBadge label={status} />
                 </li>
@@ -382,7 +382,7 @@ function ScrapDetailPanel({ detail, detailViewState, detailErrorMessage, onDelet
             {detail.jobInfoFields.map(([label, value]) => (
               <div key={label}>
                 <dt>{label}</dt>
-                <dd>{value}</dd>
+                <dd data-i18n-skip>{value}</dd>
               </div>
             ))}
           </dl>
@@ -394,7 +394,7 @@ function ScrapDetailPanel({ detail, detailViewState, detailErrorMessage, onDelet
               {detail.geoInfoFields.map(([label, value]) => (
                 <div key={label}>
                   <dt>{label}</dt>
-                  <dd>{value}</dd>
+                  <dd data-i18n-skip>{value}</dd>
                 </div>
               ))}
             </dl>

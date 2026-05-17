@@ -28,7 +28,6 @@ const footerSocials = [
   { id: 'facebook', label: 'Facebook', icon: facebookIcon },
   { id: 'blog', label: 'Blog', icon: blogIcon }
 ];
-const SNS_OPENING_MESSAGE = '현재 SNS 개설중입니다.';
 
 export function AppFooter() {
   const { localizePath, t } = useLocale();
@@ -38,7 +37,7 @@ export function AppFooter() {
   };
 
   const handleSocialClick = () => {
-    window.alert(SNS_OPENING_MESSAGE);
+    window.alert(t('footer.socialOpeningNotice'));
   };
 
   return (
