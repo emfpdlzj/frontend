@@ -1559,11 +1559,16 @@ const UI_TEXT_TRANSLATIONS = {
   },
   '도보': { zh: '步行', en: 'Walking', ja: '徒歩' },
   '점수 데이터가 없어 확인이 필요합니다.': { zh: '没有评分数据，需要确认。', en: 'Score data is missing and needs confirmation.', ja: 'スコアデータがないため確認が必要です。' },
-  '근무지 좌표': { zh: '工作地点坐标', en: 'Workplace coordinates', ja: '勤務地座標' },
-  '근무지 좌표가 없어 지도 위치와 실제 주소를 함께 확인해야 합니다.': {
-    zh: '缺少工作地点坐标，需要同时确认地图位置和实际地址。',
-    en: 'Workplace coordinates are missing, so check both map location and actual address.',
-    ja: '勤務地座標がないため、地図上の位置と実際の住所を合わせて確認する必要があります。'
+  '근무지 위치': { zh: '工作地点位置', en: 'Workplace location', ja: '勤務地の位置' },
+  '근무지 위치가 지도에 표시됩니다.': {
+    zh: '工作地点位置会显示在地图上。',
+    en: 'The workplace location is shown on the map.',
+    ja: '勤務地の位置が地図に表示されます。'
+  },
+  '지도에 표시할 근무지 위치 정보가 부족합니다. 실제 주소와 이동 경로를 함께 확인해야 합니다.': {
+    zh: '用于在地图上显示工作地点的位置信息不足。需要同时确认实际地址和通勤路线。',
+    en: 'There is not enough workplace location information to show it on the map. Check the actual address and travel route together.',
+    ja: '地図に表示する勤務地の位置情報が不足しています。実際の住所と移動経路を合わせて確認する必要があります。'
   },
   '설정된 정보 확인 필요': { zh: '需确认已设置的信息', en: 'Configured information needs confirmation', ja: '設定済み情報の確認が必要' },
   '근로지원기관': { zh: '工作支持机构', en: 'Work support agency', ja: '就労支援機関' },

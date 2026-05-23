@@ -242,6 +242,20 @@ const getAccessibilityStatusFromScore = (score) => {
   return '접근 어려움';
 };
 
+const buildWorkLocationSummary = (workAddress, hasMapPoint) => {
+  const hasWorkAddress = Boolean(workAddress && workAddress !== '-');
+
+  if (hasMapPoint && hasWorkAddress) {
+    return `근무지는 ${workAddress} 기준으로 지도에 표시됩니다.`;
+  }
+
+  if (hasMapPoint) {
+    return '근무지 위치가 지도에 표시됩니다.';
+  }
+
+  return '지도에 표시할 근무지 위치 정보가 부족합니다. 실제 주소와 이동 경로를 함께 확인해야 합니다.';
+};
+
 const getFirstPresentValue = (...values) =>
   values.find((value) => value !== undefined && value !== null && value !== '');
 
@@ -789,6 +803,7 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult, profile = n
   const postingId = getJobPostId(job, job);
   const geoLatitude = getGeoLatitude(job);
   const geoLongitude = getGeoLongitude(job);
+  const hasMapPoint = Boolean(geoLatitude && geoLongitude);
   const commuteStats = resolveCommuteStats(job, aiResult, scoreDetail);
   const commuteMinutes = estimateCommuteMinutes(profile, job, commuteStats);
   const evidenceDetailItems = buildEvidenceDetailItems(evidenceItems);
@@ -835,15 +850,13 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult, profile = n
               '접근성 점수',
               displayScore === null || displayScore === undefined
                 ? '점수 데이터가 없어 확인이 필요합니다.'
-                : `전체 추천 점수는 ${displayScore}점이고, 화면에는 ${grade}으로 표시됩니다.`,
+                : `전체 추천 점수는 ${displayScore}점이고, ${grade}에 해당됩니다.`,
               getAccessibilityStatusFromScore(displayScore)
             ],
             [
-              '근무지 좌표',
-              geoLatitude && geoLongitude
-                ? `근무지 위치가 지도에 표시됩니다. 좌표는 위도 ${Number(geoLatitude).toFixed(4)}, 경도 ${Number(geoLongitude).toFixed(4)}입니다.`
-                : '근무지 좌표가 없어 지도 위치와 실제 주소를 함께 확인해야 합니다.',
-              geoLatitude && geoLongitude ? '접근 양호' : '주의 필요'
+              '근무지 위치',
+              buildWorkLocationSummary(address, hasMapPoint),
+              hasMapPoint ? '접근 양호' : '주의 필요'
             ],
             ...evidenceDetailItems
           ],
@@ -851,7 +864,7 @@ const normalizeMapJob = (job, aiResults, aiEnabled, matchedAiResult, profile = n
         }
       ])
     ),
-    mapPoint: geoLatitude && geoLongitude
+    mapPoint: hasMapPoint
       ? {
           lat: Number(geoLatitude),
           lng: Number(geoLongitude)

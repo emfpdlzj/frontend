@@ -129,12 +129,12 @@ describe('buildRecommendationStateFromPayload', () => {
     });
     expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
       '접근성 점수',
-      '전체 추천 점수는 82점이고, 화면에는 A등급으로 표시됩니다.',
+      '전체 추천 점수는 82점이고, A등급에 해당됩니다.',
       '접근 양호'
     ]);
     expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
-      '근무지 좌표',
-      '근무지 위치가 지도에 표시됩니다. 좌표는 위도 37.5665, 경도 126.9780입니다.',
+      '근무지 위치',
+      '근무지는 서울특별시 중구 세종대로 1 기준으로 지도에 표시됩니다.',
       '접근 양호'
     ]);
     expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
@@ -170,7 +170,7 @@ describe('buildRecommendationStateFromPayload', () => {
 
     expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
       '접근성 점수',
-      '전체 추천 점수는 47점이고, 화면에는 C등급으로 표시됩니다.',
+      '전체 추천 점수는 47점이고, C등급에 해당됩니다.',
       '접근 어려움'
     ]);
   });
