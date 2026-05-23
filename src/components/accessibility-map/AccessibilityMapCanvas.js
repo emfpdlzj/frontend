@@ -573,20 +573,20 @@ function AccessibilityMapCanvasComponent({
           ) : null}
         </div>
       ) : null}
-      <section className="accessibility-map__score-map-legend" aria-label="접근성 점수 기준">
-        <h2>접근성 점수</h2>
-        <ul>
-          {SCORE_LEGEND_ITEMS.map((item) => (
-            <li key={item.grade}>
-              <span className={`accessibility-map__score-map-dot is-${item.tone}`} aria-hidden="true" />
-              <strong>{item.grade}</strong>
-              <span>{item.label}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-      {hasAppliedConditions ? (
-        <>
+      <div className="accessibility-map__top-right-overlays">
+        <section className="accessibility-map__score-map-legend" aria-label="접근성 점수 기준">
+          <h2>접근성 점수</h2>
+          <ul>
+            {SCORE_LEGEND_ITEMS.map((item) => (
+              <li key={item.grade}>
+                <span className={`accessibility-map__score-map-dot is-${item.tone}`} aria-hidden="true" />
+                <strong>{item.grade}</strong>
+                <span>{item.label}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+        {hasAppliedConditions ? (
           <label className="accessibility-map__support-agency-toggle">
             <input
               type="checkbox"
@@ -595,6 +595,10 @@ function AccessibilityMapCanvasComponent({
             />
             근로지원인 수행기관 보기
           </label>
+        ) : null}
+      </div>
+      {hasAppliedConditions ? (
+        <>
           <div className="accessibility-map__map-pill">
             공고 {officeMarkerCount}개 · 수행기관 {supportAgencyCount}곳
             {markers.length > MAX_RENDERED_MARKERS ? ` · 지도 표시 ${MAX_RENDERED_MARKERS}개` : ''}

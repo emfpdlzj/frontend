@@ -7264,13 +7264,20 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   text-decoration: none;
 }
 
-.accessibility-map__score-map-legend {
+.accessibility-map__top-right-overlays {
   position: absolute;
   top: 16px;
   right: 18px;
   z-index: 4;
-  min-width: 180px;
+  display: grid;
+  justify-items: end;
+  gap: 10px;
   max-width: min(240px, calc(100% - 36px));
+}
+
+.accessibility-map__score-map-legend {
+  min-width: 180px;
+  width: 100%;
   padding: 18px 16px 16px;
   border: 1px solid #cfd8e6;
   border-radius: 12px;
@@ -7335,10 +7342,6 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .accessibility-map__support-agency-toggle {
-  position: absolute;
-  right: 18px;
-  top: 204px;
-  z-index: 4;
   min-height: 36px;
   display: inline-flex;
   align-items: center;
