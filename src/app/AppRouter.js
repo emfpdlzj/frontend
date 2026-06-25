@@ -53,6 +53,10 @@ function AuthRoute({ children, requiredRole }) {
     return <Navigate to={localizePath(requiredRole === 'admin' ? ROUTE_PATHS.adminLogin : ROUTE_PATHS.root)} replace />;
   }
 
+  if (!requiredRole && hasRequiredRole(currentUser, 'admin')) {
+    return <Navigate to={localizePath(ROUTE_PATHS.adminNotices)} replace />;
+  }
+
   if (!hasRequiredRole(currentUser, requiredRole)) {
     return <Navigate to={localizePath(ROUTE_PATHS.root)} replace />;
   }

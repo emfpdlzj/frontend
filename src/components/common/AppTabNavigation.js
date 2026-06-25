@@ -7,6 +7,7 @@ import businesscardIcon from '../../assets/tab/businesscard_icon.png';
 import profileIcon from '../../assets/tab/profile_icon.png';
 import settingIcon from '../../assets/tab/setting_icon.png';
 import { useAuth } from '../../auth/AuthContext';
+import { hasRequiredRole } from '../../auth/authorization';
 import { ROUTE_PATHS } from '../../config/routes';
 import { useLocale } from '../../i18n/LocaleContext';
 import { LoginModal } from '../auth/LoginModal';
@@ -19,6 +20,11 @@ const primaryTabs = [
   { id: 'jobs', labelKey: 'nav.jobs', icon: docsIcon, to: ROUTE_PATHS.jobs },
   { id: 'business', labelKey: 'nav.business', icon: businesscardIcon, to: ROUTE_PATHS.profile },
   { id: 'settings', labelKey: 'nav.settings', icon: settingIcon, to: ROUTE_PATHS.settings }
+];
+
+const adminTabs = [
+  { id: 'home', labelKey: 'nav.home', icon: homeIcon, to: ROUTE_PATHS.root },
+  { id: 'adminNotices', label: '공지 관리', icon: docsIcon, to: ROUTE_PATHS.adminNotices }
 ];
 
 function TabIcon({ item, label }) {
@@ -90,7 +96,7 @@ function TabLink({ item, onRequireLogin }) {
   const { localizePath, t } = useLocale();
   const hasSessionToken = Boolean(tokens?.accessToken || tokens?.refreshToken);
   const isSignedIn = isAuthenticated || Boolean(currentUser) || hasSessionToken || isInitializing;
-  const label = t(item.labelKey);
+  const label = item.label || t(item.labelKey);
 
   if (!item.to) {
     return (
@@ -133,7 +139,9 @@ function TabLink({ item, onRequireLogin }) {
 export function AppTabNavigation() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const { currentUser } = useAuth();
   const { t } = useLocale();
+  const visibleTabs = hasRequiredRole(currentUser, 'admin') ? adminTabs : primaryTabs;
 
   return (
     <>
@@ -150,7 +158,7 @@ export function AppTabNavigation() {
         }}
       >
         <div className="app-tab-nav__group">
-          {primaryTabs.map((item) => (
+          {visibleTabs.map((item) => (
             <TabLink key={item.id} item={item} onRequireLogin={() => setIsLoginModalOpen(true)} />
           ))}
         </div>
