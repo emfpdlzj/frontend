@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import infoIcon from '../../assets/accessibility-map/info-icon.png';
 import triangleDownBlue from '../../assets/accessibility-map/triangle-down-blue.png';
 
@@ -56,8 +56,8 @@ const getFilterValueSnapshot = (filterGroups) =>
   );
 
 const FILTER_ALL_VALUE = '전체';
-const INITIAL_VISIBLE_MAP_JOB_COUNT = 80;
-const VISIBLE_MAP_JOB_INCREMENT = 80;
+const INITIAL_VISIBLE_MAP_JOB_COUNT = 20;
+const VISIBLE_MAP_JOB_INCREMENT = 20;
 
 export function TrafficFilterPanel({
   filterGroups,
@@ -65,6 +65,8 @@ export function TrafficFilterPanel({
   filterOptionErrorMessage,
   jobs,
   totalJobCount,
+  hasMoreJobs = false,
+  isLoadingMoreJobs = false,
   isAiEnabled,
   appliedAiEnabled,
   sortMode = 'score_desc',
@@ -75,6 +77,7 @@ export function TrafficFilterPanel({
   onRequireLogin,
   onToggleAiScoring,
   onChangeSortMode,
+  onLoadMoreJobs,
   onApplyFilters
 }) {
   const [draftFilterValues, setDraftFilterValues] = useState(() => getFilterValueSnapshot(filterGroups));
@@ -82,10 +85,15 @@ export function TrafficFilterPanel({
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [visibleJobCount, setVisibleJobCount] = useState(INITIAL_VISIBLE_MAP_JOB_COUNT);
   const sortMenuRef = useRef(null);
+  const resultsBodyRef = useRef(null);
   const isRecommendationBusy = viewState === 'loading' || viewState === 'calculating';
   const resultCount = viewState === 'empty' || isRecommendationBusy ? 0 : jobs.length;
-  const visibleJobs = useMemo(() => jobs.slice(0, visibleJobCount), [jobs, visibleJobCount]);
-  const hasMoreJobs = visibleJobs.length < jobs.length;
+  const usesServerPaging = !appliedAiEnabled;
+  const visibleJobs = useMemo(
+    () => (usesServerPaging ? jobs : jobs.slice(0, visibleJobCount)),
+    [jobs, usesServerPaging, visibleJobCount]
+  );
+  const hasMoreVisibleJobs = usesServerPaging ? hasMoreJobs : visibleJobs.length < jobs.length;
 
   useEffect(() => {
     setDraftFilterValues(getFilterValueSnapshot(filterGroups));
@@ -94,6 +102,25 @@ export function TrafficFilterPanel({
   useEffect(() => {
     setVisibleJobCount(INITIAL_VISIBLE_MAP_JOB_COUNT);
   }, [jobs]);
+
+  const handleResultsScroll = useCallback((event) => {
+    const target = event.currentTarget;
+    const distanceToBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+    if (distanceToBottom > 160 || isLoadingMoreJobs) {
+      return;
+    }
+
+    if (usesServerPaging) {
+      if (hasMoreJobs) {
+        onLoadMoreJobs?.();
+      }
+      return;
+    }
+
+    if (visibleJobs.length < jobs.length) {
+      setVisibleJobCount((current) => Math.min(current + VISIBLE_MAP_JOB_INCREMENT, jobs.length));
+    }
+  }, [hasMoreJobs, isLoadingMoreJobs, jobs.length, onLoadMoreJobs, usesServerPaging, visibleJobs.length]);
 
   useEffect(() => {
     if (!isSortMenuOpen) {
@@ -367,7 +394,11 @@ export function TrafficFilterPanel({
         </div>
       </div>
 
-      <div className="accessibility-map__results-body">
+      <div
+        ref={resultsBodyRef}
+        className="accessibility-map__results-body"
+        onScroll={handleResultsScroll}
+      >
         {viewState === 'loading' ? (
           <div className="accessibility-map__empty-panel" role="status">
             로딩중
@@ -427,14 +458,16 @@ export function TrafficFilterPanel({
                 <div className="accessibility-map__job-pay">임금 <strong>{job.payText}</strong></div>
               </button>
             ))}
-            {hasMoreJobs ? (
-              <button
-                type="button"
-                className="secondary-button accessibility-map__more-button"
-                onClick={() => setVisibleJobCount((current) => current + VISIBLE_MAP_JOB_INCREMENT)}
-              >
-                공고 {Math.min(VISIBLE_MAP_JOB_INCREMENT, jobs.length - visibleJobs.length)}개 더 보기
-              </button>
+            {isLoadingMoreJobs ? (
+              <div className="accessibility-map__empty-panel jobs-feedback--animated-dots" role="status" aria-live="polite">
+                다음 공고 계산중
+                <span className="jobs-feedback__dots" aria-hidden="true" />
+              </div>
+            ) : null}
+            {hasMoreVisibleJobs && !isLoadingMoreJobs ? (
+              <div className="accessibility-map__empty-panel" role="status">
+                아래로 스크롤하면 다음 공고를 불러옵니다.
+              </div>
             ) : null}
           </div>
         )}

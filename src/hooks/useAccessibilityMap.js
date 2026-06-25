@@ -15,6 +15,8 @@ import { useProfiles } from './useProfiles';
 
 const MAP_RECOMMEND_REQUEST_TIMEOUT_MS = 3 * 60 * 1000;
 const MAP_RECOMMEND_POLL_INTERVAL_MS = 2500;
+const MAP_PAGE_SIZE = 20;
+const MAP_MAX_PROFILE_OFF_RESULTS = 100;
 const FILTER_ALL_VALUE = '전체';
 const VALID_TABS = ['accessibility', 'job'];
 const MAP_PERSONAS = {
@@ -117,6 +119,35 @@ async function waitForRecommendTask(callWithAuth, requestId, signal) {
   }
 
   return lastPayload;
+}
+
+async function requestMapRecommendationResult(callWithAuth, request, signal) {
+  const taskPayload = await callWithAuth((accessToken) =>
+    fetchMapJobRecommendations(accessToken, {
+      ...request,
+      signal,
+      timeoutMs: MAP_RECOMMEND_REQUEST_TIMEOUT_MS
+    })
+  );
+
+  if (taskPayload?.status === 'FAILED') {
+    throw new Error(taskPayload.errorMessage || '지역 접근성 지도 추천을 불러오지 못했습니다.');
+  }
+
+  if (taskPayload?.status === 'COMPLETED' && taskPayload?.result) {
+    return taskPayload.result;
+  }
+
+  if (!taskPayload?.requestId) {
+    throw new Error('추천 요청 상태를 확인할 수 없습니다.');
+  }
+
+  const completedTask = await waitForRecommendTask(callWithAuth, taskPayload.requestId, signal);
+  if (!completedTask || completedTask.status === 'FAILED') {
+    throw new Error(completedTask?.errorMessage || '지역 접근성 지도 추천을 불러오지 못했습니다.');
+  }
+
+  return completedTask.result;
 }
 
 const extractDateValues = (value) => {
@@ -1341,6 +1372,11 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     payload: null,
     jobs: []
   });
+  const [profileOffPageState, setProfileOffPageState] = useState({
+    hasMore: false,
+    isLoadingMore: false,
+    nextOffset: 0
+  });
   const [explanationState, setExplanationState] = useState({
     status: 'idle',
     error: '',
@@ -1447,15 +1483,17 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     const isScoringInputChanged = Boolean(activeRecommendationCacheKeyRef.current && activeRecommendationCacheKeyRef.current !== cacheKey);
 
     const loadRecommendations = async () => {
-      const cachedPayload = getCachedRecommendation(cacheKey);
+      const cachedPayload = appliedAiEnabled ? getCachedRecommendation(cacheKey) : null;
       if (cachedPayload) {
         if (isCurrentRequest) {
           activeRecommendationCacheKeyRef.current = cacheKey;
           setRecommendationState(buildRecommendationStateFromPayload(cachedPayload, appliedAiEnabled, selectedProfile));
+          setProfileOffPageState({ hasMore: false, isLoadingMore: false, nextOffset: 0 });
         }
         return;
       }
 
+      setProfileOffPageState({ hasMore: false, isLoadingMore: false, nextOffset: 0 });
       setRecommendationState((prev) => ({
         ...prev,
         status: isScoringInputChanged ? 'calculating' : prev.jobs.length ? 'refetching' : 'loading',
@@ -1464,60 +1502,16 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
       }));
 
       try {
-        const taskPayload = await callWithAuth((accessToken) =>
-          fetchMapJobRecommendations(accessToken, {
+        const completedPayload = await requestMapRecommendationResult(
+          callWithAuth,
+          {
             aiEnabled: appliedAiEnabled,
             profileId: appliedAiEnabled ? selectedProfileId : undefined,
-            profileSignature: appliedAiEnabled ? selectedProfileScoringSignature : undefined,
-            signal: controller.signal,
-            timeoutMs: MAP_RECOMMEND_REQUEST_TIMEOUT_MS
-          })
+            limit: appliedAiEnabled ? undefined : MAP_PAGE_SIZE,
+            offset: appliedAiEnabled ? undefined : 0
+          },
+          controller.signal
         );
-
-        const taskResult = taskPayload;
-        if (taskResult?.status === 'FAILED') {
-          if (!isCurrentRequest) {
-            return;
-          }
-          setRecommendationState({
-            status: 'error',
-            error: taskResult.errorMessage || '지역 접근성 지도 추천을 불러오지 못했습니다.',
-            payload: null,
-            jobs: []
-          });
-          return;
-        }
-
-        let completedPayload = null;
-        if (taskResult?.status === 'COMPLETED' && taskResult?.result) {
-          completedPayload = taskResult.result;
-        } else if (taskResult?.requestId) {
-          const completedTask = await waitForRecommendTask(callWithAuth, taskResult.requestId, controller.signal);
-          if (!completedTask || completedTask.status === 'FAILED') {
-            if (!isCurrentRequest) {
-              return;
-            }
-            setRecommendationState({
-              status: 'error',
-              error: completedTask?.errorMessage || '지역 접근성 지도 추천을 불러오지 못했습니다.',
-              payload: null,
-              jobs: []
-            });
-            return;
-          }
-          completedPayload = completedTask.result;
-        } else {
-          if (!isCurrentRequest) {
-            return;
-          }
-          setRecommendationState({
-            status: 'error',
-            error: '추천 요청 상태를 확인할 수 없습니다.',
-            payload: null,
-            jobs: []
-          });
-          return;
-        }
 
         const nextState = buildRecommendationStateFromPayload(completedPayload, appliedAiEnabled, selectedProfile);
 
@@ -1525,9 +1519,18 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
           return;
         }
 
-        setCachedRecommendation(cacheKey, completedPayload);
+        if (appliedAiEnabled) {
+          setCachedRecommendation(cacheKey, completedPayload);
+        }
         activeRecommendationCacheKeyRef.current = cacheKey;
         setRecommendationState(nextState);
+        if (!appliedAiEnabled) {
+          setProfileOffPageState({
+            hasMore: nextState.jobs.length === MAP_PAGE_SIZE && nextState.jobs.length < MAP_MAX_PROFILE_OFF_RESULTS,
+            isLoadingMore: false,
+            nextOffset: nextState.jobs.length
+          });
+        }
       } catch (error) {
         if (error.name === 'AbortError') {
           return;
@@ -1565,6 +1568,78 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     selectedProfileId,
     selectedProfile,
     selectedProfileScoringSignature
+  ]);
+
+  const loadMoreRecommendations = useCallback(async () => {
+    if (
+      appliedAiEnabled ||
+      !hasAppliedConditions ||
+      !profileOffPageState.hasMore ||
+      profileOffPageState.isLoadingMore ||
+      recommendationState.status !== 'success'
+    ) {
+      return;
+    }
+
+    const offset = profileOffPageState.nextOffset;
+    if (offset >= MAP_MAX_PROFILE_OFF_RESULTS) {
+      setProfileOffPageState((prev) => ({ ...prev, hasMore: false }));
+      return;
+    }
+
+    const controller = new AbortController();
+    setProfileOffPageState((prev) => ({ ...prev, isLoadingMore: true }));
+
+    try {
+      const completedPayload = await requestMapRecommendationResult(
+        callWithAuth,
+        {
+          aiEnabled: false,
+          limit: Math.min(MAP_PAGE_SIZE, MAP_MAX_PROFILE_OFF_RESULTS - offset),
+          offset
+        },
+        controller.signal
+      );
+      const nextState = buildRecommendationStateFromPayload(completedPayload, false, selectedProfile);
+
+      setRecommendationState((prev) => {
+        const existingIds = new Set(prev.jobs.map((job) => job.id));
+        const appendedJobs = nextState.jobs.filter((job) => !existingIds.has(job.id));
+        return {
+          ...prev,
+          status: appendedJobs.length || prev.jobs.length ? 'success' : 'empty',
+          error: '',
+          payload: completedPayload,
+          jobs: [...prev.jobs, ...appendedJobs].slice(0, MAP_MAX_PROFILE_OFF_RESULTS)
+        };
+      });
+
+      setProfileOffPageState({
+        hasMore: nextState.jobs.length === MAP_PAGE_SIZE && offset + nextState.jobs.length < MAP_MAX_PROFILE_OFF_RESULTS,
+        isLoadingMore: false,
+        nextOffset: Math.min(offset + nextState.jobs.length, MAP_MAX_PROFILE_OFF_RESULTS)
+      });
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        return;
+      }
+
+      setProfileOffPageState((prev) => ({ ...prev, isLoadingMore: false }));
+      setRecommendationState((prev) => ({
+        ...prev,
+        status: prev.jobs.length ? 'success' : 'error',
+        error: error.message || '지역 접근성 지도 추천을 불러오지 못했습니다.'
+      }));
+    }
+  }, [
+    appliedAiEnabled,
+    callWithAuth,
+    hasAppliedConditions,
+    profileOffPageState.hasMore,
+    profileOffPageState.isLoadingMore,
+    profileOffPageState.nextOffset,
+    recommendationState.status,
+    selectedProfile
   ]);
 
   useEffect(() => {
@@ -1796,7 +1871,9 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
 
   return {
     jobs: filteredJobs,
-    totalJobCount: allJobs.length,
+    totalJobCount: appliedAiEnabled ? allJobs.length : Math.min(MAP_MAX_PROFILE_OFF_RESULTS, allJobs.length + (profileOffPageState.hasMore ? MAP_PAGE_SIZE : 0)),
+    hasMoreJobs: !appliedAiEnabled && profileOffPageState.hasMore,
+    isLoadingMoreJobs: profileOffPageState.isLoadingMore,
     profiles,
     personas: MAP_PERSONAS,
     filterGroups,
@@ -1833,6 +1910,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     setShowSupportAgencies,
     toggleAiScoring,
     applyFilters,
+    loadMoreRecommendations,
     reloadRecommendations,
     markJobScrapped
   };
