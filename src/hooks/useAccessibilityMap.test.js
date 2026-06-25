@@ -267,6 +267,22 @@ describe('buildRecommendationStateFromPayload', () => {
                   source_name: '전국횡단보도표준데이터',
                   description: '근무지 주변 횡단보도 정보가 확인됩니다.',
                   distance_meters: 180
+                },
+                {
+                  source_type: 'BRIDGEWORK_SCORE_BREAKDOWN',
+                  source_name: 'BridgeWork 점수 산정',
+                  description: '총점 84점은 계산 가능한 8개 항목을 동일 비중 평균으로 산정했습니다. 강점: 직무 적합도 92점. 확인 필요: 접근성 58점.',
+                  fields: {
+                    total_score: 84,
+                    component_count: 8,
+                    components: [
+                      { key: 'job_fit_score', label: '직무 적합도', score: 92 },
+                      { key: 'accessibility_score', label: '근무지 접근성', score: 58 }
+                    ],
+                    caution_components: [
+                      { key: 'accessibility_score', label: '근무지 접근성', score: 58 }
+                    ]
+                  }
                 }
               ],
               score_detail: {
@@ -292,7 +308,7 @@ describe('buildRecommendationStateFromPayload', () => {
     });
 
     expect(state.status).toBe('success');
-    expect(state.jobs[0].evidenceItems).toHaveLength(2);
+    expect(state.jobs[0].evidenceItems).toHaveLength(3);
     expect(state.jobs[0].recommendationReasons).toEqual(['직무분류와 공고 직무가 일치합니다.']);
     expect(state.jobs[0].riskFactors).toEqual(['근무지 주변 보행 경로는 추가 확인이 필요합니다.']);
     expect(state.jobs[0].jobInfo).toContainEqual(['요구경력', '신입']);
@@ -300,6 +316,11 @@ describe('buildRecommendationStateFromPayload', () => {
     expect(state.jobs[0].jobInfo).toContainEqual(['요구전공', '무관']);
     expect(state.jobs[0].jobInfo).toContainEqual(['요구자격', '컴퓨터활용능력']);
     expect(state.jobs[0].accessibilityByPersona.wheelchair.source).toContain('장애인 고용직무분류');
+    expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
+      '점수 산정 근거',
+      '총점 84점은 계산 가능한 8개 항목을 동일 비중 평균으로 산정했습니다. 강점: 직무 적합도 92점. 확인 필요: 접근성 58점.',
+      '주의 필요'
+    ]);
     expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
       '보행 안전 근거',
       '횡단보도, 신호등, 보행 네트워크 데이터가 1건, 최근접 약 180m 확인됩니다.',
