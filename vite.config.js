@@ -30,7 +30,7 @@ const validateClientEnv = (env) => {
   }
 };
 
-const jsAsJsxPlugin = () => ({
+const jsAsJsxPlugin = (define = {}) => ({
   name: 'bridgework-js-as-jsx',
   async transform(code, id) {
     if (!id.includes('/src/') || !id.endsWith('.js')) {
@@ -39,7 +39,8 @@ const jsAsJsxPlugin = () => ({
 
     return transformWithEsbuild(code, id, {
       loader: 'jsx',
-      jsx: 'automatic'
+      jsx: 'automatic',
+      define
     });
   }
 });
@@ -47,17 +48,23 @@ const jsAsJsxPlugin = () => ({
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   validateClientEnv(env);
+  const clientEnv = {};
   const define = {
     'process.env.NODE_ENV': JSON.stringify(mode === 'production' ? 'production' : 'development')
   };
 
   envKeys.forEach((key) => {
-    define[`process.env.${key}`] = JSON.stringify(env[key] || env[key.replace('REACT_APP_', 'VITE_')] || '');
+    clientEnv[key] = env[key] || env[key.replace('REACT_APP_', 'VITE_')] || '';
+    define[`process.env.${key}`] = JSON.stringify(clientEnv[key]);
+  });
+  define['process.env'] = JSON.stringify({
+    NODE_ENV: mode === 'production' ? 'production' : 'development',
+    ...clientEnv
   });
 
   return {
     plugins: [
-      jsAsJsxPlugin(),
+      jsAsJsxPlugin(define),
       react({
         include: /\.(js|jsx|ts|tsx)$/
       })
