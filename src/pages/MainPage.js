@@ -2580,10 +2580,22 @@ export function MainPage({ view = 'home' }) {
             <section className="home-quick__results" aria-label="퀵 추천 결과">
               {shouldShowQuickResults ? (
                 <div className="accessibility-map__results-header home-quick__results-header">
-                  <h3>
-                    <span>검색 결과 {filteredQuickJobs.length}개</span>
-                    {quickState.hasMore || quickState.rawJobs.length > filteredQuickJobs.length ? <span> / 최대 {QUICK_MAX_RESULTS}개</span> : null}
-                  </h3>
+                  <div className="accessibility-map__results-title-row">
+                    <h3>
+                      <span>검색 결과 {filteredQuickJobs.length}개</span>
+                      {quickState.hasMore || quickState.rawJobs.length > filteredQuickJobs.length ? <span> / 최대 {QUICK_MAX_RESULTS}개</span> : null}
+                    </h3>
+                    {quickState.hasMore && appliedAiEnabled ? (
+                      <button
+                        type="button"
+                        className="secondary-button accessibility-map__load-more-button"
+                        onClick={loadMoreQuickRecommendations}
+                        disabled={quickState.isLoadingMore || isQuickLoading}
+                      >
+                        20개 더 불러오기
+                      </button>
+                    ) : null}
+                  </div>
                   <span>{appliedAiEnabled ? '직무 적합도 높은순' : '최신순'}</span>
                 </div>
               ) : null}
@@ -2675,18 +2687,6 @@ export function MainPage({ view = 'home' }) {
                     </button>
                   ))}
                   {!appliedAiEnabled ? <div ref={quickLoadMoreSentinelRef} className="home-quick__load-sentinel" aria-hidden="true" /> : null}
-                  {quickState.hasMore && appliedAiEnabled ? (
-                    <div className="home-quick__load-more">
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={loadMoreQuickRecommendations}
-                        disabled={quickState.isLoadingMore || isQuickLoading}
-                      >
-                        20개 더 불러오기
-                      </button>
-                    </div>
-                  ) : null}
                   {quickState.hasMore && !appliedAiEnabled && !quickState.isLoadingMore ? (
                     <div className="home-feedback" role="status">아래로 스크롤하면 다음 공고를 불러옵니다.</div>
                   ) : null}

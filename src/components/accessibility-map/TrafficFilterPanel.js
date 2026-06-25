@@ -365,10 +365,22 @@ export function TrafficFilterPanel({
       </div>
 
       <div className="accessibility-map__results-header">
-        <h3>
-          <span>검색 결과 {resultCount}개</span>
-          {totalJobCount > resultCount ? <span> / 전체 {totalJobCount}개</span> : null}
-        </h3>
+        <div className="accessibility-map__results-title-row">
+          <h3>
+            <span>검색 결과 {resultCount}개</span>
+            {totalJobCount > resultCount ? <span> / 전체 {totalJobCount}개</span> : null}
+          </h3>
+          {hasMoreVisibleJobs && appliedAiEnabled ? (
+            <button
+              type="button"
+              className="secondary-button accessibility-map__load-more-button"
+              onClick={onLoadMoreJobs}
+              disabled={isLoadingMoreJobs}
+            >
+              20개 더 불러오기
+            </button>
+          ) : null}
+        </div>
         <div ref={sortMenuRef} className={`accessibility-map__sort${isSortMenuOpen ? ' is-open' : ''}`}>
           <button
             type="button"
@@ -476,18 +488,6 @@ export function TrafficFilterPanel({
                 <div className="accessibility-map__job-pay">임금 <strong>{job.payText}</strong></div>
               </button>
             ))}
-            {hasMoreVisibleJobs && appliedAiEnabled ? (
-              <div className="accessibility-map__load-more">
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={onLoadMoreJobs}
-                  disabled={isLoadingMoreJobs}
-                >
-                  20개 더 불러오기
-                </button>
-              </div>
-            ) : null}
             {hasMoreVisibleJobs && !appliedAiEnabled && !isLoadingMoreJobs ? (
               <div className="accessibility-map__empty-panel" role="status">
                 아래로 스크롤하면 다음 공고를 불러옵니다.
