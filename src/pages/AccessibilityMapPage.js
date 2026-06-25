@@ -77,6 +77,8 @@ export function AccessibilityMapPage() {
   const {
     jobs,
     totalJobCount,
+    hasMoreJobs,
+    isLoadingMoreJobs,
     profiles,
     filterGroups,
     filterOptionStatus,
@@ -106,6 +108,7 @@ export function AccessibilityMapPage() {
     setSelectedProfileId,
     toggleAiScoring,
     applyFilters,
+    loadMoreRecommendations,
     setSelectedTab,
     setSortMode,
     setShowSupportAgencies,
@@ -222,6 +225,8 @@ export function AccessibilityMapPage() {
           filterOptionErrorMessage={filterOptionErrorMessage}
           jobs={jobs}
           totalJobCount={totalJobCount}
+          hasMoreJobs={hasMoreJobs}
+          isLoadingMoreJobs={isLoadingMoreJobs}
           isAiEnabled={isAiEnabled}
           appliedAiEnabled={appliedAiEnabled}
           sortMode={sortMode}
@@ -233,6 +238,7 @@ export function AccessibilityMapPage() {
           onToggleAiScoring={toggleAiScoring}
           onChangeSortMode={setSortMode}
           onApplyFilters={applyFilters}
+          onLoadMoreJobs={loadMoreRecommendations}
         />
         <AccessibilityMapCanvas
           legend={mapLegend}

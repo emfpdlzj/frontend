@@ -21,13 +21,19 @@ export async function fetchQuickJobRecommendations(accessToken, { aiEnabled = tr
   );
 }
 
-export async function fetchMapJobRecommendations(accessToken, { aiEnabled = true, profileId, signal, timeoutMs } = {}) {
+export async function fetchMapJobRecommendations(accessToken, { aiEnabled = true, profileId, limit, offset, signal, timeoutMs } = {}) {
   const body = {
     aiEnabled
   };
 
   if (profileId) {
     body.profileId = Number(profileId);
+  }
+  if (Number.isFinite(Number(limit))) {
+    body.limit = Number(limit);
+  }
+  if (Number.isFinite(Number(offset))) {
+    body.offset = Number(offset);
   }
 
   return unwrapApiResult(

@@ -6863,12 +6863,14 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .accessibility-map__results-body {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-height: 0;
   margin: 0 -20px -18px;
   padding: 14px 20px 18px;
   border-top: 1px solid #c8d0da;
   background: #F4F5F6;
-  overflow: visible;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .accessibility-map__job-list {
@@ -6887,7 +6889,20 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   background: #fff;
   padding: 12px 13px 13px;
   cursor: pointer;
+  animation: accessibility-map-job-card-in 180ms ease-out both;
   transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+@keyframes accessibility-map-job-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .accessibility-map__job-card:hover {
@@ -8367,6 +8382,10 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .accessibility-map__job-card {
+    animation: none;
+  }
+
   .llm-explanation-progress__bar span {
     animation: none;
     width: 70%;
