@@ -73,3 +73,18 @@ test('logout sends refreshToken when available', async () => {
     signal
   });
 });
+
+test('getMe unwraps api result payload', async () => {
+  httpRequest.mockResolvedValueOnce({
+    code: 'SUCCESS',
+    result: {
+      userId: 1,
+      role: 'ADMIN'
+    }
+  });
+
+  await expect(authApi.getMe('access-token')).resolves.toEqual({
+    userId: 1,
+    role: 'ADMIN'
+  });
+});

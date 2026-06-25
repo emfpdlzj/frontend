@@ -9,6 +9,8 @@ const withoutSocialAccountEmail = (payload) => {
   return signupPayload;
 };
 
+const unwrapApiResult = (payload) => payload?.result || payload?.data || payload;
+
 export const authApi = {
   adminLogin(payload, signal) {
     return httpRequest('/auth/admin/login', {
@@ -77,6 +79,6 @@ export const authApi = {
     return httpRequest('/auth/me', {
       token: accessToken,
       signal
-    });
+    }).then(unwrapApiResult);
   }
 };
