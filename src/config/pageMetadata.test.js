@@ -22,6 +22,24 @@ describe('getPageMetadata', () => {
       path: '/faq',
       robots: 'index,follow'
     });
+    expect(getPageMetadata('/notices')).toMatchObject({
+      title: '공지사항 | BridgeWork',
+      path: '/notices',
+      robots: 'index,follow'
+    });
+    expect(getPageMetadata('/admin/notices')).toMatchObject({
+      title: '공지사항 관리 | BridgeWork',
+      path: '/admin/notices',
+      robots: 'noindex,nofollow'
+    });
+  });
+
+  it('returns notice detail metadata for notice detail pages', () => {
+    expect(getPageMetadata('/notices/123')).toMatchObject({
+      title: '공지사항 상세 | BridgeWork',
+      path: '/notices/123',
+      robots: 'index,follow'
+    });
   });
 
   it('returns policy document metadata for policy detail pages', () => {

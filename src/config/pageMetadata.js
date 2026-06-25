@@ -57,6 +57,15 @@ const PAGE_METADATA = Object.freeze({
     description: '로그인 후 내 프로필 기준으로 미리 계산된 퀵 맞춤 일자리 추천을 확인하세요.',
     robots: 'noindex,nofollow'
   },
+  [ROUTE_PATHS.notices]: {
+    title: '공지사항 | BridgeWork',
+    description: 'BridgeWork 서비스 안내와 변경 사항을 확인하세요.'
+  },
+  [ROUTE_PATHS.adminNotices]: {
+    title: '공지사항 관리 | BridgeWork',
+    description: '관리자가 BridgeWork 서비스 공지사항을 생성, 수정, 공개 전환하는 화면입니다.',
+    robots: 'noindex,nofollow'
+  },
   [ROUTE_PATHS.jobs]: {
     title: '스크랩한 공고 | BridgeWork',
     description: '로그인 후 저장한 공고를 접근성 점수, 추천 이유, 마감 상태 기준으로 다시 비교하세요.',
@@ -174,9 +183,23 @@ function getPolicyMetadata(pathname) {
   };
 }
 
+function getNoticeMetadata(pathname) {
+  if (!pathname.startsWith(`${ROUTE_PATHS.notices}/`)) {
+    return null;
+  }
+
+  return {
+    title: '공지사항 상세 | BridgeWork',
+    description: 'BridgeWork 서비스 공지사항 상세 내용을 확인하세요.'
+  };
+}
+
 export function getPageMetadata(pathname) {
   const normalizedPathname = normalizePathname(pathname);
-  const routeMetadata = PAGE_METADATA[normalizedPathname] || getPolicyMetadata(normalizedPathname) || NOT_FOUND_METADATA;
+  const routeMetadata = PAGE_METADATA[normalizedPathname]
+    || getPolicyMetadata(normalizedPathname)
+    || getNoticeMetadata(normalizedPathname)
+    || NOT_FOUND_METADATA;
 
   return {
     ...DEFAULT_PAGE_METADATA,
