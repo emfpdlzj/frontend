@@ -10,6 +10,7 @@ import { buildLocalizedPath, DEFAULT_LOCALE, isSupportedLocale, normalizeLocale 
 import { OAuthCallbackPage } from '../pages/OAuthCallbackPage';
 
 const MainPage = lazy(() => import('../pages/MainPage').then((module) => ({ default: module.MainPage })));
+const QuickJobsPage = lazy(() => import('../pages/MainPage').then((module) => ({ default: module.QuickJobsPage })));
 const AboutPage = lazy(() => import('../pages/AboutPage').then((module) => ({ default: module.AboutPage })));
 const FaqPage = lazy(() => import('../pages/FaqPage').then((module) => ({ default: module.FaqPage })));
 const SignupPage = lazy(() => import('../pages/SignupPage').then((module) => ({ default: module.SignupPage })));
@@ -96,6 +97,7 @@ export function AppRouter() {
         <Route path={ROUTE_PATHS.faq} element={<LegacyRouteRedirect to={ROUTE_PATHS.faq} />} />
         <Route path={ROUTE_PATHS.login} element={<LegacyRouteRedirect to={ROUTE_PATHS.root} />} />
         <Route path={ROUTE_PATHS.accessibilityMap} element={<LegacyRouteRedirect to={ROUTE_PATHS.accessibilityMap} />} />
+        <Route path={ROUTE_PATHS.quickJobs} element={<LegacyRouteRedirect to={ROUTE_PATHS.quickJobs} />} />
         <Route path={ROUTE_PATHS.jobs} element={<LegacyRouteRedirect to={ROUTE_PATHS.jobs} />} />
         <Route path={ROUTE_PATHS.signup} element={<LegacyRouteRedirect to={ROUTE_PATHS.signup} />} />
         <Route path={ROUTE_PATHS.profile} element={<LegacyRouteRedirect to={ROUTE_PATHS.profile} />} />
@@ -110,6 +112,7 @@ export function AppRouter() {
         <Route path={LOCALIZED_ROUTE_PATHS.faq} element={<LocaleRoute><FaqPage /></LocaleRoute>} />
         <Route path={LOCALIZED_ROUTE_PATHS.login} element={<LocaleRoute><LocalizedNavigate to={ROUTE_PATHS.root} /></LocaleRoute>} />
         <Route path={LOCALIZED_ROUTE_PATHS.accessibilityMap} element={<LocaleRoute><AuthRoute><AccessibilityMapPage /></AuthRoute></LocaleRoute>} />
+        <Route path={LOCALIZED_ROUTE_PATHS.quickJobs} element={<LocaleRoute><AuthRoute><QuickJobsPage /></AuthRoute></LocaleRoute>} />
         <Route path={LOCALIZED_ROUTE_PATHS.jobs} element={<LocaleRoute><AuthRoute><JobsPage /></AuthRoute></LocaleRoute>} />
         <Route
           path={AUTH_PROVIDER_ROUTES.KAKAO.callbackPath}

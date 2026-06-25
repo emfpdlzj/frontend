@@ -52,6 +52,11 @@ const PAGE_METADATA = Object.freeze({
     description: '관심 공고 주변의 이동 경로, 접근성 점수, 확인이 필요한 요소를 지도와 목록으로 함께 확인하세요.',
     robots: 'noindex,nofollow'
   },
+  [ROUTE_PATHS.quickJobs]: {
+    title: '퀵공고 | BridgeWork',
+    description: '로그인 후 내 프로필 기준으로 미리 계산된 퀵 맞춤 일자리 추천을 확인하세요.',
+    robots: 'noindex,nofollow'
+  },
   [ROUTE_PATHS.jobs]: {
     title: '스크랩한 공고 | BridgeWork',
     description: '로그인 후 저장한 공고를 접근성 점수, 추천 이유, 마감 상태 기준으로 다시 비교하세요.',
