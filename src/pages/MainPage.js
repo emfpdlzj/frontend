@@ -1247,7 +1247,9 @@ function SelectFilter({ label, options, value, onChange }) {
   );
 }
 
-export function MainPage() {
+export function MainPage({ view = 'home' }) {
+  const isQuickPage = view === 'quick';
+  const isHomePage = !isQuickPage;
   const { localizePath } = useLocale();
   const { isAuthenticated, isInitializing, callWithAuth } = useAuth();
   const filterOptions = useJobFilterOptions();
@@ -1402,6 +1404,10 @@ export function MainPage() {
   }, [isProfileMenuOpen]);
 
   useEffect(() => {
+    if (!isHomePage) {
+      return undefined;
+    }
+
     const controller = new AbortController();
 
     const loadPopular = async () => {
@@ -1430,9 +1436,13 @@ export function MainPage() {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [isHomePage]);
 
   useEffect(() => {
+    if (!isHomePage) {
+      return undefined;
+    }
+
     const scroller = popularScrollerRef.current;
     const prefersReducedMotion =
       typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1480,9 +1490,13 @@ export function MainPage() {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [isPopularCarouselPaused, popularState.items.length, popularState.status]);
+  }, [isHomePage, isPopularCarouselPaused, popularState.items.length, popularState.status]);
 
   useEffect(() => {
+    if (!isQuickPage) {
+      return undefined;
+    }
+
     if (isInitializing) {
       return undefined;
     }
@@ -1519,7 +1533,7 @@ export function MainPage() {
     return () => {
       controller.abort();
     };
-  }, [callWithAuth, isAuthenticated, isInitializing]);
+  }, [callWithAuth, isAuthenticated, isInitializing, isQuickPage]);
 
   const runQuickRecommendation = useCallback(async ({ profileId, aiEnabled, filters, signal, existingRequestId = '' }) => {
     if (!profileId) {
@@ -1628,6 +1642,10 @@ export function MainPage() {
   }, [callWithAuth, profilesState.profiles]);
 
   useEffect(() => {
+    if (!isQuickPage) {
+      return undefined;
+    }
+
     if (!isAuthenticated || !selectedProfileId || autoRequestedRef.current) {
       return undefined;
     }
@@ -1668,7 +1686,7 @@ export function MainPage() {
     return () => {
       controller.abort();
     };
-  }, [isAuthenticated, runQuickRecommendation, selectedProfileId, isAiEnabled, draftFilters]);
+  }, [draftFilters, isAiEnabled, isAuthenticated, isQuickPage, runQuickRecommendation, selectedProfileId]);
 
   const loadQuickExplanation = useCallback(async (job, profileObject, detailObject = null, options = {}) => {
     const { requireFitScore = true } = options;
@@ -1916,69 +1934,74 @@ export function MainPage() {
   }, []);
 
   return (
-    <main className="main-page" aria-labelledby="main-page-title">
-      <HomeLoadingModal isOpen={isQuickLoading} />
+    <main className="main-page" aria-labelledby={isQuickPage ? 'quick-recommend-title' : 'main-page-title'}>
+      <HomeLoadingModal isOpen={isQuickPage && isQuickLoading} />
       <div className="main-page__inner">
-        <section className="home-overview" aria-labelledby="main-page-title">
-          <div className="home-overview__heading">
-            <p className="home-eyebrow">Home</p>
-            <h1 id="main-page-title">현재 인기 공고</h1>
-            <p>사람들이 많이 스크랩한 공고들을 스크랩 해보세요.</p>
-          </div>
-        </section>
-
-        <section className="home-popular home-section-entrance home-section-entrance--popular" aria-labelledby="popular-postings-title">
-          <div className="home-section-head">
-            <div>
-              <div className="home-section-title-with-help">
-                <h2 id="popular-postings-title">인기 공고 TOP 20</h2>
-                <AccessibilityScoreHelpButton />
+        {isHomePage ? (
+          <>
+            <section className="home-overview" aria-labelledby="main-page-title">
+              <div className="home-overview__heading">
+                <p className="home-eyebrow">Home</p>
+                <h1 id="main-page-title">현재 인기 공고</h1>
+                <p>사람들이 많이 스크랩한 공고들을 스크랩 해보세요.</p>
               </div>
-            </div>
-          </div>
+            </section>
 
-          {popularState.status === 'loading' ? <div className="home-feedback" role="status">인기 공고를 불러오는 중입니다.</div> : null}
-          {popularState.status === 'error' ? <div className="home-feedback is-error" role="alert">{popularState.error}</div> : null}
+            <section className="home-popular home-section-entrance home-section-entrance--popular" aria-labelledby="popular-postings-title">
+              <div className="home-section-head">
+                <div>
+                  <div className="home-section-title-with-help">
+                    <h2 id="popular-postings-title">인기 공고 TOP 20</h2>
+                    <AccessibilityScoreHelpButton />
+                  </div>
+                </div>
+              </div>
 
-          {popularState.status === 'success' ? (
-            <div
-              ref={popularScrollerRef}
-              className="home-popular__scroller"
-              aria-label="인기 공고 목록"
-              onMouseEnter={() => setIsPopularCarouselPaused(true)}
-              onMouseLeave={() => setIsPopularCarouselPaused(false)}
-              onFocusCapture={() => setIsPopularCarouselPaused(true)}
-              onBlurCapture={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget)) {
-                  setIsPopularCarouselPaused(false);
-                }
-              }}
-            >
-              {popularState.items.map((item) => (
-                <button
-                  key={item.postingId}
-                  type="button"
-                  className="home-popular__card"
-                  onClick={() => handleOpenPopularPosting(item.postingId)}
+              {popularState.status === 'loading' ? <div className="home-feedback" role="status">인기 공고를 불러오는 중입니다.</div> : null}
+              {popularState.status === 'error' ? <div className="home-feedback is-error" role="alert">{popularState.error}</div> : null}
+
+              {popularState.status === 'success' ? (
+                <div
+                  ref={popularScrollerRef}
+                  className="home-popular__scroller"
+                  aria-label="인기 공고 목록"
+                  onMouseEnter={() => setIsPopularCarouselPaused(true)}
+                  onMouseLeave={() => setIsPopularCarouselPaused(false)}
+                  onFocusCapture={() => setIsPopularCarouselPaused(true)}
+                  onBlurCapture={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget)) {
+                      setIsPopularCarouselPaused(false);
+                    }
+                  }}
                 >
-                  <div className="home-popular__card-top">
-                    <strong>{item.companyName}</strong>
-                  </div>
-                  <h3>{item.jobTitle}</h3>
-                  <p>{item.region}</p>
-                  <div className="home-popular__card-meta">
-                    <span>{item.employmentType}</span>
-                    <span>{item.salaryText}</span>
-                    {item.dueLabel ? <span>{item.dueLabel}</span> : null}
-                  </div>
-                  <div className="home-popular__card-scrap">스크랩 {item.scrapCount}건</div>
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </section>
+                  {popularState.items.map((item) => (
+                    <button
+                      key={item.postingId}
+                      type="button"
+                      className="home-popular__card"
+                      onClick={() => handleOpenPopularPosting(item.postingId)}
+                    >
+                      <div className="home-popular__card-top">
+                        <strong>{item.companyName}</strong>
+                      </div>
+                      <h3>{item.jobTitle}</h3>
+                      <p>{item.region}</p>
+                      <div className="home-popular__card-meta">
+                        <span>{item.employmentType}</span>
+                        <span>{item.salaryText}</span>
+                        {item.dueLabel ? <span>{item.dueLabel}</span> : null}
+                      </div>
+                      <div className="home-popular__card-scrap">스크랩 {item.scrapCount}건</div>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+          </>
+        ) : null}
 
-        <section className="home-quick home-section-entrance home-section-entrance--quick" aria-labelledby="quick-recommend-title">
+        {isQuickPage ? (
+          <section className="home-quick home-section-entrance home-section-entrance--quick" aria-labelledby="quick-recommend-title">
             <section className="home-overview home-overview--compact" aria-labelledby="quick-recommend-title">
               <div className="home-overview__heading">
                 <div className="home-section-title-with-help">
@@ -2283,6 +2306,7 @@ export function MainPage() {
               ) : null}
             </section>
           </section>
+        ) : null}
       </div>
 
       {detailModalOpen ? (
@@ -2324,4 +2348,8 @@ export function MainPage() {
       {isLoginModalOpen ? <LoginModal onClose={() => setIsLoginModalOpen(false)} /> : null}
     </main>
   );
+}
+
+export function QuickJobsPage() {
+  return <MainPage view="quick" />;
 }

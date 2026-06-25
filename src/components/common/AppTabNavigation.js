@@ -15,6 +15,7 @@ import { LogoutConfirmModal } from '../auth/LogoutConfirmModal';
 const primaryTabs = [
   { id: 'home', labelKey: 'nav.home', icon: homeIcon, to: ROUTE_PATHS.root },
   { id: 'map', labelKey: 'nav.map', icon: mapIcon, to: ROUTE_PATHS.accessibilityMap },
+  { id: 'quickJobs', labelKey: 'nav.quickJobs', icon: docsIcon, to: ROUTE_PATHS.quickJobs },
   { id: 'jobs', labelKey: 'nav.jobs', icon: docsIcon, to: ROUTE_PATHS.jobs },
   { id: 'business', labelKey: 'nav.business', icon: businesscardIcon, to: ROUTE_PATHS.profile },
   { id: 'settings', labelKey: 'nav.settings', icon: settingIcon, to: ROUTE_PATHS.settings }

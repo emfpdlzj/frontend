@@ -51,7 +51,7 @@ describe('getPageMetadata', () => {
   it('builds hreflang alternate URLs from the same canonical path', () => {
     expect(buildAlternateUrls('/en/privacy')).toMatchObject({
       ko: 'https://www.bridgework.cloud/ko/privacy',
-      zh: 'https://www.bridgework.cloud/zh/privacy',
+      'zh-CN': 'https://www.bridgework.cloud/zh-CN/privacy',
       en: 'https://www.bridgework.cloud/en/privacy',
       ja: 'https://www.bridgework.cloud/ja/privacy',
       'x-default': 'https://www.bridgework.cloud/ko/privacy'
