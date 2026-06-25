@@ -2,7 +2,7 @@ import { httpRequest } from './httpClient';
 
 const unwrapApiResult = (payload) => payload?.result || payload?.data || payload;
 
-export async function fetchQuickJobRecommendations(accessToken, { aiEnabled = true, profileId, signal } = {}) {
+export async function fetchQuickJobRecommendations(accessToken, { aiEnabled = true, profileId, limit, offset, signal, timeoutMs } = {}) {
   const body = {
     aiEnabled
   };
@@ -10,13 +10,20 @@ export async function fetchQuickJobRecommendations(accessToken, { aiEnabled = tr
   if (profileId) {
     body.profileId = Number(profileId);
   }
+  if (Number.isFinite(Number(limit))) {
+    body.limit = Number(limit);
+  }
+  if (Number.isFinite(Number(offset))) {
+    body.offset = Number(offset);
+  }
 
   return unwrapApiResult(
     await httpRequest('/recommend/quick', {
       method: 'POST',
       token: accessToken,
       body,
-      signal
+      signal,
+      timeoutMs
     })
   );
 }

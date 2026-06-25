@@ -88,7 +88,7 @@ export function TrafficFilterPanel({
   const resultsBodyRef = useRef(null);
   const isRecommendationBusy = viewState === 'loading' || viewState === 'calculating';
   const resultCount = viewState === 'empty' || isRecommendationBusy ? 0 : jobs.length;
-  const usesServerPaging = !appliedAiEnabled;
+  const usesServerPaging = true;
   const visibleJobs = useMemo(
     () => (usesServerPaging ? jobs : jobs.slice(0, visibleJobCount)),
     [jobs, usesServerPaging, visibleJobCount]
@@ -393,6 +393,12 @@ export function TrafficFilterPanel({
           ) : null}
         </div>
       </div>
+      {isLoadingMoreJobs ? (
+        <div className="accessibility-map__loading-bar" role="status" aria-live="polite">
+          <span className="accessibility-map__loading-track" aria-hidden="true" />
+          다음 공고 계산중
+        </div>
+      ) : null}
 
       <div
         ref={resultsBodyRef}

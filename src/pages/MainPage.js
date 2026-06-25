@@ -24,7 +24,10 @@ import { translateUiText } from '../i18n/uiTextTranslations';
 
 const FILTER_ALL_VALUE = '전체';
 const RECOMMEND_TASK_POLL_INTERVAL_MS = 2500;
+const RECOMMEND_REQUEST_TIMEOUT_MS = 3 * 60 * 1000;
 const POPULAR_AUTOPLAY_INTERVAL_MS = 3600;
+const QUICK_PAGE_SIZE = 20;
+const QUICK_MAX_RESULTS = 100;
 const QUICK_PENDING_TASK_STORAGE_KEY = 'bridgework.quick.pending.task';
 const QUICK_EXPLAIN_CACHE_STORAGE_KEY = 'bridgework.quick.explain.cache.v2';
 
@@ -812,6 +815,18 @@ const parseQuickJobsFromResult = (result) => {
   return rows.map((item, index) => normalizeQuickJob(item, index));
 };
 
+const mergeUniqueQuickJobs = (currentJobs, nextJobs) => {
+  const seenIds = new Set();
+  return [...currentJobs, ...nextJobs].filter((job) => {
+    const key = String(job.postingId || job.externalId || job.id || '');
+    if (!key || seenIds.has(key)) {
+      return false;
+    }
+    seenIds.add(key);
+    return true;
+  });
+};
+
 const sortQuickJobs = (jobs, aiEnabled) => {
   const sorted = [...jobs];
 
@@ -848,6 +863,40 @@ async function waitForRecommendTask(callWithAuth, requestId, signal) {
   }
 
   return lastPayload;
+}
+
+async function requestQuickRecommendationResult(callWithAuth, request, signal) {
+  const taskPayload = await callWithAuth((accessToken) =>
+    fetchQuickJobRecommendations(accessToken, {
+      ...request,
+      signal,
+      timeoutMs: RECOMMEND_REQUEST_TIMEOUT_MS
+    })
+  );
+  const taskResult = normalizeTaskPayload(taskPayload);
+
+  if (isDirectQuickResultPayload(taskResult)) {
+    return taskResult;
+  }
+
+  if (getTaskStatus(taskResult) === 'FAILED') {
+    throw new Error(getTaskErrorMessage(taskResult) || '퀵 추천을 불러오지 못했습니다.');
+  }
+
+  if (getTaskStatus(taskResult) === 'COMPLETED' && taskResult?.result) {
+    return taskResult.result;
+  }
+
+  const taskRequestId = getTaskRequestId(taskResult);
+  if (!taskRequestId) {
+    throw new Error('퀵 추천 요청 상태를 확인할 수 없습니다.');
+  }
+
+  const completed = await waitForRecommendTask(callWithAuth, taskRequestId, signal);
+  if (!completed || getTaskStatus(completed) === 'FAILED') {
+    throw new Error(getTaskErrorMessage(completed) || '퀵 추천을 불러오지 못했습니다.');
+  }
+  return completed.result;
 }
 
 function HomeLoadingModal({ isOpen }) {
@@ -1310,13 +1359,17 @@ export function MainPage({ view = 'home' }) {
   const [quickState, setQuickState] = useState({
     status: 'idle',
     error: '',
-    rawJobs: []
+    rawJobs: [],
+    hasMore: false,
+    isLoadingMore: false,
+    nextOffset: 0
   });
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isQuickFilterCollapsed, setIsQuickFilterCollapsed] = useState(false);
 
   const autoRequestedRef = useRef(false);
   const quickProfileSelectRef = useRef(null);
+  const quickLoadMoreSentinelRef = useRef(null);
   const quickExplainRequestSequenceRef = useRef(0);
 
   const selectedProfile = useMemo(
@@ -1588,7 +1641,7 @@ export function MainPage({ view = 'home' }) {
 
   const runQuickRecommendation = useCallback(async ({ profileId, aiEnabled, filters, signal, existingRequestId = '' }) => {
     if (!profileId) {
-      setQuickState({ status: 'empty', error: '', rawJobs: [] });
+      setQuickState({ status: 'empty', error: '', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0 });
       return;
     }
 
@@ -1597,7 +1650,7 @@ export function MainPage({ view = 'home' }) {
     const cacheKey = getRecommendationCacheKey({
       profileId,
       aiEnabled,
-      scope: 'quick-home',
+      scope: 'quick-home:0',
       profileSignature
     });
 
@@ -1606,7 +1659,14 @@ export function MainPage({ view = 'home' }) {
       const cachedJobs = parseQuickJobsFromResult(cached);
       setAppliedAiEnabled(aiEnabled);
       setAppliedFilters(filters);
-      setQuickState({ status: cachedJobs.length ? 'success' : 'empty', error: '', rawJobs: cachedJobs });
+      setQuickState({
+        status: cachedJobs.length ? 'success' : 'empty',
+        error: '',
+        rawJobs: cachedJobs.slice(0, QUICK_MAX_RESULTS),
+        hasMore: cachedJobs.length === QUICK_PAGE_SIZE && cachedJobs.length < QUICK_MAX_RESULTS,
+        isLoadingMore: false,
+        nextOffset: Math.min(cachedJobs.length, QUICK_MAX_RESULTS)
+      });
       return;
     }
 
@@ -1623,7 +1683,14 @@ export function MainPage({ view = 'home' }) {
         const directJobs = parseQuickJobsFromResult(taskResult);
         setAppliedAiEnabled(aiEnabled);
         setAppliedFilters(filters);
-        setQuickState({ status: directJobs.length ? 'success' : 'empty', error: '', rawJobs: directJobs });
+        setQuickState({
+          status: directJobs.length ? 'success' : 'empty',
+          error: '',
+          rawJobs: directJobs.slice(0, QUICK_MAX_RESULTS),
+          hasMore: directJobs.length === QUICK_PAGE_SIZE && directJobs.length < QUICK_MAX_RESULTS,
+          isLoadingMore: false,
+          nextOffset: Math.min(directJobs.length, QUICK_MAX_RESULTS)
+        });
         return;
       }
 
@@ -1632,7 +1699,7 @@ export function MainPage({ view = 'home' }) {
 
       if (taskStatus === 'FAILED') {
         clearPendingQuickTask();
-        setQuickState({ status: 'error', error: getTaskErrorMessage(taskResult) || '퀵 추천을 불러오지 못했습니다.', rawJobs: [] });
+        setQuickState({ status: 'error', error: getTaskErrorMessage(taskResult) || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0 });
         return;
       }
 
@@ -1642,12 +1709,19 @@ export function MainPage({ view = 'home' }) {
         const jobs = parseQuickJobsFromResult(taskResult.result);
         setAppliedAiEnabled(aiEnabled);
         setAppliedFilters(filters);
-        setQuickState({ status: jobs.length ? 'success' : 'empty', error: '', rawJobs: jobs });
+        setQuickState({
+          status: jobs.length ? 'success' : 'empty',
+          error: '',
+          rawJobs: jobs.slice(0, QUICK_MAX_RESULTS),
+          hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
+          isLoadingMore: false,
+          nextOffset: Math.min(jobs.length, QUICK_MAX_RESULTS)
+        });
         return;
       }
 
       if (!taskRequestId) {
-        setQuickState({ status: 'error', error: '퀵 추천 요청 상태를 확인할 수 없습니다.', rawJobs: [] });
+        setQuickState({ status: 'error', error: '퀵 추천 요청 상태를 확인할 수 없습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0 });
         return;
       }
 
@@ -1657,7 +1731,7 @@ export function MainPage({ view = 'home' }) {
 
       if (!completed || completedStatus === 'FAILED') {
         clearPendingQuickTask();
-        setQuickState({ status: 'error', error: getTaskErrorMessage(completed) || '퀵 추천을 불러오지 못했습니다.', rawJobs: [] });
+        setQuickState({ status: 'error', error: getTaskErrorMessage(completed) || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0 });
         return;
       }
 
@@ -1666,7 +1740,14 @@ export function MainPage({ view = 'home' }) {
       const jobs = parseQuickJobsFromResult(completed.result);
       setAppliedAiEnabled(aiEnabled);
       setAppliedFilters(filters);
-      setQuickState({ status: jobs.length ? 'success' : 'empty', error: '', rawJobs: jobs });
+      setQuickState({
+        status: jobs.length ? 'success' : 'empty',
+        error: '',
+        rawJobs: jobs.slice(0, QUICK_MAX_RESULTS),
+        hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
+        isLoadingMore: false,
+        nextOffset: Math.min(jobs.length, QUICK_MAX_RESULTS)
+      });
     };
 
     if (existingRequestId) {
@@ -1685,12 +1766,104 @@ export function MainPage({ view = 'home' }) {
       fetchQuickJobRecommendations(accessToken, {
         aiEnabled,
         profileId,
+        limit: QUICK_PAGE_SIZE,
+        offset: 0,
         signal
       })
     );
     const taskResult = normalizeTaskPayload(taskPayload);
     await proceedTaskResult(taskResult);
   }, [callWithAuth, profilesState.profiles]);
+
+  const loadMoreQuickRecommendations = useCallback(async () => {
+    if (
+      !isQuickPage ||
+      !selectedProfileId ||
+      !quickState.hasMore ||
+      quickState.isLoadingMore ||
+      !['success', 'refetching'].includes(quickState.status)
+    ) {
+      return;
+    }
+
+    const offset = Math.max(quickState.nextOffset || quickState.rawJobs.length, quickState.rawJobs.length);
+    if (offset >= QUICK_MAX_RESULTS) {
+      setQuickState((prev) => ({ ...prev, hasMore: false, isLoadingMore: false, nextOffset: QUICK_MAX_RESULTS }));
+      return;
+    }
+
+    const controller = new AbortController();
+    setQuickState((prev) => ({ ...prev, isLoadingMore: true, error: '' }));
+
+    try {
+      const completedPayload = await requestQuickRecommendationResult(
+        callWithAuth,
+        {
+          aiEnabled: appliedAiEnabled,
+          profileId: appliedAiEnabled ? selectedProfileId : undefined,
+          limit: Math.min(QUICK_PAGE_SIZE, QUICK_MAX_RESULTS - offset),
+          offset
+        },
+        controller.signal
+      );
+      const nextJobs = parseQuickJobsFromResult(completedPayload);
+
+      setQuickState((prev) => {
+        const mergedJobs = mergeUniqueQuickJobs(prev.rawJobs, nextJobs).slice(0, QUICK_MAX_RESULTS);
+        return {
+          ...prev,
+          status: mergedJobs.length ? 'success' : 'empty',
+          error: '',
+          rawJobs: mergedJobs,
+          hasMore: nextJobs.length === QUICK_PAGE_SIZE && mergedJobs.length < QUICK_MAX_RESULTS,
+          isLoadingMore: false,
+          nextOffset: Math.min(offset + nextJobs.length, QUICK_MAX_RESULTS)
+        };
+      });
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        return;
+      }
+      setQuickState((prev) => ({
+        ...prev,
+        status: prev.rawJobs.length ? 'success' : 'error',
+        error: error.message || '퀵 추천을 불러오지 못했습니다.',
+        isLoadingMore: false
+      }));
+    }
+  }, [
+    appliedAiEnabled,
+    callWithAuth,
+    isQuickPage,
+    quickState.hasMore,
+    quickState.isLoadingMore,
+    quickState.nextOffset,
+    quickState.rawJobs,
+    quickState.status,
+    selectedProfileId
+  ]);
+
+  useEffect(() => {
+    if (!isQuickPage || !quickState.hasMore || quickState.isLoadingMore) {
+      return undefined;
+    }
+
+    const sentinel = quickLoadMoreSentinelRef.current;
+    if (!sentinel) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        loadMoreQuickRecommendations();
+      }
+    }, { rootMargin: '260px 0px' });
+
+    observer.observe(sentinel);
+    return () => {
+      observer.disconnect();
+    };
+  }, [isQuickPage, loadMoreQuickRecommendations, quickState.hasMore, quickState.isLoadingMore]);
 
   useEffect(() => {
     if (!isQuickPage) {
@@ -1730,7 +1903,10 @@ export function MainPage({ view = 'home' }) {
       setQuickState({
         status: 'error',
         error: error.message || '퀵 추천을 불러오지 못했습니다.',
-        rawJobs: []
+        rawJobs: [],
+        hasMore: false,
+        isLoadingMore: false,
+        nextOffset: 0
       });
     });
 
@@ -1909,7 +2085,7 @@ export function MainPage({ view = 'home' }) {
       if (error.name === 'AbortError') {
         return;
       }
-      setQuickState({ status: 'error', error: error.message || '퀵 추천을 불러오지 못했습니다.', rawJobs: [] });
+      setQuickState({ status: 'error', error: error.message || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0 });
     }
   }, [draftFilters, isAiEnabled, quickState.status, runQuickRecommendation, selectedProfileId]);
 
@@ -1980,13 +2156,14 @@ export function MainPage({ view = 'home' }) {
 
   const isQuickLoading = quickState.status === 'loading' || quickState.status === 'refetching';
   const isGuestUser = !isAuthenticated;
+  const shouldShowQuickResults = !isGuestUser && filteredQuickJobs.length > 0 && ['success', 'refetching'].includes(quickState.status);
   const openLoginModal = useCallback(() => {
     setIsLoginModalOpen(true);
   }, []);
 
   return (
     <main className="main-page" aria-labelledby={isQuickPage ? 'quick-recommend-title' : 'main-page-title'}>
-      <HomeLoadingModal isOpen={isQuickPage && isQuickLoading} />
+      <HomeLoadingModal isOpen={isQuickPage && isQuickLoading && !quickState.rawJobs.length} />
       <div className="main-page__inner">
         {isHomePage ? (
           <>
@@ -2294,20 +2471,26 @@ export function MainPage({ view = 'home' }) {
             </div>
 
             <section className="home-quick__results" aria-label="퀵 추천 결과">
-              {!isGuestUser && quickState.status === 'success' ? (
+              {shouldShowQuickResults ? (
                 <div className="accessibility-map__results-header home-quick__results-header">
                   <h3>
                     <span>검색 결과 {filteredQuickJobs.length}개</span>
-                    {quickState.rawJobs.length > filteredQuickJobs.length ? <span> / 전체 {quickState.rawJobs.length}개</span> : null}
+                    {quickState.hasMore || quickState.rawJobs.length > filteredQuickJobs.length ? <span> / 최대 {QUICK_MAX_RESULTS}개</span> : null}
                   </h3>
                   <span>{appliedAiEnabled ? '직무 적합도 높은순' : '최신순'}</span>
+                </div>
+              ) : null}
+              {shouldShowQuickResults && (isQuickLoading || quickState.isLoadingMore) ? (
+                <div className="home-quick__loading-bar" role="status" aria-live="polite">
+                  <span className="home-quick__loading-track" aria-hidden="true" />
+                  다음 공고 계산중
                 </div>
               ) : null}
               {isGuestUser ? <div className="home-feedback" role="status">로그인 후 퀵 맞춤 일자리 추천 결과를 확인할 수 있습니다.</div> : null}
               {!isGuestUser && profilesState.status === 'loading' ? <div className="home-feedback" role="status">프로필을 불러오는 중입니다.</div> : null}
               {!isGuestUser && profilesState.status === 'error' ? <div className="home-feedback is-error" role="alert">{profilesState.error}</div> : null}
               {!isGuestUser && quickState.status === 'idle' ? <div className="home-feedback" role="status">검색을 누르면 퀵 추천 결과를 조회합니다.</div> : null}
-              {!isGuestUser && (quickState.status === 'loading' || quickState.status === 'refetching') ? (
+              {!isGuestUser && (quickState.status === 'loading' || (quickState.status === 'refetching' && !quickState.rawJobs.length)) ? (
                 <div className="home-feedback jobs-feedback--animated-dots" role="status" aria-live="polite">
                   로딩중
                   <span className="jobs-feedback__dots" aria-hidden="true" />
@@ -2316,7 +2499,7 @@ export function MainPage({ view = 'home' }) {
               {!isGuestUser && quickState.status === 'error' ? <div className="home-feedback is-error" role="alert">{quickState.error}</div> : null}
               {!isGuestUser && quickState.status === 'empty' ? <div className="home-feedback" role="status">현재 조건에 맞는 공고가 없습니다.</div> : null}
 
-              {!isGuestUser && quickState.status === 'success' ? (
+              {shouldShowQuickResults ? (
                 <div className="home-job-list" aria-label="퀵 추천 공고 목록">
                   {filteredQuickJobs.map((job) => (
                     <button
@@ -2383,6 +2566,16 @@ export function MainPage({ view = 'home' }) {
                       ) : null}
                     </button>
                   ))}
+                  <div ref={quickLoadMoreSentinelRef} className="home-quick__load-sentinel" aria-hidden="true" />
+                  {quickState.isLoadingMore ? (
+                    <div className="home-feedback jobs-feedback--animated-dots" role="status" aria-live="polite">
+                      다음 공고 계산중
+                      <span className="jobs-feedback__dots" aria-hidden="true" />
+                    </div>
+                  ) : null}
+                  {quickState.hasMore && !quickState.isLoadingMore ? (
+                    <div className="home-feedback" role="status">아래로 스크롤하면 다음 공고를 불러옵니다.</div>
+                  ) : null}
                 </div>
               ) : null}
             </section>

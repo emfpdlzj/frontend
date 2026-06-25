@@ -1,6 +1,12 @@
 import { AUTH_PROVIDER_ROUTES } from './routes';
 
 const trimTrailingSlash = (value) => value.replace(/\/+$/, '');
+const readClientEnv = (key) => {
+  const viteKey = key.replace(/^REACT_APP_/, 'VITE_');
+  const metaEnv = import.meta.env || {};
+  const processEnv = typeof process !== 'undefined' ? process.env || {} : {};
+  return metaEnv[key] || metaEnv[viteKey] || processEnv[key] || '';
+};
 const DEFAULT_API_BASE_URL_BY_ENV = Object.freeze({
   development: 'http://localhost:8080/api/v1',
   test: 'http://localhost:8080/api/v1',
@@ -12,7 +18,7 @@ const getDefaultApiBaseUrl = () =>
   DEFAULT_API_BASE_URL_BY_ENV[getRuntimeEnv()] || DEFAULT_API_BASE_URL_BY_ENV.development;
 
 export const API_BASE_URL = trimTrailingSlash(
-  process.env.REACT_APP_API_BASE_URL || getDefaultApiBaseUrl()
+  readClientEnv('REACT_APP_API_BASE_URL') || getDefaultApiBaseUrl()
 );
 
 export const STORAGE_KEYS = {
@@ -54,15 +60,15 @@ const withOrigin = (path) => `${origin}${path}`;
 
 export const OAUTH_CONFIG = {
   KAKAO: {
-    clientId: process.env.REACT_APP_KAKAO_CLIENT_ID || '',
+    clientId: readClientEnv('REACT_APP_KAKAO_CLIENT_ID'),
     redirectUri:
-      process.env.REACT_APP_KAKAO_REDIRECT_URI || withOrigin(AUTH_PROVIDER_ROUTES.KAKAO.callbackPath),
+      readClientEnv('REACT_APP_KAKAO_REDIRECT_URI') || withOrigin(AUTH_PROVIDER_ROUTES.KAKAO.callbackPath),
     authorizeUrl: 'https://kauth.kakao.com/oauth/authorize'
   },
   NAVER: {
-    clientId: process.env.REACT_APP_NAVER_CLIENT_ID || '',
+    clientId: readClientEnv('REACT_APP_NAVER_CLIENT_ID'),
     redirectUri:
-      process.env.REACT_APP_NAVER_REDIRECT_URI || withOrigin(AUTH_PROVIDER_ROUTES.NAVER.callbackPath),
+      readClientEnv('REACT_APP_NAVER_REDIRECT_URI') || withOrigin(AUTH_PROVIDER_ROUTES.NAVER.callbackPath),
     authorizeUrl: 'https://nid.naver.com/oauth2.0/authorize'
   }
 };
@@ -70,5 +76,5 @@ export const OAUTH_CONFIG = {
 export const NAVER_STATE_KEY = STORAGE_KEYS.naverState;
 
 export const NAVER_MAP_CONFIG = {
-  clientId: process.env.REACT_APP_NAVER_MAP_CLIENT_ID || ''
+  clientId: readClientEnv('REACT_APP_NAVER_MAP_CLIENT_ID')
 };

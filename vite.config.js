@@ -70,6 +70,7 @@ export default defineConfig(({ mode }) => {
       })
     ],
     define,
+    envPrefix: ['VITE_', 'REACT_APP_'],
     server: {
       port: 3000,
       strictPort: true

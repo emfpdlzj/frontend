@@ -48,6 +48,8 @@ function AppLayout() {
     callWithAuth((accessToken) =>
       fetchQuickJobRecommendations(accessToken, {
         aiEnabled: true,
+        limit: 20,
+        offset: 0,
         signal: controller.signal
       })
     ).catch((error) => {
