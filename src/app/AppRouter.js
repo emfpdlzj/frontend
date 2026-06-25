@@ -16,6 +16,7 @@ const FaqPage = lazy(() => import('../pages/FaqPage').then((module) => ({ defaul
 const NoticesPage = lazy(() => import('../pages/NoticesPage').then((module) => ({ default: module.NoticesPage })));
 const NoticeDetailPage = lazy(() => import('../pages/NoticesPage').then((module) => ({ default: module.NoticeDetailPage })));
 const AdminNoticesPage = lazy(() => import('../pages/NoticesPage').then((module) => ({ default: module.AdminNoticesPage })));
+const AdminLoginPage = lazy(() => import('../pages/AdminLoginPage').then((module) => ({ default: module.AdminLoginPage })));
 const SignupPage = lazy(() => import('../pages/SignupPage').then((module) => ({ default: module.SignupPage })));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
 const AccessibilityMapPage = lazy(() => import('../pages/AccessibilityMapPage').then((module) => ({ default: module.AccessibilityMapPage })));
@@ -49,7 +50,7 @@ function AuthRoute({ children, requiredRole }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to={localizePath(ROUTE_PATHS.root)} replace />;
+    return <Navigate to={localizePath(requiredRole === 'admin' ? ROUTE_PATHS.adminLogin : ROUTE_PATHS.root)} replace />;
   }
 
   if (!hasRequiredRole(currentUser, requiredRole)) {
@@ -103,6 +104,7 @@ export function AppRouter() {
         <Route path={ROUTE_PATHS.quickJobs} element={<LegacyRouteRedirect to={ROUTE_PATHS.quickJobs} />} />
         <Route path={ROUTE_PATHS.notices} element={<LegacyRouteRedirect to={ROUTE_PATHS.notices} />} />
         <Route path={ROUTE_PATHS.noticeDetail} element={<LegacyRouteRedirect to={ROUTE_PATHS.noticeDetail} />} />
+        <Route path={ROUTE_PATHS.adminLogin} element={<LegacyRouteRedirect to={ROUTE_PATHS.adminLogin} />} />
         <Route path={ROUTE_PATHS.adminNotices} element={<LegacyRouteRedirect to={ROUTE_PATHS.adminNotices} />} />
         <Route path={ROUTE_PATHS.jobs} element={<LegacyRouteRedirect to={ROUTE_PATHS.jobs} />} />
         <Route path={ROUTE_PATHS.signup} element={<LegacyRouteRedirect to={ROUTE_PATHS.signup} />} />
@@ -121,6 +123,7 @@ export function AppRouter() {
         <Route path={LOCALIZED_ROUTE_PATHS.quickJobs} element={<LocaleRoute><AuthRoute><QuickJobsPage /></AuthRoute></LocaleRoute>} />
         <Route path={LOCALIZED_ROUTE_PATHS.notices} element={<LocaleRoute><NoticesPage /></LocaleRoute>} />
         <Route path={LOCALIZED_ROUTE_PATHS.noticeDetail} element={<LocaleRoute><NoticeDetailPage /></LocaleRoute>} />
+        <Route path={LOCALIZED_ROUTE_PATHS.adminLogin} element={<LocaleRoute><AdminLoginPage /></LocaleRoute>} />
         <Route path={LOCALIZED_ROUTE_PATHS.adminNotices} element={<LocaleRoute><AuthRoute requiredRole="admin"><AdminNoticesPage /></AuthRoute></LocaleRoute>} />
         <Route path={LOCALIZED_ROUTE_PATHS.jobs} element={<LocaleRoute><AuthRoute><JobsPage /></AuthRoute></LocaleRoute>} />
         <Route

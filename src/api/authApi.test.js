@@ -10,6 +10,19 @@ beforeEach(() => {
   httpRequest.mockResolvedValue({});
 });
 
+test('adminLogin sends credentials to admin login endpoint', async () => {
+  const signal = new AbortController().signal;
+
+  await authApi.adminLogin({ loginId: 'admin01', password: 'password' }, signal);
+
+  expect(httpRequest).toHaveBeenCalledWith('/auth/admin/login', {
+    method: 'POST',
+    token: null,
+    body: { loginId: 'admin01', password: 'password' },
+    signal
+  });
+});
+
 test('completeSignup does not send the social account email field', async () => {
   await authApi.completeSignup({
     signupToken: 'signup-token',

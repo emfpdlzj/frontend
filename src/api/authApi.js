@@ -10,6 +10,15 @@ const withoutSocialAccountEmail = (payload) => {
 };
 
 export const authApi = {
+  adminLogin(payload, signal) {
+    return httpRequest('/auth/admin/login', {
+      method: 'POST',
+      token: null,
+      body: payload,
+      signal
+    });
+  },
+
   socialLogin(payload, signal) {
     return httpRequest('/auth/social/login', {
       method: 'POST',

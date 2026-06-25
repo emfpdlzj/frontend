@@ -7,6 +7,7 @@ export const ROUTE_PATHS = Object.freeze({
   quickJobs: '/quick-jobs',
   notices: '/notices',
   noticeDetail: '/notices/:noticeId',
+  adminLogin: '/admin/login',
   adminNotices: '/admin/notices',
   jobs: '/jobs',
   profile: '/profile',

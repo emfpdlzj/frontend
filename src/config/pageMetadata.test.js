@@ -32,6 +32,11 @@ describe('getPageMetadata', () => {
       path: '/admin/notices',
       robots: 'noindex,nofollow'
     });
+    expect(getPageMetadata('/admin/login')).toMatchObject({
+      title: '관리자 로그인 | BridgeWork',
+      path: '/admin/login',
+      robots: 'noindex,nofollow'
+    });
   });
 
   it('returns notice detail metadata for notice detail pages', () => {

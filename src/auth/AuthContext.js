@@ -245,6 +245,19 @@ export function AuthProvider({ children }) {
     [fetchMe, saveTokens, setPendingSignup]
   );
 
+  const loginAsAdmin = useCallback(
+    async (payload, signal) => {
+      const response = await authApi.adminLogin(payload, signal);
+      const tokenPair = normalizeTokenPair(extractTokenPair(response));
+      const me = await fetchMe(tokenPair.accessToken, signal);
+      saveTokens(tokenPair);
+      setPendingSignup(null);
+      authStorage.writeAuthProvider('ADMIN');
+      return me;
+    },
+    [fetchMe, saveTokens, setPendingSignup]
+  );
+
   const completeSignup = useCallback(
     async (payload, signal) => {
       const response = await authApi.completeSignup(payload, signal);
@@ -333,6 +346,7 @@ export function AuthProvider({ children }) {
       isInitializing,
       isAuthenticated: Boolean(tokens?.accessToken),
       pendingSignup,
+      loginAsAdmin,
       loginWithSocialCode,
       completeSignup,
       setPendingSignup,
@@ -349,6 +363,7 @@ export function AuthProvider({ children }) {
       authNotice,
       isInitializing,
       pendingSignup,
+      loginAsAdmin,
       loginWithSocialCode,
       completeSignup,
       setPendingSignup,

@@ -66,6 +66,11 @@ const PAGE_METADATA = Object.freeze({
     description: '관리자가 BridgeWork 서비스 공지사항을 생성, 수정, 공개 전환하는 화면입니다.',
     robots: 'noindex,nofollow'
   },
+  [ROUTE_PATHS.adminLogin]: {
+    title: '관리자 로그인 | BridgeWork',
+    description: 'BridgeWork 관리자 계정으로 로그인하세요.',
+    robots: 'noindex,nofollow'
+  },
   [ROUTE_PATHS.jobs]: {
     title: '스크랩한 공고 | BridgeWork',
     description: '로그인 후 저장한 공고를 접근성 점수, 추천 이유, 마감 상태 기준으로 다시 비교하세요.',
