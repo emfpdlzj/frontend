@@ -24,12 +24,12 @@ import { LlmExplanationProgress } from '../components/common/LlmExplanationProgr
 import { translateUiText } from '../i18n/uiTextTranslations';
 
 const FILTER_ALL_VALUE = '전체';
-const RECOMMEND_TASK_POLL_INTERVAL_MS = 2500;
+const RECOMMEND_TASK_POLL_INTERVAL_MS = 700;
 const RECOMMEND_REQUEST_TIMEOUT_MS = 3 * 60 * 1000;
 const POPULAR_AUTOPLAY_INTERVAL_MS = 3600;
 const QUICK_PAGE_SIZE = 20;
 const QUICK_MAX_RESULTS = 100;
-const QUICK_INCREMENTAL_APPEND_DELAY_MS = 55;
+const QUICK_INCREMENTAL_APPEND_DELAY_MS = 120;
 const QUICK_PENDING_TASK_STORAGE_KEY = 'bridgework.quick.pending.task';
 const QUICK_EXPLAIN_CACHE_STORAGE_KEY = 'bridgework.quick.explain.cache.v2';
 
@@ -64,6 +64,7 @@ const unwrapApiResult = (payload) => payload?.result || payload?.data || payload
 const getTaskRequestId = (payload) => payload?.requestId || payload?.request_id || payload?.id || '';
 const getTaskStatus = (payload) => payload?.status || payload?.taskStatus || payload?.task_status || '';
 const getTaskErrorMessage = (payload) => payload?.errorMessage || payload?.error_message || payload?.message || '';
+const isTaskCached = (payload) => Boolean(payload?.cached);
 const normalizeTaskPayload = (payload) => {
   if (!payload) {
     return null;
@@ -839,10 +840,12 @@ const parseQuickJobsFromResult = (result) => {
   return rows.map((item, index) => normalizeQuickJob(item, index));
 };
 
+const getQuickJobKey = (job) => String(job?.postingId || job?.externalId || job?.id || '');
+
 const mergeUniqueQuickJobs = (currentJobs, nextJobs) => {
   const seenIds = new Set();
   return [...currentJobs, ...nextJobs].filter((job) => {
-    const key = String(job.postingId || job.externalId || job.id || '');
+    const key = getQuickJobKey(job);
     if (!key || seenIds.has(key)) {
       return false;
     }
@@ -877,7 +880,35 @@ const getQuickPageCacheKey = ({ profileId, aiEnabled, profileSignature, offset =
     profileSignature
   });
 
-async function waitForRecommendTask(callWithAuth, requestId, signal) {
+const getCachedQuickPages = ({ profileId, aiEnabled, profileSignature }) => {
+  const jobs = [];
+
+  for (let offset = 0; offset < QUICK_MAX_RESULTS; offset += QUICK_PAGE_SIZE) {
+    const cachedPayload = getCachedRecommendation(getQuickPageCacheKey({
+      profileId,
+      aiEnabled,
+      profileSignature,
+      offset
+    }));
+    if (!cachedPayload) {
+      break;
+    }
+
+    const pageJobs = parseQuickJobsFromResult(cachedPayload);
+    if (!pageJobs.length) {
+      break;
+    }
+
+    jobs.push(...pageJobs);
+    if (pageJobs.length < QUICK_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return jobs.slice(0, QUICK_MAX_RESULTS);
+};
+
+async function waitForRecommendTask(callWithAuth, requestId, signal, onProgress) {
   let lastPayload = null;
 
   while (!signal?.aborted) {
@@ -886,6 +917,10 @@ async function waitForRecommendTask(callWithAuth, requestId, signal) {
     );
     lastPayload = payload;
     const status = getTaskStatus(payload);
+
+    if (status === 'PROCESSING' && payload?.result) {
+      await onProgress?.(payload.result);
+    }
 
     if (status === 'COMPLETED' || status === 'FAILED') {
       return payload;
@@ -897,7 +932,7 @@ async function waitForRecommendTask(callWithAuth, requestId, signal) {
   return lastPayload;
 }
 
-async function requestQuickRecommendationResult(callWithAuth, request, signal) {
+async function requestQuickRecommendationResult(callWithAuth, request, signal, onProgress) {
   const taskPayload = await callWithAuth((accessToken) =>
     fetchQuickJobRecommendations(accessToken, {
       ...request,
@@ -908,7 +943,7 @@ async function requestQuickRecommendationResult(callWithAuth, request, signal) {
   const taskResult = normalizeTaskPayload(taskPayload);
 
   if (isDirectQuickResultPayload(taskResult)) {
-    return taskResult;
+    return { payload: taskResult, cached: false, progressed: false };
   }
 
   if (getTaskStatus(taskResult) === 'FAILED') {
@@ -916,7 +951,7 @@ async function requestQuickRecommendationResult(callWithAuth, request, signal) {
   }
 
   if (getTaskStatus(taskResult) === 'COMPLETED' && taskResult?.result) {
-    return taskResult.result;
+    return { payload: taskResult.result, cached: isTaskCached(taskResult), progressed: false };
   }
 
   const taskRequestId = getTaskRequestId(taskResult);
@@ -924,11 +959,19 @@ async function requestQuickRecommendationResult(callWithAuth, request, signal) {
     throw new Error('퀵 추천 요청 상태를 확인할 수 없습니다.');
   }
 
-  const completed = await waitForRecommendTask(callWithAuth, taskRequestId, signal);
+  let progressed = false;
+  if (taskResult?.result) {
+    progressed = true;
+    await onProgress?.(taskResult.result);
+  }
+  const completed = await waitForRecommendTask(callWithAuth, taskRequestId, signal, async (progressResult) => {
+    progressed = true;
+    await onProgress?.(progressResult);
+  });
   if (!completed || getTaskStatus(completed) === 'FAILED') {
     throw new Error(getTaskErrorMessage(completed) || '퀵 추천을 불러오지 못했습니다.');
   }
-  return completed.result;
+  return { payload: completed.result, cached: isTaskCached(completed), progressed };
 }
 
 function HomeLoadingModal({ isOpen }) {
@@ -1701,10 +1744,16 @@ export function MainPage({ view = 'home' }) {
         return;
       }
 
+      let didAppendJob = false;
       runListTransitionUpdate(() => {
         setQuickState((prev) => {
           const baseJobs = replace && !didReplace ? [] : prev.rawJobs;
+          const jobKey = getQuickJobKey(job);
+          if (jobKey && baseJobs.some((item) => getQuickJobKey(item) === jobKey)) {
+            return prev;
+          }
           const mergedJobs = mergeUniqueQuickJobs(baseJobs, [job]).slice(0, QUICK_MAX_RESULTS);
+          didAppendJob = mergedJobs.length !== baseJobs.length || (replace && !didReplace);
 
           return {
             ...prev,
@@ -1717,9 +1766,11 @@ export function MainPage({ view = 'home' }) {
           };
         });
       });
-      didReplace = true;
+      didReplace = didReplace || didAppendJob;
 
-      await delay(QUICK_INCREMENTAL_APPEND_DELAY_MS);
+      if (didAppendJob) {
+        await delay(QUICK_INCREMENTAL_APPEND_DELAY_MS);
+      }
     }
 
     if (signal?.aborted) {
@@ -1733,8 +1784,28 @@ export function MainPage({ view = 'home' }) {
         error: '',
         hasMore: Boolean(hasMore) && prev.rawJobs.length < QUICK_MAX_RESULTS,
         isLoadingMore: false,
-        nextOffset: Math.min(offset + incomingJobs.length, QUICK_MAX_RESULTS)
+        nextOffset: Math.min(prev.rawJobs.length, QUICK_MAX_RESULTS)
       }));
+    });
+  }, []);
+
+  const applyQuickJobsImmediately = useCallback(({ jobs, replace = false, offset = 0, hasMore = false }) => {
+    const incomingJobs = Array.isArray(jobs) ? jobs.slice(0, QUICK_MAX_RESULTS - offset) : [];
+
+    setQuickState((prev) => {
+      const mergedJobs = replace
+        ? incomingJobs.slice(0, QUICK_MAX_RESULTS)
+        : mergeUniqueQuickJobs(prev.rawJobs, incomingJobs).slice(0, QUICK_MAX_RESULTS);
+
+      return {
+        ...prev,
+        status: mergedJobs.length ? 'success' : 'empty',
+        error: '',
+        rawJobs: mergedJobs,
+        hasMore: Boolean(hasMore) && mergedJobs.length < QUICK_MAX_RESULTS,
+        isLoadingMore: false,
+        nextOffset: Math.min(offset + incomingJobs.length, QUICK_MAX_RESULTS)
+      };
     });
   }, []);
 
@@ -1753,18 +1824,15 @@ export function MainPage({ view = 'home' }) {
       offset: 0
     });
 
-    const cached = getCachedRecommendation(cacheKey);
-    if (cached) {
-      const cachedJobs = parseQuickJobsFromResult(cached);
+    const cachedJobs = getCachedQuickPages({ profileId, aiEnabled, profileSignature });
+    if (cachedJobs.length) {
       setAppliedAiEnabled(aiEnabled);
       setAppliedFilters(filters);
-      setQuickState({
-        status: cachedJobs.length ? 'success' : 'empty',
-        error: '',
-          rawJobs: cachedJobs.slice(0, QUICK_MAX_RESULTS),
-          hasMore: cachedJobs.length === QUICK_PAGE_SIZE && cachedJobs.length < QUICK_MAX_RESULTS,
-          isLoadingMore: false,
-          nextOffset: Math.min(cachedJobs.length, QUICK_MAX_RESULTS)
+      applyQuickJobsImmediately({
+        jobs: cachedJobs,
+        replace: true,
+        offset: 0,
+        hasMore: cachedJobs.length < QUICK_MAX_RESULTS && cachedJobs.length % QUICK_PAGE_SIZE === 0
       });
       return;
     }
@@ -1807,6 +1875,15 @@ export function MainPage({ view = 'home' }) {
         const jobs = parseQuickJobsFromResult(taskResult.result);
         setAppliedAiEnabled(aiEnabled);
         setAppliedFilters(filters);
+        if (isTaskCached(taskResult)) {
+          applyQuickJobsImmediately({
+            jobs,
+            replace: true,
+            offset: 0,
+            hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS
+          });
+          return;
+        }
         await appendQuickJobsIncrementally({
           jobs,
           replace: true,
@@ -1823,7 +1900,23 @@ export function MainPage({ view = 'home' }) {
       }
 
       writePendingQuickTask(taskRequestId, profileId, aiEnabled, filters);
-      const completed = await waitForRecommendTask(callWithAuth, taskRequestId, signal);
+      let hasProgressResult = false;
+      const completed = await waitForRecommendTask(callWithAuth, taskRequestId, signal, async (progressResult) => {
+        const progressJobs = parseQuickJobsFromResult(progressResult);
+        if (!progressJobs.length) {
+          return;
+        }
+        setAppliedAiEnabled(aiEnabled);
+        setAppliedFilters(filters);
+        await appendQuickJobsIncrementally({
+          jobs: progressJobs,
+          replace: !hasProgressResult,
+          offset: 0,
+          hasMore: false,
+          signal
+        });
+        hasProgressResult = true;
+      });
       const completedStatus = getTaskStatus(completed);
 
       if (!completed || completedStatus === 'FAILED') {
@@ -1837,13 +1930,24 @@ export function MainPage({ view = 'home' }) {
       const jobs = parseQuickJobsFromResult(completed.result);
       setAppliedAiEnabled(aiEnabled);
       setAppliedFilters(filters);
-      await appendQuickJobsIncrementally({
-        jobs,
-        replace: true,
-        offset: 0,
-        hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
-        signal
-      });
+      if (hasProgressResult) {
+        setQuickState((prev) => ({
+          ...prev,
+          status: prev.rawJobs.length ? 'success' : jobs.length ? 'success' : 'empty',
+          error: '',
+          hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
+          isLoadingMore: false,
+          nextOffset: Math.min(jobs.length, QUICK_MAX_RESULTS)
+        }));
+      } else {
+        await appendQuickJobsIncrementally({
+          jobs,
+          replace: true,
+          offset: 0,
+          hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
+          signal
+        });
+      }
     };
 
     if (existingRequestId) {
@@ -1869,7 +1973,7 @@ export function MainPage({ view = 'home' }) {
     );
     const taskResult = normalizeTaskPayload(taskPayload);
     await proceedTaskResult(taskResult);
-  }, [appendQuickJobsIncrementally, callWithAuth, profilesState.profiles]);
+  }, [appendQuickJobsIncrementally, applyQuickJobsImmediately, callWithAuth, profilesState.profiles]);
 
   const loadMoreQuickRecommendations = useCallback(async () => {
     if (
@@ -1902,7 +2006,19 @@ export function MainPage({ view = 'home' }) {
           })
         : '';
       const cachedPayload = pageCacheKey ? getCachedRecommendation(pageCacheKey) : null;
-      const completedPayload = cachedPayload || await requestQuickRecommendationResult(
+      if (cachedPayload) {
+        const cachedJobs = parseQuickJobsFromResult(cachedPayload);
+        applyQuickJobsImmediately({
+          jobs: cachedJobs,
+          replace: false,
+          offset,
+          hasMore: cachedJobs.length === QUICK_PAGE_SIZE && offset + cachedJobs.length < QUICK_MAX_RESULTS
+        });
+        return;
+      }
+
+      let hasProgressResult = false;
+      const completedResult = await requestQuickRecommendationResult(
           callWithAuth,
           {
             aiEnabled: appliedAiEnabled,
@@ -1910,21 +2026,46 @@ export function MainPage({ view = 'home' }) {
             limit: Math.min(QUICK_PAGE_SIZE, QUICK_MAX_RESULTS - offset),
             offset
           },
-          controller.signal
+          controller.signal,
+          async (progressResult) => {
+            const progressJobs = parseQuickJobsFromResult(progressResult);
+            if (!progressJobs.length) {
+              return;
+            }
+            await appendQuickJobsIncrementally({
+              jobs: progressJobs,
+              replace: false,
+              offset,
+              hasMore: false,
+              signal: controller.signal,
+              loadingMore: true
+            });
+            hasProgressResult = true;
+          }
         );
-      if (pageCacheKey && !cachedPayload) {
+      const completedPayload = completedResult.payload;
+      if (pageCacheKey) {
         setCachedRecommendation(pageCacheKey, completedPayload);
       }
       const nextJobs = parseQuickJobsFromResult(completedPayload);
 
-      await appendQuickJobsIncrementally({
-        jobs: nextJobs,
-        replace: false,
-        offset,
-        hasMore: nextJobs.length === QUICK_PAGE_SIZE && offset + nextJobs.length < QUICK_MAX_RESULTS,
-        signal: controller.signal,
-        loadingMore: true
-      });
+      if (completedResult.cached || !hasProgressResult) {
+        applyQuickJobsImmediately({
+          jobs: nextJobs,
+          replace: false,
+          offset,
+          hasMore: nextJobs.length === QUICK_PAGE_SIZE && offset + nextJobs.length < QUICK_MAX_RESULTS
+        });
+      } else {
+        setQuickState((prev) => ({
+          ...prev,
+          status: prev.rawJobs.length ? 'success' : nextJobs.length ? 'success' : 'empty',
+          error: '',
+          hasMore: nextJobs.length === QUICK_PAGE_SIZE && offset + nextJobs.length < QUICK_MAX_RESULTS,
+          isLoadingMore: false,
+          nextOffset: Math.min(offset + nextJobs.length, QUICK_MAX_RESULTS)
+        }));
+      }
     } catch (error) {
       if (error.name === 'AbortError') {
         return;
@@ -1939,6 +2080,7 @@ export function MainPage({ view = 'home' }) {
   }, [
     appendQuickJobsIncrementally,
     appliedAiEnabled,
+    applyQuickJobsImmediately,
     callWithAuth,
     isQuickPage,
     profilesState.profiles,
