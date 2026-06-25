@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { noticeApi } from '../api/noticeApi';
 import { postingApi } from '../api/postingApi';
 import { profileApi } from '../api/profileApi';
 import { explainRecommendation, fetchQuickJobRecommendations, fetchRecommendTaskStatus } from '../api/recommendApi';
@@ -160,6 +161,20 @@ const parseDateText = (value) => {
     return '';
   }
   return `${raw.slice(0, 4)}.${raw.slice(4, 6)}.${raw.slice(6, 8)}`;
+};
+
+const formatHomeNoticeDate = (value) => {
+  if (!value) {
+    return '';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return new Intl.DateTimeFormat('ko-KR', {
+    month: '2-digit',
+    day: '2-digit'
+  }).format(date);
 };
 
 const getDateNumber = (value) => {
@@ -1255,6 +1270,7 @@ export function MainPage({ view = 'home' }) {
   const filterOptions = useJobFilterOptions();
 
   const [popularState, setPopularState] = useState({ status: 'loading', error: '', items: [] });
+  const [noticeState, setNoticeState] = useState({ status: 'loading', error: '', items: [] });
   const [isPopularCarouselPaused, setIsPopularCarouselPaused] = useState(false);
   const popularScrollerRef = useRef(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -1432,6 +1448,41 @@ export function MainPage({ view = 'home' }) {
     };
 
     loadPopular();
+
+    return () => {
+      controller.abort();
+    };
+  }, [isHomePage]);
+
+  useEffect(() => {
+    if (!isHomePage) {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+
+    const loadNotices = async () => {
+      setNoticeState((prev) => ({ ...prev, status: 'loading', error: '' }));
+      try {
+        const list = await noticeApi.getNotices({ limit: 5, signal: controller.signal });
+        setNoticeState({
+          status: list.length ? 'success' : 'empty',
+          error: '',
+          items: list
+        });
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          return;
+        }
+        setNoticeState({
+          status: 'error',
+          error: error.message || '공지사항을 불러오지 못했습니다.',
+          items: []
+        });
+      }
+    };
+
+    loadNotices();
 
     return () => {
       controller.abort();
@@ -1993,6 +2044,36 @@ export function MainPage({ view = 'home' }) {
                       </div>
                       <div className="home-popular__card-scrap">스크랩 {item.scrapCount}건</div>
                     </button>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+
+            <section className="home-notices home-section-entrance" aria-labelledby="home-notices-title">
+              <div className="home-section-head">
+                <div>
+                  <h2 id="home-notices-title">공지사항</h2>
+                  <p>서비스 운영과 이용에 필요한 안내입니다.</p>
+                </div>
+                <Link className="secondary-button home-notices__more" to={localizePath(ROUTE_PATHS.notices)}>
+                  전체보기
+                </Link>
+              </div>
+
+              {noticeState.status === 'loading' ? <div className="home-feedback" role="status">공지사항을 불러오는 중입니다.</div> : null}
+              {noticeState.status === 'error' ? <div className="home-feedback is-error" role="alert">{noticeState.error}</div> : null}
+              {noticeState.status === 'empty' ? <div className="home-feedback" role="status">등록된 공지사항이 없습니다.</div> : null}
+
+              {noticeState.status === 'success' ? (
+                <div className="home-notices__list">
+                  {noticeState.items.map((notice) => (
+                    <Link key={notice.id} className="home-notices__item" to={localizePath(`${ROUTE_PATHS.notices}/${notice.id}`)}>
+                      <span className="home-notices__meta">
+                        {notice.pinned ? <strong>고정</strong> : null}
+                        {formatHomeNoticeDate(notice.createdAt) ? <time>{formatHomeNoticeDate(notice.createdAt)}</time> : null}
+                      </span>
+                      <span className="home-notices__title">{notice.title}</span>
+                    </Link>
                   ))}
                 </div>
               ) : null}
