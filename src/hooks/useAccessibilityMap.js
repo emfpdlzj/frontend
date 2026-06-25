@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { mapApi } from '../api/mapApi';
 import { explainRecommendation, fetchMapJobRecommendations, fetchRecommendTaskStatus } from '../api/recommendApi';
 import { useAuth } from '../auth/AuthContext';
@@ -17,6 +18,7 @@ const MAP_RECOMMEND_REQUEST_TIMEOUT_MS = 3 * 60 * 1000;
 const MAP_RECOMMEND_POLL_INTERVAL_MS = 2500;
 const MAP_PAGE_SIZE = 20;
 const MAP_MAX_RESULTS = 100;
+const MAP_INCREMENTAL_APPEND_DELAY_MS = 55;
 const FILTER_ALL_VALUE = '전체';
 const VALID_TABS = ['accessibility', 'job'];
 const MAP_PERSONAS = {
@@ -66,6 +68,21 @@ const delay = (ms) =>
   new Promise((resolve) => {
     window.setTimeout(resolve, ms);
   });
+
+const runListTransitionUpdate = (update) => {
+  if (typeof document !== 'undefined' && typeof document.startViewTransition === 'function') {
+    try {
+      document.startViewTransition(() => {
+        flushSync(update);
+      });
+      return;
+    } catch (error) {
+      // 전환 API가 진행 중이면 상태 반영만 보장한다.
+    }
+  }
+
+  update();
+};
 
 const toSafeText = (value, fallback = '-') => {
   const text = String(value ?? '').trim();
@@ -1371,6 +1388,14 @@ export const buildRecommendationStateFromPayload = (payload, aiEnabled = Boolean
   };
 };
 
+const getMapPageCacheKey = ({ profileId, aiEnabled, profileSignature, offset = 0 }) =>
+  getRecommendationCacheKey({
+    profileId,
+    aiEnabled,
+    scope: `map:${offset}`,
+    profileSignature: aiEnabled ? profileSignature : ''
+  });
+
 export function useAccessibilityMap({ searchQuery = '' } = {}) {
   const { callWithAuth, isAuthenticated } = useAuth();
   const profilesState = useProfiles();
@@ -1437,6 +1462,86 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     [filterOptions, selectedFilters]
   );
 
+  const appendMapJobsIncrementally = useCallback(async ({
+    nextState,
+    replace = false,
+    offset = 0,
+    hasMore = false,
+    signal,
+    loadingMore = false
+  }) => {
+    const incomingJobs = Array.isArray(nextState?.jobs) ? nextState.jobs.slice(0, MAP_MAX_RESULTS - offset) : [];
+
+    if (!incomingJobs.length) {
+      runListTransitionUpdate(() => {
+        setRecommendationState((prev) => ({
+          ...prev,
+          status: replace ? 'empty' : prev.jobs.length ? 'success' : 'empty',
+          error: '',
+          payload: nextState?.payload || prev.payload,
+          jobs: replace ? [] : prev.jobs
+        }));
+        setProfileOffPageState({
+          hasMore: false,
+          isLoadingMore: false,
+          nextOffset: Math.min(offset, MAP_MAX_RESULTS)
+        });
+      });
+      return;
+    }
+
+    let didReplace = false;
+    for (const job of incomingJobs) {
+      if (signal?.aborted) {
+        return;
+      }
+
+      runListTransitionUpdate(() => {
+        setRecommendationState((prev) => {
+          const baseJobs = replace && !didReplace ? [] : prev.jobs;
+          const existingIds = new Set(baseJobs.map((item) => item.id));
+          const mergedJobs = existingIds.has(job.id)
+            ? baseJobs
+            : [...baseJobs, job].slice(0, MAP_MAX_RESULTS);
+
+          return {
+            ...prev,
+            status: 'refetching',
+            error: '',
+            payload: nextState.payload,
+            jobs: mergedJobs
+          };
+        });
+        setProfileOffPageState({
+          hasMore: false,
+          isLoadingMore: loadingMore,
+          nextOffset: Math.min(offset + incomingJobs.length, MAP_MAX_RESULTS)
+        });
+      });
+      didReplace = true;
+
+      await delay(MAP_INCREMENTAL_APPEND_DELAY_MS);
+    }
+
+    if (signal?.aborted) {
+      return;
+    }
+
+    runListTransitionUpdate(() => {
+      setRecommendationState((prev) => ({
+        ...prev,
+        status: prev.jobs.length ? 'success' : 'empty',
+        error: '',
+        payload: nextState.payload
+      }));
+      setProfileOffPageState({
+        hasMore: Boolean(hasMore) && offset + incomingJobs.length < MAP_MAX_RESULTS,
+        isLoadingMore: false,
+        nextOffset: Math.min(offset + incomingJobs.length, MAP_MAX_RESULTS)
+      });
+    });
+  }, []);
+
   useEffect(() => {
     if (!hasAppliedConditions) {
       return undefined;
@@ -1492,11 +1597,11 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
 
     let isCurrentRequest = true;
     const controller = new AbortController();
-    const cacheKey = getRecommendationCacheKey({
+    const cacheKey = getMapPageCacheKey({
       profileId: selectedProfileId,
       aiEnabled: appliedAiEnabled,
-      scope: 'map',
-      profileSignature: appliedAiEnabled ? selectedProfileScoringSignature : ''
+      profileSignature: selectedProfileScoringSignature,
+      offset: 0
     });
     const isScoringInputChanged = Boolean(activeRecommendationCacheKeyRef.current && activeRecommendationCacheKeyRef.current !== cacheKey);
 
@@ -1546,11 +1651,12 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
           setCachedRecommendation(cacheKey, completedPayload);
         }
         activeRecommendationCacheKeyRef.current = cacheKey;
-        setRecommendationState(nextState);
-        setProfileOffPageState({
+        await appendMapJobsIncrementally({
+          nextState,
+          replace: true,
+          offset: 0,
           hasMore: nextState.jobs.length === MAP_PAGE_SIZE && nextState.jobs.length < MAP_MAX_RESULTS,
-          isLoadingMore: false,
-          nextOffset: Math.min(nextState.jobs.length, MAP_MAX_RESULTS)
+          signal: controller.signal
         });
       } catch (error) {
         if (error.name === 'AbortError') {
@@ -1578,6 +1684,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     };
   }, [
     appliedAiEnabled,
+    appendMapJobsIncrementally,
     callWithAuth,
     hasAppliedConditions,
     isAuthenticated,
@@ -1611,34 +1718,37 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     setProfileOffPageState((prev) => ({ ...prev, isLoadingMore: true }));
 
     try {
-      const completedPayload = await requestMapRecommendationResult(
-        callWithAuth,
-        {
-          aiEnabled: appliedAiEnabled,
-          profileId: appliedAiEnabled ? selectedProfileId : undefined,
-          limit: Math.min(MAP_PAGE_SIZE, MAP_MAX_RESULTS - offset),
-          offset
-        },
-        controller.signal
-      );
+      const pageCacheKey = appliedAiEnabled
+        ? getMapPageCacheKey({
+            profileId: selectedProfileId,
+            aiEnabled: appliedAiEnabled,
+            profileSignature: selectedProfileScoringSignature,
+            offset
+          })
+        : '';
+      const cachedPayload = pageCacheKey ? getCachedRecommendation(pageCacheKey) : null;
+      const completedPayload = cachedPayload || await requestMapRecommendationResult(
+          callWithAuth,
+          {
+            aiEnabled: appliedAiEnabled,
+            profileId: appliedAiEnabled ? selectedProfileId : undefined,
+            limit: Math.min(MAP_PAGE_SIZE, MAP_MAX_RESULTS - offset),
+            offset
+          },
+          controller.signal
+        );
+      if (pageCacheKey && !cachedPayload) {
+        setCachedRecommendation(pageCacheKey, completedPayload);
+      }
       const nextState = buildRecommendationStateFromPayload(completedPayload, appliedAiEnabled, selectedProfile);
 
-      setRecommendationState((prev) => {
-        const existingIds = new Set(prev.jobs.map((job) => job.id));
-        const appendedJobs = nextState.jobs.filter((job) => !existingIds.has(job.id));
-        return {
-          ...prev,
-          status: appendedJobs.length || prev.jobs.length ? 'success' : 'empty',
-          error: '',
-          payload: completedPayload,
-          jobs: [...prev.jobs, ...appendedJobs].slice(0, MAP_MAX_RESULTS)
-        };
-      });
-
-      setProfileOffPageState({
+      await appendMapJobsIncrementally({
+        nextState,
+        replace: false,
+        offset,
         hasMore: nextState.jobs.length === MAP_PAGE_SIZE && offset + nextState.jobs.length < MAP_MAX_RESULTS,
-        isLoadingMore: false,
-        nextOffset: Math.min(offset + nextState.jobs.length, MAP_MAX_RESULTS)
+        signal: controller.signal,
+        loadingMore: true
       });
     } catch (error) {
       if (error.name === 'AbortError') {
@@ -1654,6 +1764,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     }
   }, [
     appliedAiEnabled,
+    appendMapJobsIncrementally,
     callWithAuth,
     hasAppliedConditions,
     profileOffPageState.hasMore,
@@ -1661,7 +1772,8 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     profileOffPageState.nextOffset,
     recommendationState.status,
     selectedProfile,
-    selectedProfileId
+    selectedProfileId,
+    selectedProfileScoringSignature
   ]);
 
   useEffect(() => {

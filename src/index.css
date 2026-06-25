@@ -506,6 +506,11 @@ a:hover {
     background-color 140ms ease;
 }
 
+.home-job-card,
+.accessibility-map__job-card {
+  contain: layout paint;
+}
+
 @keyframes home-job-card-in {
   from {
     opacity: 0;
@@ -7159,6 +7164,18 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 .home-quick__load-sentinel {
   width: 100%;
   height: 1px;
+}
+
+.home-quick__load-more,
+.accessibility-map__load-more {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 2px;
+}
+
+.home-quick__load-more .secondary-button,
+.accessibility-map__load-more .secondary-button {
+  min-width: 168px;
 }
 
 .accessibility-map__sort {

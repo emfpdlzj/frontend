@@ -59,6 +59,13 @@ const FILTER_ALL_VALUE = '전체';
 const INITIAL_VISIBLE_MAP_JOB_COUNT = 20;
 const VISIBLE_MAP_JOB_INCREMENT = 20;
 
+const toViewTransitionName = (prefix, value) => {
+  const normalized = String(value || '')
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .slice(0, 80);
+  return normalized ? `${prefix}-${normalized}` : 'none';
+};
+
 export function TrafficFilterPanel({
   filterGroups,
   filterOptionStatus,
@@ -104,6 +111,10 @@ export function TrafficFilterPanel({
   }, [jobs]);
 
   const handleResultsScroll = useCallback((event) => {
+    if (appliedAiEnabled) {
+      return;
+    }
+
     const target = event.currentTarget;
     const distanceToBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
     if (distanceToBottom > 160 || isLoadingMoreJobs) {
@@ -120,7 +131,7 @@ export function TrafficFilterPanel({
     if (visibleJobs.length < jobs.length) {
       setVisibleJobCount((current) => Math.min(current + VISIBLE_MAP_JOB_INCREMENT, jobs.length));
     }
-  }, [hasMoreJobs, isLoadingMoreJobs, jobs.length, onLoadMoreJobs, usesServerPaging, visibleJobs.length]);
+  }, [appliedAiEnabled, hasMoreJobs, isLoadingMoreJobs, jobs.length, onLoadMoreJobs, usesServerPaging, visibleJobs.length]);
 
   useEffect(() => {
     if (!isSortMenuOpen) {
@@ -432,6 +443,7 @@ export function TrafficFilterPanel({
                 key={job.id}
                 type="button"
                 className={`accessibility-map__job-card${selectedJobId === job.id ? ' is-selected' : ''}`}
+                style={{ viewTransitionName: toViewTransitionName('map-job', job.id) }}
                 aria-pressed={selectedJobId === job.id}
                 onClick={() => onSelectJob(job.id)}
               >
@@ -464,13 +476,19 @@ export function TrafficFilterPanel({
                 <div className="accessibility-map__job-pay">임금 <strong>{job.payText}</strong></div>
               </button>
             ))}
-            {isLoadingMoreJobs ? (
-              <div className="accessibility-map__empty-panel jobs-feedback--animated-dots" role="status" aria-live="polite">
-                다음 공고 계산중
-                <span className="jobs-feedback__dots" aria-hidden="true" />
+            {hasMoreVisibleJobs && appliedAiEnabled ? (
+              <div className="accessibility-map__load-more">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={onLoadMoreJobs}
+                  disabled={isLoadingMoreJobs}
+                >
+                  20개 더 불러오기
+                </button>
               </div>
             ) : null}
-            {hasMoreVisibleJobs && !isLoadingMoreJobs ? (
+            {hasMoreVisibleJobs && !appliedAiEnabled && !isLoadingMoreJobs ? (
               <div className="accessibility-map__empty-panel" role="status">
                 아래로 스크롤하면 다음 공고를 불러옵니다.
               </div>
