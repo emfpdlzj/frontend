@@ -653,6 +653,9 @@ const buildEvidenceDetailItems = (evidenceItems) => {
   const normalizedItems = normalizeEvidenceItems(evidenceItems);
   const filterBySourceTypes = (sourceTypes) =>
     normalizedItems.filter((item) => sourceTypes.includes(item?.source_type || item?.sourceType));
+  const scoreBreakdownItem = normalizedItems.find(
+    (item) => (item?.source_type || item?.sourceType) === 'BRIDGEWORK_SCORE_BREAKDOWN'
+  );
 
   const transportationItems = filterBySourceTypes([
     'NATIONWIDE_BUS_STOP',
@@ -673,8 +676,23 @@ const buildEvidenceDetailItems = (evidenceItems) => {
     'SEOUL_WHEELCHAIR_RAMP_STATUS',
     'KORAIL_WEEK_PERSON_FACILITIES'
   ]);
+  const scoreBreakdownFields = scoreBreakdownItem?.fields || {};
+  const scoreComponents = Array.isArray(scoreBreakdownFields.components) ? scoreBreakdownFields.components : [];
+  const cautionComponents = Array.isArray(scoreBreakdownFields.caution_components)
+    ? scoreBreakdownFields.caution_components
+    : [];
+  const scoreBreakdownDescription = scoreBreakdownItem
+    ? scoreBreakdownItem.description ||
+      `총점은 ${scoreComponents.length || '여러'}개 항목을 동일 비중으로 계산했습니다.`
+    : '점수 항목별 산정 근거는 추천 결과 상세 설명에서 확인할 수 있습니다.';
+  const hasCautionScoreComponent = cautionComponents.length > 0;
 
   return [
+    [
+      '점수 산정 근거',
+      scoreBreakdownDescription,
+      scoreBreakdownItem ? (hasCautionScoreComponent ? '주의 필요' : '접근 양호') : '확인 필요'
+    ],
     [
       '교통 접근 근거',
       summarizeEvidenceGroup(
