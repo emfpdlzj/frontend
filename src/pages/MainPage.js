@@ -1161,11 +1161,8 @@ function ScrapConfirmModal({ pending, onConfirm, onClose }) {
 function JobCategoryCascadeFilter({ categories, value, onChange }) {
   const safeCategories = useMemo(() => (Array.isArray(categories) ? categories : []), [categories]);
   const selectedPath = useMemo(() => {
-    const defaultPrimary = safeCategories[0] || null;
-    const defaultSecondary = defaultPrimary?.groups?.[0] || null;
-
     if (!value || value === FILTER_ALL_VALUE) {
-      return { primary: defaultPrimary?.label || '', secondary: defaultSecondary?.label || '', job: '' };
+      return { primary: '', secondary: '', job: '' };
     }
 
     for (const category of safeCategories) {
@@ -1184,7 +1181,7 @@ function JobCategoryCascadeFilter({ categories, value, onChange }) {
       }
     }
 
-    return { primary: defaultPrimary?.label || '', secondary: defaultSecondary?.label || '', job: '' };
+    return { primary: '', secondary: '', job: '' };
   }, [safeCategories, value]);
 
   const [primaryValue, setPrimaryValue] = useState(selectedPath.primary);
@@ -1201,7 +1198,7 @@ function JobCategoryCascadeFilter({ categories, value, onChange }) {
 
   const handlePrimarySelect = (category) => {
     setPrimaryValue(category.label);
-    setSecondaryValue(category.groups?.[0]?.label || '');
+    setSecondaryValue('');
     onChange(category.label || FILTER_ALL_VALUE);
   };
 
@@ -1211,9 +1208,8 @@ function JobCategoryCascadeFilter({ categories, value, onChange }) {
   };
 
   const handleReset = () => {
-    const defaultPrimary = safeCategories[0] || null;
-    setPrimaryValue(defaultPrimary?.label || '');
-    setSecondaryValue(defaultPrimary?.groups?.[0]?.label || '');
+    setPrimaryValue('');
+    setSecondaryValue('');
     onChange(FILTER_ALL_VALUE);
   };
 

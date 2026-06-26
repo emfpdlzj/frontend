@@ -10,12 +10,13 @@ import { AppHeader } from './components/common/AppHeader';
 import { AppTabNavigation } from './components/common/AppTabNavigation';
 import { StatusMessage } from './components/common/StatusMessage';
 import { AccessibilityPreferencesProvider } from './accessibility/AccessibilityPreferencesContext';
-import { ROUTE_PATHS } from './config/routes';
+import { AUTH_PROVIDER_ROUTES, ROUTE_PATHS } from './config/routes';
 import { usePageMetadata } from './hooks/usePageMetadata';
 import { LocaleProvider } from './i18n/LocaleContext';
 import { UiTextTranslator } from './i18n/UiTextTranslator';
 import { getLocaleFromPathname, stripLocaleFromPathname } from './i18n/locales';
 import { createLogger } from './utils/logger';
+import { oauthUtils } from './utils/oauth';
 
 const logger = createLogger('app');
 
@@ -25,6 +26,9 @@ function AppLayout() {
   const locale = getLocaleFromPathname(location.pathname);
   const currentPathname = stripLocaleFromPathname(location.pathname);
   const isMapPage = currentPathname === ROUTE_PATHS.accessibilityMap;
+  const isOAuthCallbackPage = Object.values(AUTH_PROVIDER_ROUTES).some(
+    (route) => route.callbackPath === currentPathname
+  );
   const [isWithdrawalRestoredOpen, setIsWithdrawalRestoredOpen] = useState(false);
   const { authNotice, dismissAuthNotice } = useAuth();
 
@@ -35,6 +39,31 @@ function AppLayout() {
       setIsWithdrawalRestoredOpen(true);
     }
   }, [location.state]);
+
+  useEffect(() => {
+    if (isOAuthCallbackPage) {
+      return undefined;
+    }
+
+    const clearReturnedOAuthState = () => {
+      if (document.visibilityState && document.visibilityState !== 'visible') {
+        return;
+      }
+
+      if (oauthUtils.hasPendingAuthorization()) {
+        oauthUtils.clearTransientAuthState();
+      }
+    };
+
+    clearReturnedOAuthState();
+    window.addEventListener('pageshow', clearReturnedOAuthState);
+    window.addEventListener('focus', clearReturnedOAuthState);
+
+    return () => {
+      window.removeEventListener('pageshow', clearReturnedOAuthState);
+      window.removeEventListener('focus', clearReturnedOAuthState);
+    };
+  }, [isOAuthCallbackPage]);
 
   useEffect(() => {
     // 라우트 전환 시 이전 화면 스크롤 위치가 남지 않도록 주요 스크롤 컨테이너를 초기화한다.

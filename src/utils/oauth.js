@@ -1,6 +1,7 @@
 import { OAUTH_CONFIG, STORAGE_KEYS } from '../config/appConfig';
 
 const OAUTH_RETURN_TO_KEY = STORAGE_KEYS.oauthReturnTo;
+const OAUTH_PENDING_KEY = STORAGE_KEYS.oauthPending;
 
 const readProviderConfig = (provider) => OAUTH_CONFIG[provider];
 
@@ -23,6 +24,14 @@ const generateState = () => {
 };
 
 const getOAuthStateKey = (provider) => `${STORAGE_KEYS.oauthState}:${provider}`;
+
+const clearKeysByPrefix = (prefix) => {
+  Object.keys(sessionStorage).forEach((key) => {
+    if (key.startsWith(prefix)) {
+      sessionStorage.removeItem(key);
+    }
+  });
+};
 
 const createAndStoreState = (provider) => {
   const state = generateState();
@@ -47,6 +56,7 @@ export const oauthUtils = {
   consumeReturnTo() {
     const path = sessionStorage.getItem(OAUTH_RETURN_TO_KEY);
     sessionStorage.removeItem(OAUTH_RETURN_TO_KEY);
+    sessionStorage.removeItem(OAUTH_PENDING_KEY);
 
     if (!path || !path.startsWith('/') || path.startsWith('//') || path.startsWith('/\\') || path.startsWith('/auth/')) {
       return '/';
@@ -67,6 +77,7 @@ export const oauthUtils = {
 
     if (provider === 'KAKAO') {
       const state = createAndStoreState(provider);
+      sessionStorage.setItem(OAUTH_PENDING_KEY, provider);
 
       return `${config.authorizeUrl}?${toQueryString({
         response_type: 'code',
@@ -78,6 +89,7 @@ export const oauthUtils = {
 
     if (provider === 'NAVER') {
       const state = createAndStoreState(provider);
+      sessionStorage.setItem(OAUTH_PENDING_KEY, provider);
 
       return `${config.authorizeUrl}?${toQueryString({
         response_type: 'code',
@@ -104,5 +116,16 @@ export const oauthUtils = {
 
   verifyNaverState(returnedState) {
     return this.verifyState('NAVER', returnedState);
+  },
+
+  hasPendingAuthorization() {
+    return Boolean(sessionStorage.getItem(OAUTH_PENDING_KEY));
+  },
+
+  clearTransientAuthState() {
+    sessionStorage.removeItem(OAUTH_RETURN_TO_KEY);
+    sessionStorage.removeItem(OAUTH_PENDING_KEY);
+    sessionStorage.removeItem(STORAGE_KEYS.naverState);
+    clearKeysByPrefix(`${STORAGE_KEYS.oauthState}:`);
   }
 };

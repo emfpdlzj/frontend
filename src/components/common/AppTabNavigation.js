@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import homeIcon from '../../assets/tab/home_icon.png';
 import mapIcon from '../../assets/tab/map_icon.png';
 import docsIcon from '../../assets/tab/docs_icon.png';
+import scrapIcon from '../../assets/tab/scrap_icon.png';
 import businesscardIcon from '../../assets/tab/businesscard_icon.png';
 import profileIcon from '../../assets/tab/profile_icon.png';
 import settingIcon from '../../assets/tab/setting_icon.png';
@@ -17,7 +18,7 @@ const primaryTabs = [
   { id: 'home', labelKey: 'nav.home', icon: homeIcon, to: ROUTE_PATHS.root },
   { id: 'map', labelKey: 'nav.map', icon: mapIcon, to: ROUTE_PATHS.accessibilityMap },
   { id: 'quickJobs', labelKey: 'nav.quickJobs', icon: docsIcon, to: ROUTE_PATHS.quickJobs },
-  { id: 'jobs', labelKey: 'nav.jobs', icon: docsIcon, to: ROUTE_PATHS.jobs },
+  { id: 'jobs', labelKey: 'nav.jobs', icon: scrapIcon, to: ROUTE_PATHS.jobs },
   { id: 'business', labelKey: 'nav.business', icon: businesscardIcon, to: ROUTE_PATHS.profile },
   { id: 'settings', labelKey: 'nav.settings', icon: settingIcon, to: ROUTE_PATHS.settings }
 ];

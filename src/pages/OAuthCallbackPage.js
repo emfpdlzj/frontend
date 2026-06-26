@@ -46,16 +46,19 @@ export function OAuthCallbackPage({ provider }) {
     }
 
     if (oauthError) {
+      oauthUtils.clearTransientAuthState();
       setError(`소셜 인증에 실패했습니다: ${oauthError}`);
       return;
     }
 
     if (!code) {
+      oauthUtils.clearTransientAuthState();
       setError('인가 코드가 누락되었습니다.');
       return;
     }
 
     if (!oauthUtils.verifyState(provider, state)) {
+      oauthUtils.clearTransientAuthState();
       setError('소셜 로그인 state 검증에 실패했습니다. 다시 로그인해 주세요.');
       return;
     }

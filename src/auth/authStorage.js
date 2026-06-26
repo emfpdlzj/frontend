@@ -143,6 +143,7 @@ export const authStorage = {
       STORAGE_KEYS.signupSession,
       STORAGE_KEYS.oauthReturnTo,
       `${STORAGE_KEYS.oauthState}:`,
+      STORAGE_KEYS.oauthPending,
       STORAGE_KEYS.naverState
     ]);
   },

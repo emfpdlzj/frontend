@@ -1316,7 +1316,14 @@ html[data-bw-reduce-motion='off'] .score-ring--no-animate .score-ring__value {
 }
 
 .home-notices__more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 96px;
+  min-height: 40px;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .home-notices__list {

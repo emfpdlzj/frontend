@@ -3,9 +3,14 @@ import { AUTH_PROVIDER_ROUTES } from './routes';
 const trimTrailingSlash = (value) => value.replace(/\/+$/, '');
 const readClientEnv = (key) => {
   const viteKey = key.replace(/^REACT_APP_/, 'VITE_');
-  const metaEnv = import.meta.env || {};
-  const processEnv = typeof process !== 'undefined' ? process.env || {} : {};
-  return metaEnv[key] || metaEnv[viteKey] || processEnv[key] || '';
+  const processEnv = (() => {
+    try {
+      return process.env || {};
+    } catch {
+      return {};
+    }
+  })();
+  return processEnv[key] || processEnv[viteKey] || '';
 };
 const DEFAULT_API_BASE_URL_BY_ENV = Object.freeze({
   development: 'http://localhost:8080/api/v1',
@@ -35,6 +40,7 @@ export const STORAGE_KEYS = {
   selectedProfile: 'bridgework:selected-profile-id',
   oauthReturnTo: 'bridgework.oauth.returnTo',
   oauthState: 'bridgework.oauth.state',
+  oauthPending: 'bridgework.oauth.pending',
   naverState: 'bridgework.oauth.naver.state'
 };
 
