@@ -54,7 +54,7 @@ const PAGE_METADATA = Object.freeze({
   },
   [ROUTE_PATHS.quickJobs]: {
     title: '퀵공고 | BridgeWork',
-    description: '로그인 후 내 프로필 기준으로 미리 계산된 퀵 맞춤 일자리 추천을 확인하세요.',
+    description: '내 프로필 기준으로 퀵 맞춤 일자리 추천을 검색하고 확인하세요.',
     robots: 'noindex,nofollow'
   },
   [ROUTE_PATHS.notices]: {

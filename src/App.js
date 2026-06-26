@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MapSearchProvider } from './accessibility/MapSearchContext';
-import { fetchQuickJobRecommendations } from './api/recommendApi';
 import { AppRouter } from './app/AppRouter';
 import { useAuth } from './auth/AuthContext';
 import { WithdrawalRestoredModal } from './components/auth/WithdrawalRestoredModal';
@@ -27,7 +26,7 @@ function AppLayout() {
   const currentPathname = stripLocaleFromPathname(location.pathname);
   const isMapPage = currentPathname === ROUTE_PATHS.accessibilityMap;
   const [isWithdrawalRestoredOpen, setIsWithdrawalRestoredOpen] = useState(false);
-  const { authNotice, dismissAuthNotice, isAuthenticated, isInitializing, callWithAuth } = useAuth();
+  const { authNotice, dismissAuthNotice } = useAuth();
 
   usePageMetadata();
 
@@ -36,36 +35,6 @@ function AppLayout() {
       setIsWithdrawalRestoredOpen(true);
     }
   }, [location.state]);
-
-  useEffect(() => {
-    if (isInitializing || !isAuthenticated || typeof callWithAuth !== 'function') {
-      return undefined;
-    }
-
-    const controller = new AbortController();
-
-    // 로그인 직후 퀵공고 계산을 백엔드 비동기 작업으로 먼저 시작한다.
-    callWithAuth((accessToken) =>
-      fetchQuickJobRecommendations(accessToken, {
-        aiEnabled: true,
-        limit: 20,
-        offset: 0,
-        signal: controller.signal
-      })
-    ).catch((error) => {
-      if (error?.name === 'AbortError' || error?.status === 400) {
-        return;
-      }
-      logger.warn('Quick recommendation precompute failed.', {
-        status: error?.status,
-        errorCode: error?.errorCode
-      });
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, [callWithAuth, isAuthenticated, isInitializing]);
 
   useEffect(() => {
     // 라우트 전환 시 이전 화면 스크롤 위치가 남지 않도록 주요 스크롤 컨테이너를 초기화한다.

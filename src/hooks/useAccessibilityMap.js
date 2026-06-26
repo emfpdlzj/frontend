@@ -1487,6 +1487,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     agencies: []
   });
   const activeRecommendationCacheKeyRef = useRef('');
+  const mapLoadMoreInFlightKeyRef = useRef('');
 
   const selectedProfileId = profilesState.selectedProfileId;
   const selectedProfile = profilesState.selectedProfile;
@@ -1786,7 +1787,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
             nextState,
             replace: true,
             offset: 0,
-            hasMore: nextState.jobs.length === MAP_PAGE_SIZE && nextState.jobs.length < MAP_MAX_RESULTS
+            hasMore: nextState.jobs.length > 0 && nextState.jobs.length < MAP_MAX_RESULTS && nextState.jobs.length % MAP_PAGE_SIZE === 0
           });
         } else {
           setRecommendationState((prev) => ({
@@ -1860,8 +1861,19 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
       return;
     }
 
-    const controller = new AbortController();
     const loadingTarget = Math.min(MAP_PAGE_SIZE, MAP_MAX_RESULTS - offset);
+    const requestKey = JSON.stringify({
+      aiEnabled: appliedAiEnabled,
+      profileId: appliedAiEnabled ? selectedProfileId : '',
+      profileSignature: appliedAiEnabled ? selectedProfileScoringSignature : '',
+      offset
+    });
+    if (mapLoadMoreInFlightKeyRef.current === requestKey) {
+      return;
+    }
+    mapLoadMoreInFlightKeyRef.current = requestKey;
+
+    const controller = new AbortController();
     setProfileOffPageState((prev) => ({ ...prev, isLoadingMore: true, loadingLoaded: 0, loadingTarget }));
 
     try {
@@ -1952,6 +1964,10 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
         status: prev.jobs.length ? 'success' : 'error',
         error: error.message || '지역 접근성 지도 추천을 불러오지 못했습니다.'
       }));
+    } finally {
+      if (mapLoadMoreInFlightKeyRef.current === requestKey) {
+        mapLoadMoreInFlightKeyRef.current = '';
+      }
     }
   }, [
     appliedAiEnabled,

@@ -29,7 +29,6 @@ const POPULAR_AUTOPLAY_INTERVAL_MS = 3600;
 const QUICK_PAGE_SIZE = 20;
 const QUICK_MAX_RESULTS = 100;
 const QUICK_INCREMENTAL_APPEND_DELAY_MS = 120;
-const QUICK_PENDING_TASK_STORAGE_KEY = 'bridgework.quick.pending.task';
 const QUICK_EXPLAIN_CACHE_STORAGE_KEY = 'bridgework.quick.explain.cache.v2';
 
 const delay = (ms) =>
@@ -82,49 +81,6 @@ const isDirectQuickResultPayload = (payload) =>
     || Array.isArray(payload.jobs)
     || Array.isArray(payload?.aiResponse?.result?.results)
   );
-
-const readPendingQuickTask = () => {
-  try {
-    const raw = window.localStorage.getItem(QUICK_PENDING_TASK_STORAGE_KEY);
-    if (!raw) {
-      return null;
-    }
-    const parsed = JSON.parse(raw);
-    if (!parsed?.requestId || isDailyCacheExpired(parsed.expiresAt)) {
-      window.localStorage.removeItem(QUICK_PENDING_TASK_STORAGE_KEY);
-      return null;
-    }
-    return parsed;
-  } catch (error) {
-    return null;
-  }
-};
-
-const writePendingQuickTask = (requestId, profileId, aiEnabled, filters) => {
-  try {
-    window.localStorage.setItem(
-      QUICK_PENDING_TASK_STORAGE_KEY,
-      JSON.stringify({
-        requestId,
-        profileId,
-        aiEnabled,
-        filters,
-        expiresAt: getNextDailyCacheExpiryAt(),
-        updatedAt: Date.now()
-      })
-    );
-  } catch (error) {
-    // 저장 실패는 동작을 막지 않는다.
-  }
-};
-
-const clearPendingQuickTask = () => {
-  try {
-    window.localStorage.removeItem(QUICK_PENDING_TASK_STORAGE_KEY);
-  } catch (error) {
-    // 제거 실패는 동작을 막지 않는다.
-  }
-};
 
 const readQuickExplainCache = () => {
   try {
@@ -1422,10 +1378,11 @@ export function MainPage({ view = 'home' }) {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isQuickFilterCollapsed, setIsQuickFilterCollapsed] = useState(false);
 
-  const autoRequestedRef = useRef(false);
   const quickProfileSelectRef = useRef(null);
   const quickLoadMoreSentinelRef = useRef(null);
   const quickExplainRequestSequenceRef = useRef(0);
+  const quickSearchInFlightKeyRef = useRef('');
+  const quickLoadMoreInFlightKeyRef = useRef('');
 
   const selectedProfile = useMemo(
     () => profilesState.profiles.find((profile) => getProfileId(profile) === String(selectedProfileId)) || null,
@@ -1663,7 +1620,6 @@ export function MainPage({ view = 'home' }) {
     if (!isAuthenticated) {
       setProfilesState({ status: 'disabled', error: '', profiles: [] });
       setSelectedProfileId('');
-      autoRequestedRef.current = false;
       return undefined;
     }
 
@@ -1799,7 +1755,7 @@ export function MainPage({ view = 'home' }) {
     });
   }, []);
 
-  const runQuickRecommendation = useCallback(async ({ profileId, aiEnabled, filters, signal, existingRequestId = '' }) => {
+  const runQuickRecommendation = useCallback(async ({ profileId, aiEnabled, filters, signal }) => {
     if (!profileId) {
       setQuickState({ status: 'empty', error: '', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
       return;
@@ -1837,7 +1793,6 @@ export function MainPage({ view = 'home' }) {
 
     const proceedTaskResult = async (taskResult) => {
       if (isDirectQuickResultPayload(taskResult)) {
-        clearPendingQuickTask();
         setCachedRecommendation(cacheKey, taskResult);
         const directJobs = parseQuickJobsFromResult(taskResult);
         setAppliedAiEnabled(aiEnabled);
@@ -1856,13 +1811,11 @@ export function MainPage({ view = 'home' }) {
       const taskRequestId = getTaskRequestId(taskResult);
 
       if (taskStatus === 'FAILED') {
-        clearPendingQuickTask();
         setQuickState({ status: 'error', error: getTaskErrorMessage(taskResult) || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
         return;
       }
 
       if (taskStatus === 'COMPLETED' && taskResult?.result) {
-        clearPendingQuickTask();
         setCachedRecommendation(cacheKey, taskResult.result);
         const jobs = parseQuickJobsFromResult(taskResult.result);
         setAppliedAiEnabled(aiEnabled);
@@ -1872,7 +1825,7 @@ export function MainPage({ view = 'home' }) {
             jobs,
             replace: true,
             offset: 0,
-            hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS
+            hasMore: jobs.length > 0 && jobs.length < QUICK_MAX_RESULTS && jobs.length % QUICK_PAGE_SIZE === 0
           });
           return;
         }
@@ -1891,7 +1844,6 @@ export function MainPage({ view = 'home' }) {
         return;
       }
 
-      writePendingQuickTask(taskRequestId, profileId, aiEnabled, filters);
       let hasProgressResult = false;
       const completed = await waitForRecommendTask(callWithAuth, taskRequestId, signal, async (progressResult) => {
         const progressJobs = parseQuickJobsFromResult(progressResult);
@@ -1914,12 +1866,10 @@ export function MainPage({ view = 'home' }) {
       const completedStatus = getTaskStatus(completed);
 
       if (!completed || completedStatus === 'FAILED') {
-        clearPendingQuickTask();
         setQuickState({ status: 'error', error: getTaskErrorMessage(completed) || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
         return;
       }
 
-      clearPendingQuickTask();
       setCachedRecommendation(cacheKey, completed.result);
       const jobs = parseQuickJobsFromResult(completed.result);
       setAppliedAiEnabled(aiEnabled);
@@ -1945,18 +1895,6 @@ export function MainPage({ view = 'home' }) {
         });
       }
     };
-
-    if (existingRequestId) {
-      try {
-        const existingPayload = await callWithAuth((accessToken) =>
-          fetchRecommendTaskStatus(accessToken, existingRequestId, { signal })
-        );
-        await proceedTaskResult(normalizeTaskPayload(existingPayload));
-        return;
-      } catch (error) {
-        clearPendingQuickTask();
-      }
-    }
 
     const taskPayload = await callWithAuth((accessToken) =>
       fetchQuickJobRecommendations(accessToken, {
@@ -1987,6 +1925,16 @@ export function MainPage({ view = 'home' }) {
       setQuickState((prev) => ({ ...prev, hasMore: false, isLoadingMore: false, nextOffset: QUICK_MAX_RESULTS, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE }));
       return;
     }
+
+    const requestKey = JSON.stringify({
+      aiEnabled: appliedAiEnabled,
+      profileId: appliedAiEnabled ? selectedProfileId : '',
+      offset
+    });
+    if (quickLoadMoreInFlightKeyRef.current === requestKey) {
+      return;
+    }
+    quickLoadMoreInFlightKeyRef.current = requestKey;
 
     const controller = new AbortController();
     const loadingTarget = Math.min(QUICK_PAGE_SIZE, QUICK_MAX_RESULTS - offset);
@@ -2078,6 +2026,10 @@ export function MainPage({ view = 'home' }) {
         isLoadingMore: false,
         loadingLoaded: 0
       }));
+    } finally {
+      if (quickLoadMoreInFlightKeyRef.current === requestKey) {
+        quickLoadMoreInFlightKeyRef.current = '';
+      }
     }
   }, [
     appendQuickJobsIncrementally,
@@ -2115,58 +2067,6 @@ export function MainPage({ view = 'home' }) {
       observer.disconnect();
     };
   }, [appliedAiEnabled, isQuickPage, loadMoreQuickRecommendations, quickState.hasMore, quickState.isLoadingMore]);
-
-  useEffect(() => {
-    if (!isQuickPage) {
-      return undefined;
-    }
-
-    if (!isAuthenticated || !selectedProfileId || autoRequestedRef.current) {
-      return undefined;
-    }
-
-    autoRequestedRef.current = true;
-    const controller = new AbortController();
-    const pendingTask = readPendingQuickTask();
-    const isSamePendingContext = Boolean(pendingTask)
-      && String(pendingTask.profileId || '') === String(selectedProfileId)
-      && Boolean(pendingTask.aiEnabled) === Boolean(isAiEnabled);
-    const pendingRequestId = isSamePendingContext ? pendingTask?.requestId || '' : '';
-
-    if (!isSamePendingContext) {
-      clearPendingQuickTask();
-    }
-    if (isSamePendingContext && pendingTask?.filters) {
-      setDraftFilters((prev) => ({ ...prev, ...pendingTask.filters }));
-      setAppliedFilters((prev) => ({ ...prev, ...pendingTask.filters }));
-    }
-
-    runQuickRecommendation({
-      profileId: selectedProfileId,
-      aiEnabled: isAiEnabled,
-      filters: draftFilters,
-      signal: controller.signal,
-      existingRequestId: pendingRequestId
-    }).catch((error) => {
-      if (error?.name === 'AbortError') {
-        return;
-      }
-      setQuickState({
-        status: 'error',
-        error: error.message || '퀵 추천을 불러오지 못했습니다.',
-        rawJobs: [],
-        hasMore: false,
-        isLoadingMore: false,
-        nextOffset: 0,
-        loadingLoaded: 0,
-        loadingTarget: QUICK_PAGE_SIZE
-      });
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, [draftFilters, isAiEnabled, isAuthenticated, isQuickPage, runQuickRecommendation, selectedProfileId]);
 
   const loadQuickExplanation = useCallback(async (job, profileObject, detailObject = null, options = {}) => {
     const { requireFitScore = true } = options;
@@ -2324,6 +2224,16 @@ export function MainPage({ view = 'home' }) {
       return;
     }
 
+    const requestKey = JSON.stringify({
+      profileId: selectedProfileId,
+      aiEnabled: isAiEnabled,
+      filters: draftFilters
+    });
+    if (quickSearchInFlightKeyRef.current === requestKey) {
+      return;
+    }
+    quickSearchInFlightKeyRef.current = requestKey;
+
     const controller = new AbortController();
 
     try {
@@ -2339,6 +2249,10 @@ export function MainPage({ view = 'home' }) {
         return;
       }
       setQuickState({ status: 'error', error: error.message || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
+    } finally {
+      if (quickSearchInFlightKeyRef.current === requestKey) {
+        quickSearchInFlightKeyRef.current = '';
+      }
     }
   }, [draftFilters, isAiEnabled, quickState.status, runQuickRecommendation, selectedProfileId]);
 
