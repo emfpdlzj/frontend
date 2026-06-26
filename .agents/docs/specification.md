@@ -187,6 +187,13 @@
 - 카카오/네이버 로그인
 - 최초 로그인 시 기본 프로필 필수 항목 입력 완료 후 가입 완료
 
+### 기능 0-1. 홈/공지사항/관리자
+
+- 홈은 현재 인기 공고와 공개 공지사항 요약을 보여준다.
+- 공지사항 목록/상세는 비로그인 사용자도 읽을 수 있다.
+- 관리자 계정은 일반 사용자 기능 접근을 막고 관리자 공지 관리 화면으로 이동한다.
+- 관리자 공지 관리에서는 공지 생성/수정/삭제, 공개 여부, 상단 고정을 처리한다.
+
 ### 기능 1. 프로필 생성/관리
 
 - 직접 입력 저장
@@ -197,20 +204,30 @@
 
 ### 기능 2. 퀵 맞춤 일자리 추천 (최신 + 직무 적합)
 
+- 홈이 아닌 별도 `/:locale/quick-jobs` 페이지에서 제공한다.
+- 로그인 직후 Spring Backend가 첫 AI 추천 계산을 비동기로 미리 시작한다.
+- 추천 결과는 20개 단위로 요청하고 최대 100개까지만 표시한다.
+- 추천 task가 `PROCESSING`이면 프론트는 `/recommend/tasks/{requestId}`를 polling한다.
+- `PROCESSING` 응답에 부분 `result`가 있으면 완료 전이라도 1개씩 목록에 반영한다.
+- 계산 중에는 상단 로딩바에 `불러오는 중 n/20` 진행률을 표시한다.
+- 캐시된 페이지가 있으면 20개 단위 애니메이션 없이 최대 100개까지 즉시 반영한다.
+
 #### 1. AI 직무 적합도 토글 ON
 
 - 프론트에서 프로필 1개 선택(기본 프로필 최상단 노출)
 - Spring → FastAPI: 사용자 선택 프로필만 전달
 - FastAPI: DB 공고를 최신순 조회 후 직무 적합도만 계산
 - FastAPI → Spring: 공고별 직무 적합도 포함 결과 반환
-- Spring → 프론트: 결과 전달
+- Spring → 프론트: 비동기 task 상태와 부분/완료 결과 전달
 - 프론트: 화면 필터 적용, 일정 점수 이상 공고 강조
+- 추가 조회는 무한스크롤이 아니라 `20개 더 불러오기` 버튼으로 실행
 
 #### 2. AI 직무 적합도 토글 OFF
 
 - FastAPI 호출 없음
 - Spring이 DB 공고 최신순 반환
 - 프론트가 화면 필터 적용
+- 서버 페이지네이션과 프론트 무한스크롤을 사용
 
 ### 기능 3. 지역 접근성 지도 추천 (종합 점수)
 
@@ -224,14 +241,19 @@
 - Spring → FastAPI: 사용자 선택 프로필만 전달
 - FastAPI: DB 공고/공공데이터 직접 조회, 동일 비중 종합 점수 계산
 - FastAPI → Spring: 항목별 점수 + 총점 + 내림차순 결과 반환
-- Spring → 프론트: 결과 전달
+- Spring → 프론트: 비동기 task 상태와 부분/완료 결과 전달
 - 프론트: 화면 필터 적용
+- 20개 단위로 계산하고 부분 결과를 1개씩 반영한다.
+- 계산 중에는 상단 로딩바에 `불러오는 중 n/20` 진행률을 표시한다.
+- 추가 조회는 `20개 더 불러오기` 버튼으로 실행하며 최대 100개까지만 표시한다.
+- 캐시된 페이지가 있으면 최대 100개까지 즉시 반영한다.
 
 #### 2. AI 스코어링 토글 OFF
 
 - FastAPI 호출 없음
 - Spring이 DB 공고 반환
 - 프론트가 화면 필터 적용
+- 서버 페이지네이션과 프론트 무한스크롤을 사용
 
 ### 2차(현재 미포함)
 
@@ -312,18 +334,33 @@
 
 - `POST /api/v1/recommend/quick`
 - `POST /api/v1/recommend/map`
+- `GET /api/v1/recommend/tasks/{requestId}`
+- `POST /api/v1/recommend/explain`
 
 ### 동작 규칙
 
 - `aiEnabled=true`: FastAPI 호출
 - `aiEnabled=false`: Spring이 DB 공고 반환
 - 프론트 필터는 프론트에서 적용
+- AI ON 추천은 `PROCESSING`/`COMPLETED`/`FAILED` task 상태를 반환한다.
+- `PROCESSING` 응답에 부분 `result`가 있으면 프론트는 즉시 목록에 반영한다.
+- 완료 캐시가 있으면 `cached=true`와 `result`를 함께 반환한다.
 
 ## 6. 한국장애인고용공단_근로지원인 수행기관 실시간 정보(DB 저장본) 지도 레이어 조회
 
 - `GET /api/v1/map/support-agencies`
 
-## 7. 공공데이터 동기화/조회
+## 7. 공지사항
+
+- `GET /api/v1/notices`
+- `GET /api/v1/notices/{noticeId}`
+- `GET /api/v1/admin/notices`
+- `GET /api/v1/admin/notices/{noticeId}`
+- `POST /api/v1/admin/notices`
+- `PUT /api/v1/admin/notices/{noticeId}`
+- `DELETE /api/v1/admin/notices/{noticeId}`
+
+## 8. 공공데이터 동기화/조회
 
 - `POST /api/v1/admin/sync/public-data/run`
 - `GET /api/v1/admin/sync/public-data/logs`

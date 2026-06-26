@@ -202,7 +202,7 @@ BridgeWork는 파란색을 주요 색상으로 사용한다.
 
 공고 카드, 상세 정보 카드, 접근성 점수 카드는 다음 기준을 따른다.
 
-- border-radius: 12px ~ 16px
+- border-radius: 8px 기본
 - border: 1px solid #E5E7EB
 - padding: 16px
 - background: white
@@ -827,7 +827,7 @@ error 상태는 색상만으로 표시하지 않는다.
 정보 카드 스타일:
 
 - border: 1px solid Border
-- border-radius: 12px
+- border-radius: 8px
 - padding: 16px
 - background: Surface
 
