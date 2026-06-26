@@ -60,12 +60,12 @@ const INITIAL_VISIBLE_MAP_JOB_COUNT = 20;
 const VISIBLE_MAP_JOB_INCREMENT = 20;
 
 const LIST_MOVE_ANIMATION_OPTIONS = {
-  duration: 420,
+  duration: 520,
   easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)'
 };
 
 const LIST_INSERT_ANIMATION_OPTIONS = {
-  duration: 360,
+  duration: 520,
   easing: 'cubic-bezier(0.18, 0.9, 0.24, 1)'
 };
 

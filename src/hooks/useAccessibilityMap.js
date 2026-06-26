@@ -3,10 +3,13 @@ import { mapApi } from '../api/mapApi';
 import { explainRecommendation, fetchMapJobRecommendations, fetchRecommendTaskStatus } from '../api/recommendApi';
 import { useAuth } from '../auth/AuthContext';
 import {
+  clearActiveRecommendationTask,
   clearRecommendationCache,
   getRecommendationExplanationCacheKey,
+  getActiveRecommendationTask,
   getCachedRecommendation,
   getRecommendationCacheKey,
+  setActiveRecommendationTask,
   setCachedRecommendation
 } from '../cache/recommendationCache';
 import { getProfileScoringSignature } from '../utils/profileScoringSignature';
@@ -14,10 +17,11 @@ import { useJobFilterOptions } from './useJobFilterOptions';
 import { useProfiles } from './useProfiles';
 
 const MAP_RECOMMEND_REQUEST_TIMEOUT_MS = 3 * 60 * 1000;
-const MAP_RECOMMEND_POLL_INTERVAL_MS = 700;
+const MAP_RECOMMEND_POLL_INTERVAL_MS = 500;
 const MAP_PAGE_SIZE = 20;
 const MAP_MAX_RESULTS = 100;
-const MAP_INCREMENTAL_APPEND_DELAY_MS = 120;
+const MAP_INCREMENTAL_APPEND_DELAY_MS = 220;
+const MAP_ACTIVE_TASK_SCOPE = 'accessibility-map';
 const FILTER_ALL_VALUE = '전체';
 const VALID_TABS = ['accessibility', 'job'];
 const MAP_PERSONAS = {
@@ -1472,6 +1476,8 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
   });
   const activeRecommendationCacheKeyRef = useRef('');
   const mapLoadMoreInFlightKeyRef = useRef('');
+  const mapRenderedJobIdsRef = useRef(new Set());
+  const mapPageMountedRef = useRef(false);
 
   const selectedProfileId = profilesState.selectedProfileId;
   const selectedProfile = profilesState.selectedProfile;
@@ -1502,6 +1508,17 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     [filterOptions, selectedFilters]
   );
 
+  useEffect(() => {
+    mapPageMountedRef.current = true;
+    return () => {
+      mapPageMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    mapRenderedJobIdsRef.current = new Set(recommendationState.jobs.map((job) => job.id).filter(Boolean));
+  }, [recommendationState.jobs]);
+
   const appendMapJobsIncrementally = useCallback(async ({
     nextState,
     replace = false,
@@ -1510,6 +1527,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     signal,
     loadingMore = false,
     keepLoading = false,
+    showLoadingDuringAppend = false,
     loadingTarget = Math.min(MAP_PAGE_SIZE, MAP_MAX_RESULTS - offset)
   }) => {
     const incomingJobs = Array.isArray(nextState?.jobs) ? nextState.jobs.slice(0, MAP_MAX_RESULTS - offset) : [];
@@ -1533,13 +1551,22 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     }
 
     let didReplace = false;
+    if (replace) {
+      mapRenderedJobIdsRef.current = new Set();
+    }
     for (const job of incomingJobs) {
       if (signal?.aborted) {
         return;
       }
 
-      let didAppendJob = false;
-      let nextLoadingLoaded = 0;
+      const didAppendJob = !job.id || !mapRenderedJobIdsRef.current.has(job.id) || (replace && !didReplace);
+      if (didAppendJob && job.id) {
+        mapRenderedJobIdsRef.current.add(job.id);
+      }
+      const nextLoadingLoaded = Math.min(
+        Math.max(0, Math.min(mapRenderedJobIdsRef.current.size, offset + loadingTarget) - offset),
+        loadingTarget
+      );
       setRecommendationState((prev) => {
         const baseJobs = replace && !didReplace ? [] : prev.jobs;
         const existingIds = new Set(baseJobs.map((item) => item.id));
@@ -1549,12 +1576,10 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
         const mergedJobs = existingIds.has(job.id)
           ? baseJobs
           : [...baseJobs, job].slice(0, MAP_MAX_RESULTS);
-        didAppendJob = mergedJobs.length !== baseJobs.length || (replace && !didReplace);
-        nextLoadingLoaded = Math.min(Math.max(0, mergedJobs.length - offset), loadingTarget);
 
         return {
           ...prev,
-          status: keepLoading || loadingMore ? 'refetching' : 'success',
+          status: keepLoading || loadingMore || showLoadingDuringAppend ? 'refetching' : 'success',
           error: '',
           payload: nextState.payload,
           jobs: mergedJobs
@@ -1624,6 +1649,53 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
       loadingTarget: Math.min(MAP_PAGE_SIZE, MAP_MAX_RESULTS - offset)
     });
   }, []);
+
+  useEffect(() => {
+    if (
+      hasAppliedConditions ||
+      !isAuthenticated ||
+      profilesState.status !== 'success' ||
+      !profilesState.profiles.length ||
+      !selectedProfileId ||
+      !selectedProfile ||
+      profilesState.detailStatus === 'loading' ||
+      profilesState.detailStatus === 'idle'
+    ) {
+      return;
+    }
+
+    const activeTask = getActiveRecommendationTask(MAP_ACTIVE_TASK_SCOPE);
+    if (!activeTask?.aiEnabled || !activeTask.profileId) {
+      return;
+    }
+
+    if (String(activeTask.profileId) !== String(selectedProfileId)) {
+      clearActiveRecommendationTask(MAP_ACTIVE_TASK_SCOPE);
+      return;
+    }
+
+    if (activeTask.profileSignature && activeTask.profileSignature !== selectedProfileScoringSignature) {
+      clearActiveRecommendationTask(MAP_ACTIVE_TASK_SCOPE);
+      return;
+    }
+
+    const filters = activeTask.filters || {};
+    setSelectedFilters(filters);
+    setIsAiEnabled(true);
+    setAppliedAiEnabled(true);
+    setSortMode('score_desc');
+    setHasAppliedConditions(true);
+    setReloadKey((current) => current + 1);
+  }, [
+    hasAppliedConditions,
+    isAuthenticated,
+    profilesState.profiles.length,
+    profilesState.status,
+    profilesState.detailStatus,
+    selectedProfileId,
+    selectedProfile,
+    selectedProfileScoringSignature
+  ]);
 
   useEffect(() => {
     if (!hasAppliedConditions) {
@@ -1719,6 +1791,25 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
         error: '',
         jobs: isScoringInputChanged ? [] : prev.jobs
       }));
+      const activeTask = appliedAiEnabled ? getActiveRecommendationTask(MAP_ACTIVE_TASK_SCOPE) : null;
+      const shouldPreserveLoadMoreActiveTask = (
+        Number(activeTask?.offset || 0) > 0 &&
+        String(activeTask?.profileId || '') === String(selectedProfileId || '') &&
+        (!activeTask.profileSignature || activeTask.profileSignature === selectedProfileScoringSignature)
+      );
+      if (appliedAiEnabled) {
+        if (!shouldPreserveLoadMoreActiveTask) {
+          setActiveRecommendationTask(MAP_ACTIVE_TASK_SCOPE, {
+            aiEnabled: appliedAiEnabled,
+            profileId: selectedProfileId,
+            profileSignature: selectedProfileScoringSignature,
+            filters: selectedFilters,
+            offset: 0
+          });
+        }
+      } else {
+        clearActiveRecommendationTask(MAP_ACTIVE_TASK_SCOPE);
+      }
 
       try {
         let hasProgressResult = false;
@@ -1758,9 +1849,16 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
 
         if (appliedAiEnabled) {
           setCachedRecommendation(cacheKey, completedPayload);
+          setActiveRecommendationTask(MAP_ACTIVE_TASK_SCOPE, {
+            aiEnabled: appliedAiEnabled,
+            profileId: selectedProfileId,
+            profileSignature: selectedProfileScoringSignature,
+            filters: selectedFilters,
+            offset: 0
+          });
         }
         activeRecommendationCacheKeyRef.current = cacheKey;
-        if (completedResult.cached || !hasProgressResult) {
+        if (completedResult.cached) {
           applyMapStateImmediately({
             nextState,
             replace: true,
@@ -1774,6 +1872,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
             offset: 0,
             hasMore: nextState.jobs.length === MAP_PAGE_SIZE && nextState.jobs.length < MAP_MAX_RESULTS,
             signal: controller.signal,
+            showLoadingDuringAppend: true,
             loadingTarget: Math.min(MAP_PAGE_SIZE, MAP_MAX_RESULTS)
           });
         }
@@ -1786,6 +1885,9 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
           return;
         }
 
+        if (appliedAiEnabled) {
+          clearActiveRecommendationTask(MAP_ACTIVE_TASK_SCOPE);
+        }
         setRecommendationState({
           status: 'error',
           error: error.message || '지역 접근성 지도 추천을 불러오지 못했습니다.',
@@ -1815,7 +1917,8 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     reloadKey,
     selectedProfileId,
     selectedProfile,
-    selectedProfileScoringSignature
+    selectedProfileScoringSignature,
+    selectedFilters
   ]);
 
   const loadMoreRecommendations = useCallback(async () => {
@@ -1848,6 +1951,15 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
 
     const controller = new AbortController();
     setProfileOffPageState((prev) => ({ ...prev, isLoadingMore: true, loadingLoaded: 0, loadingTarget }));
+    if (appliedAiEnabled) {
+      setActiveRecommendationTask(MAP_ACTIVE_TASK_SCOPE, {
+        aiEnabled: appliedAiEnabled,
+        profileId: selectedProfileId,
+        profileSignature: selectedProfileScoringSignature,
+        filters: selectedFilters,
+        offset
+      });
+    }
 
     try {
       const pageCacheKey = appliedAiEnabled
@@ -1860,6 +1972,15 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
         : '';
       const cachedPayload = pageCacheKey ? getCachedRecommendation(pageCacheKey) : null;
       if (cachedPayload) {
+        if (appliedAiEnabled) {
+          setActiveRecommendationTask(MAP_ACTIVE_TASK_SCOPE, {
+            aiEnabled: appliedAiEnabled,
+            profileId: selectedProfileId,
+            profileSignature: selectedProfileScoringSignature,
+            filters: selectedFilters,
+            offset: 0
+          });
+        }
         const cachedState = buildRecommendationStateFromPayload(cachedPayload, appliedAiEnabled, selectedProfile);
         applyMapStateImmediately({
           nextState: cachedState,
@@ -1902,9 +2023,21 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
       if (pageCacheKey) {
         setCachedRecommendation(pageCacheKey, completedPayload);
       }
+      if (!mapPageMountedRef.current) {
+        return;
+      }
+      if (appliedAiEnabled) {
+        setActiveRecommendationTask(MAP_ACTIVE_TASK_SCOPE, {
+          aiEnabled: appliedAiEnabled,
+          profileId: selectedProfileId,
+          profileSignature: selectedProfileScoringSignature,
+          filters: selectedFilters,
+          offset: 0
+        });
+      }
       const nextState = buildRecommendationStateFromPayload(completedPayload, appliedAiEnabled, selectedProfile);
 
-      if (completedResult.cached || !hasProgressResult) {
+      if (completedResult.cached) {
         applyMapStateImmediately({
           nextState,
           replace: false,
@@ -1918,6 +2051,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
           offset,
           hasMore: nextState.jobs.length === MAP_PAGE_SIZE && offset + nextState.jobs.length < MAP_MAX_RESULTS,
           signal: controller.signal,
+          showLoadingDuringAppend: true,
           loadingTarget
         });
       }
@@ -1926,6 +2060,12 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
         return;
       }
 
+      if (!mapPageMountedRef.current) {
+        return;
+      }
+      if (appliedAiEnabled) {
+        clearActiveRecommendationTask(MAP_ACTIVE_TASK_SCOPE);
+      }
       setProfileOffPageState((prev) => ({ ...prev, isLoadingMore: false, loadingLoaded: 0 }));
       setRecommendationState((prev) => ({
         ...prev,
@@ -1948,6 +2088,58 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     profileOffPageState.nextOffset,
     recommendationState.status,
     selectedProfile,
+    selectedProfileId,
+    selectedProfileScoringSignature,
+    selectedFilters
+  ]);
+
+  useEffect(() => {
+    if (
+      !hasAppliedConditions ||
+      !appliedAiEnabled ||
+      recommendationState.status !== 'success' ||
+      profileOffPageState.isLoadingMore
+    ) {
+      return;
+    }
+
+    const activeTask = getActiveRecommendationTask(MAP_ACTIVE_TASK_SCOPE);
+    if (!activeTask?.aiEnabled) {
+      return;
+    }
+
+    if (
+      String(activeTask.profileId || '') !== String(selectedProfileId || '') ||
+      (activeTask.profileSignature && activeTask.profileSignature !== selectedProfileScoringSignature)
+    ) {
+      clearActiveRecommendationTask(MAP_ACTIVE_TASK_SCOPE);
+      return;
+    }
+
+    const activeOffset = Number(activeTask.offset || 0);
+    if (activeOffset <= 0) {
+      return;
+    }
+
+    if (profileOffPageState.nextOffset > activeOffset) {
+      setActiveRecommendationTask(MAP_ACTIVE_TASK_SCOPE, {
+        ...activeTask,
+        offset: 0
+      });
+      return;
+    }
+
+    if (profileOffPageState.nextOffset === activeOffset && profileOffPageState.hasMore) {
+      loadMoreRecommendations();
+    }
+  }, [
+    appliedAiEnabled,
+    hasAppliedConditions,
+    loadMoreRecommendations,
+    profileOffPageState.hasMore,
+    profileOffPageState.isLoadingMore,
+    profileOffPageState.nextOffset,
+    recommendationState.status,
     selectedProfileId,
     selectedProfileScoringSignature
   ]);

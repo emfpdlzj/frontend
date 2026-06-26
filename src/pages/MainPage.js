@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { noticeApi } from '../api/noticeApi';
 import { postingApi } from '../api/postingApi';
@@ -6,7 +6,14 @@ import { profileApi } from '../api/profileApi';
 import { explainRecommendation, fetchQuickJobRecommendations, fetchRecommendTaskStatus } from '../api/recommendApi';
 import { useAuth } from '../auth/AuthContext';
 import { getNextDailyCacheExpiryAt, isDailyCacheExpired } from '../cache/dailyCacheExpiry';
-import { getCachedRecommendation, getRecommendationCacheKey, setCachedRecommendation } from '../cache/recommendationCache';
+import {
+  clearActiveRecommendationTask,
+  getActiveRecommendationTask,
+  getCachedRecommendation,
+  getRecommendationCacheKey,
+  setActiveRecommendationTask,
+  setCachedRecommendation
+} from '../cache/recommendationCache';
 import { useJobFilterOptions } from '../hooks/useJobFilterOptions';
 import arrowDown from '../assets/accessibility-map/arrow_down.png';
 import profileIcon from '../assets/accessibility-map/profile-icon.png';
@@ -22,13 +29,22 @@ import { AccessibilityScoreHelpButton } from '../components/accessibility-map/Ac
 import { LlmExplanationProgress } from '../components/common/LlmExplanationProgress';
 
 const FILTER_ALL_VALUE = '전체';
-const RECOMMEND_TASK_POLL_INTERVAL_MS = 700;
+const RECOMMEND_TASK_POLL_INTERVAL_MS = 500;
 const RECOMMEND_REQUEST_TIMEOUT_MS = 3 * 60 * 1000;
 const POPULAR_AUTOPLAY_INTERVAL_MS = 3600;
 const QUICK_PAGE_SIZE = 20;
 const QUICK_MAX_RESULTS = 100;
-const QUICK_INCREMENTAL_APPEND_DELAY_MS = 120;
+const QUICK_INCREMENTAL_APPEND_DELAY_MS = 220;
 const QUICK_EXPLAIN_CACHE_STORAGE_KEY = 'bridgework.quick.explain.cache.v2';
+const QUICK_ACTIVE_TASK_SCOPE = 'quick';
+const QUICK_LIST_MOVE_ANIMATION_OPTIONS = {
+  duration: 520,
+  easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+};
+const QUICK_LIST_INSERT_ANIMATION_OPTIONS = {
+  duration: 520,
+  easing: 'cubic-bezier(0.18, 0.9, 0.24, 1)'
+};
 
 const delay = (ms) =>
   new Promise((resolve) => {
@@ -1357,9 +1373,13 @@ export function MainPage({ view = 'home' }) {
 
   const quickProfileSelectRef = useRef(null);
   const quickLoadMoreSentinelRef = useRef(null);
+  const quickResultListRef = useRef(null);
+  const quickListItemRectsRef = useRef(new Map());
   const quickExplainRequestSequenceRef = useRef(0);
   const quickSearchInFlightKeyRef = useRef('');
   const quickLoadMoreInFlightKeyRef = useRef('');
+  const quickRenderedJobKeysRef = useRef(new Set());
+  const quickPageActiveRef = useRef(false);
 
   const selectedProfile = useMemo(
     () => profilesState.profiles.find((profile) => getProfileId(profile) === String(selectedProfileId)) || null,
@@ -1416,6 +1436,64 @@ export function MainPage({ view = 'home' }) {
       commuteEstimate: estimateCommuteMinutes(visibleSelectedProfile, job)
     }));
   }, [quickState.rawJobs, appliedFilters, filterOptions.jobCategories, appliedAiEnabled, visibleSelectedProfile]);
+  const filteredQuickJobSignature = useMemo(
+    () => filteredQuickJobs.map((job) => String(job.id)).join('|'),
+    [filteredQuickJobs]
+  );
+
+  useEffect(() => {
+    quickPageActiveRef.current = isQuickPage;
+    return () => {
+      quickPageActiveRef.current = false;
+    };
+  }, [isQuickPage]);
+
+  useLayoutEffect(() => {
+    const container = quickResultListRef.current;
+    if (!container) {
+      return;
+    }
+
+    const cards = Array.from(container.querySelectorAll('.home-job-card[data-job-id]'));
+    const previousRects = quickListItemRectsRef.current;
+    const nextRects = new Map();
+
+    cards.forEach((card) => {
+      const key = card.getAttribute('data-job-id');
+      if (!key) {
+        return;
+      }
+
+      const nextRect = card.getBoundingClientRect();
+      nextRects.set(key, nextRect);
+      const previousRect = previousRects.get(key);
+
+      if (previousRect) {
+        const deltaX = previousRect.left - nextRect.left;
+        const deltaY = previousRect.top - nextRect.top;
+        if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
+          card.animate(
+            [
+              { transform: `translate(${deltaX}px, ${deltaY}px)` },
+              { transform: 'translate(0, 0)' }
+            ],
+            QUICK_LIST_MOVE_ANIMATION_OPTIONS
+          );
+        }
+        return;
+      }
+
+      card.animate(
+        [
+          { opacity: 0, transform: 'translateY(16px) scale(0.985)' },
+          { opacity: 1, transform: 'translateY(0) scale(1)' }
+        ],
+        QUICK_LIST_INSERT_ANIMATION_OPTIONS
+      );
+    });
+
+    quickListItemRectsRef.current = nextRects;
+  }, [filteredQuickJobSignature]);
 
   useEffect(() => {
     // 프로필 목록이 갱신되어도 선택값이 비거나 유효하지 않으면 기본 프로필로 복원한다.
@@ -1627,6 +1705,10 @@ export function MainPage({ view = 'home' }) {
     };
   }, [callWithAuth, isAuthenticated, isInitializing, isQuickPage]);
 
+  useEffect(() => {
+    quickRenderedJobKeysRef.current = new Set(quickState.rawJobs.map(getQuickJobKey).filter(Boolean));
+  }, [quickState.rawJobs]);
+
   const appendQuickJobsIncrementally = useCallback(async ({
     jobs,
     replace = false,
@@ -1635,6 +1717,7 @@ export function MainPage({ view = 'home' }) {
     signal,
     loadingMore = false,
     keepLoading = false,
+    showLoadingDuringAppend = false,
     loadingTarget = Math.min(QUICK_PAGE_SIZE, QUICK_MAX_RESULTS - offset)
   }) => {
     const incomingJobs = Array.isArray(jobs) ? jobs.slice(0, QUICK_MAX_RESULTS - offset) : [];
@@ -1654,24 +1737,29 @@ export function MainPage({ view = 'home' }) {
     }
 
     let didReplace = false;
+    if (replace) {
+      quickRenderedJobKeysRef.current = new Set();
+    }
     for (const job of incomingJobs) {
       if (signal?.aborted) {
         return;
       }
 
-      let didAppendJob = false;
+      const jobKey = getQuickJobKey(job);
+      const didAppendJob = !jobKey || !quickRenderedJobKeysRef.current.has(jobKey) || (replace && !didReplace);
+      if (didAppendJob && jobKey) {
+        quickRenderedJobKeysRef.current.add(jobKey);
+      }
       setQuickState((prev) => {
         const baseJobs = replace && !didReplace ? [] : prev.rawJobs;
-        const jobKey = getQuickJobKey(job);
         if (jobKey && baseJobs.some((item) => getQuickJobKey(item) === jobKey)) {
           return prev;
         }
         const mergedJobs = mergeUniqueQuickJobs(baseJobs, [job]).slice(0, QUICK_MAX_RESULTS);
-        didAppendJob = mergedJobs.length !== baseJobs.length || (replace && !didReplace);
 
         return {
           ...prev,
-          status: keepLoading || loadingMore ? 'refetching' : 'success',
+          status: keepLoading || loadingMore || showLoadingDuringAppend ? 'refetching' : 'success',
           error: '',
           rawJobs: mergedJobs,
           hasMore: false,
@@ -1740,6 +1828,14 @@ export function MainPage({ view = 'home' }) {
       profileSignature,
       offset: 0
     });
+    const shouldPreserveLoadMoreActiveTask = () => {
+      const activeTask = getActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
+      return (
+        Number(activeTask?.offset || 0) > 0 &&
+        String(activeTask?.profileId || '') === String(profileId || '') &&
+        (!activeTask.profileSignature || activeTask.profileSignature === profileSignature)
+      );
+    };
 
     const cachedJobs = getCachedQuickPages({ profileId, aiEnabled, profileSignature });
     if (cachedJobs.length) {
@@ -1752,6 +1848,16 @@ export function MainPage({ view = 'home' }) {
         hasMore: cachedJobs.length < QUICK_MAX_RESULTS && cachedJobs.length % QUICK_PAGE_SIZE === 0
       });
       return;
+    }
+
+    if (!shouldPreserveLoadMoreActiveTask()) {
+      setActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE, {
+        aiEnabled,
+        profileId,
+        profileSignature,
+        filters,
+        offset: 0
+      });
     }
 
     setQuickState((prev) => ({
@@ -1773,7 +1879,8 @@ export function MainPage({ view = 'home' }) {
           replace: true,
           offset: 0,
           hasMore: directJobs.length === QUICK_PAGE_SIZE && directJobs.length < QUICK_MAX_RESULTS,
-          signal
+          signal,
+          showLoadingDuringAppend: true
         });
         return;
       }
@@ -1782,6 +1889,7 @@ export function MainPage({ view = 'home' }) {
       const taskRequestId = getTaskRequestId(taskResult);
 
       if (taskStatus === 'FAILED') {
+        clearActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
         setQuickState({ status: 'error', error: getTaskErrorMessage(taskResult) || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
         return;
       }
@@ -1805,15 +1913,26 @@ export function MainPage({ view = 'home' }) {
           replace: true,
           offset: 0,
           hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
-          signal
+          signal,
+          showLoadingDuringAppend: true
         });
         return;
       }
 
       if (!taskRequestId) {
+        clearActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
         setQuickState({ status: 'error', error: '퀵 추천 요청 상태를 확인할 수 없습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
         return;
       }
+
+      setActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE, {
+        aiEnabled,
+        profileId,
+        profileSignature,
+        filters,
+        offset: 0,
+        requestId: taskRequestId
+      });
 
       let hasProgressResult = false;
       const completed = await waitForRecommendTask(callWithAuth, taskRequestId, signal, async (progressResult) => {
@@ -1837,6 +1956,7 @@ export function MainPage({ view = 'home' }) {
       const completedStatus = getTaskStatus(completed);
 
       if (!completed || completedStatus === 'FAILED') {
+        clearActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
         setQuickState({ status: 'error', error: getTaskErrorMessage(completed) || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
         return;
       }
@@ -1845,13 +1965,21 @@ export function MainPage({ view = 'home' }) {
       const jobs = parseQuickJobsFromResult(completed.result);
       setAppliedAiEnabled(aiEnabled);
       setAppliedFilters(filters);
-      if (hasProgressResult) {
+      if (completed.cached) {
+        applyQuickJobsImmediately({
+          jobs,
+          replace: true,
+          offset: 0,
+          hasMore: jobs.length > 0 && jobs.length < QUICK_MAX_RESULTS && jobs.length % QUICK_PAGE_SIZE === 0
+        });
+      } else if (hasProgressResult) {
         await appendQuickJobsIncrementally({
           jobs,
           replace: false,
           offset: 0,
           hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
-          signal
+          signal,
+          showLoadingDuringAppend: true
         });
       } else {
         await appendQuickJobsIncrementally({
@@ -1859,7 +1987,8 @@ export function MainPage({ view = 'home' }) {
           replace: true,
           offset: 0,
           hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
-          signal
+          signal,
+          showLoadingDuringAppend: true
         });
       }
     };
@@ -1910,16 +2039,35 @@ export function MainPage({ view = 'home' }) {
 
     try {
       const selectedProfileObject = profilesState.profiles.find((profile) => getProfileId(profile) === String(selectedProfileId)) || null;
+      const profileSignature = getProfileScoringSignature(selectedProfileObject);
+      if (appliedAiEnabled) {
+        setActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE, {
+          aiEnabled: appliedAiEnabled,
+          profileId: selectedProfileId,
+          profileSignature,
+          filters: appliedFilters,
+          offset
+        });
+      }
       const pageCacheKey = appliedAiEnabled
         ? getQuickPageCacheKey({
             profileId: selectedProfileId,
             aiEnabled: appliedAiEnabled,
-            profileSignature: getProfileScoringSignature(selectedProfileObject),
+            profileSignature,
             offset
           })
         : '';
       const cachedPayload = pageCacheKey ? getCachedRecommendation(pageCacheKey) : null;
       if (cachedPayload) {
+        if (appliedAiEnabled) {
+          setActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE, {
+            aiEnabled: appliedAiEnabled,
+            profileId: selectedProfileId,
+            profileSignature,
+            filters: appliedFilters,
+            offset: 0
+          });
+        }
         const cachedJobs = parseQuickJobsFromResult(cachedPayload);
         applyQuickJobsImmediately({
           jobs: cachedJobs,
@@ -1962,9 +2110,21 @@ export function MainPage({ view = 'home' }) {
       if (pageCacheKey) {
         setCachedRecommendation(pageCacheKey, completedPayload);
       }
+      if (!quickPageActiveRef.current) {
+        return;
+      }
+      if (appliedAiEnabled) {
+        setActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE, {
+          aiEnabled: appliedAiEnabled,
+          profileId: selectedProfileId,
+          profileSignature,
+          filters: appliedFilters,
+          offset: 0
+        });
+      }
       const nextJobs = parseQuickJobsFromResult(completedPayload);
 
-      if (completedResult.cached || !hasProgressResult) {
+      if (completedResult.cached) {
         applyQuickJobsImmediately({
           jobs: nextJobs,
           replace: false,
@@ -1978,12 +2138,19 @@ export function MainPage({ view = 'home' }) {
           offset,
           hasMore: nextJobs.length === QUICK_PAGE_SIZE && offset + nextJobs.length < QUICK_MAX_RESULTS,
           signal: controller.signal,
+          showLoadingDuringAppend: true,
           loadingTarget
         });
       }
     } catch (error) {
       if (error.name === 'AbortError') {
         return;
+      }
+      if (!quickPageActiveRef.current) {
+        return;
+      }
+      if (appliedAiEnabled) {
+        clearActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
       }
       setQuickState((prev) => ({
         ...prev,
@@ -2009,7 +2176,8 @@ export function MainPage({ view = 'home' }) {
     quickState.nextOffset,
     quickState.rawJobs,
     quickState.status,
-    selectedProfileId
+    selectedProfileId,
+    appliedFilters
   ]);
 
   useEffect(() => {
@@ -2033,6 +2201,59 @@ export function MainPage({ view = 'home' }) {
       observer.disconnect();
     };
   }, [appliedAiEnabled, isQuickPage, loadMoreQuickRecommendations, quickState.hasMore, quickState.isLoadingMore]);
+
+  useEffect(() => {
+    if (
+      !isQuickPage ||
+      !appliedAiEnabled ||
+      quickState.status !== 'success' ||
+      quickState.isLoadingMore
+    ) {
+      return;
+    }
+
+    const activeTask = getActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
+    if (!activeTask?.aiEnabled) {
+      return;
+    }
+
+    const selectedProfileObject = profilesState.profiles.find((profile) => getProfileId(profile) === String(selectedProfileId)) || null;
+    const profileSignature = getProfileScoringSignature(selectedProfileObject);
+    if (
+      String(activeTask.profileId || '') !== String(selectedProfileId || '') ||
+      (activeTask.profileSignature && activeTask.profileSignature !== profileSignature)
+    ) {
+      clearActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
+      return;
+    }
+
+    const activeOffset = Number(activeTask.offset || 0);
+    if (activeOffset <= 0) {
+      return;
+    }
+
+    if (quickState.nextOffset > activeOffset) {
+      setActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE, {
+        ...activeTask,
+        offset: 0
+      });
+      return;
+    }
+
+    if (quickState.nextOffset === activeOffset && quickState.hasMore) {
+      loadMoreQuickRecommendations();
+    }
+  }, [
+    appliedAiEnabled,
+    isQuickPage,
+    loadMoreQuickRecommendations,
+    profilesState.profiles,
+    quickState.hasMore,
+    quickState.isLoadingMore,
+    quickState.nextOffset,
+    quickState.status,
+    selectedProfileId
+  ]);
 
   const loadQuickExplanation = useCallback(async (job, profileObject, detailObject = null, options = {}) => {
     const { requireFitScore = true } = options;
@@ -2221,6 +2442,64 @@ export function MainPage({ view = 'home' }) {
       }
     }
   }, [draftFilters, isAiEnabled, quickState.status, runQuickRecommendation, selectedProfileId]);
+
+  useEffect(() => {
+    if (
+      !isQuickPage ||
+      !isAuthenticated ||
+      profilesState.status !== 'success' ||
+      !profilesState.profiles.length ||
+      !['idle', 'empty'].includes(quickState.status)
+    ) {
+      return undefined;
+    }
+
+    const activeTask = getActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
+    if (!activeTask?.profileId) {
+      return undefined;
+    }
+
+    const activeProfile = profilesState.profiles.find((profile) => getProfileId(profile) === String(activeTask.profileId));
+    if (!activeProfile) {
+      clearActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
+      return undefined;
+    }
+
+    const activeProfileSignature = getProfileScoringSignature(activeProfile);
+    if (activeTask.profileSignature && activeTask.profileSignature !== activeProfileSignature) {
+      clearActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
+      return undefined;
+    }
+
+    const filters = activeTask.filters || {
+      jobCategory: FILTER_ALL_VALUE,
+      region: FILTER_ALL_VALUE,
+      employmentType: FILTER_ALL_VALUE,
+      salaryType: FILTER_ALL_VALUE
+    };
+    setSelectedProfileId(String(activeTask.profileId));
+    setIsAiEnabled(Boolean(activeTask.aiEnabled ?? true));
+    setDraftFilters(filters);
+    setAppliedFilters(filters);
+
+    runQuickRecommendation({
+      profileId: activeTask.profileId,
+      aiEnabled: Boolean(activeTask.aiEnabled ?? true),
+      filters
+    }).catch((error) => {
+      if (error.name !== 'AbortError') {
+        clearActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
+        setQuickState({ status: 'error', error: error.message || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
+      }
+    });
+  }, [
+    isAuthenticated,
+    isQuickPage,
+    profilesState.profiles,
+    profilesState.status,
+    quickState.status,
+    runQuickRecommendation
+  ]);
 
   const handleResetQuickFilters = useCallback(() => {
     setDraftFilters({
@@ -2642,12 +2921,13 @@ export function MainPage({ view = 'home' }) {
               {!isGuestUser && quickState.status === 'empty' ? <div className="home-feedback" role="status">현재 조건에 맞는 공고가 없습니다.</div> : null}
 
               {shouldShowQuickResults ? (
-                <div className="home-job-list" aria-label="퀵 추천 공고 목록">
+                <div ref={quickResultListRef} className="home-job-list" aria-label="퀵 추천 공고 목록">
                   {filteredQuickJobs.map((job) => (
                     <button
                       type="button"
                       className={`home-job-card${appliedAiEnabled && typeof job.fitScore === 'number' && job.fitScore >= 80 ? ' is-recommended' : ''}`}
                       key={job.id}
+                      data-job-id={job.id}
                       onClick={() => handleOpenQuickPosting(job)}
                       aria-label={`${job.title} 상세 보기`}
                     >
