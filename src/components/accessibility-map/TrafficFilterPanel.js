@@ -428,7 +428,7 @@ export function TrafficFilterPanel({
         <div className="accessibility-map__results-title-row">
           <h3>
             <span>검색 결과 {resultCount}개</span>
-            {totalJobCount > resultCount ? <span> / 전체 {totalJobCount}개</span> : null}
+            {totalJobCount > resultCount ? <span> / 최대 {totalJobCount}개</span> : null}
           </h3>
           {hasMoreVisibleJobs && appliedAiEnabled ? (
             <button

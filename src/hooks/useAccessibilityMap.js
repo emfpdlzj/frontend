@@ -1768,17 +1768,12 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
             hasMore: nextState.jobs.length > 0 && nextState.jobs.length < MAP_MAX_RESULTS && nextState.jobs.length % MAP_PAGE_SIZE === 0
           });
         } else {
-          setRecommendationState((prev) => ({
-            ...prev,
-            status: prev.jobs.length ? 'success' : nextState.jobs.length ? 'success' : 'empty',
-            error: '',
-            payload: nextState.payload
-          }));
-          setProfileOffPageState({
+          await appendMapJobsIncrementally({
+            nextState,
+            replace: false,
+            offset: 0,
             hasMore: nextState.jobs.length === MAP_PAGE_SIZE && nextState.jobs.length < MAP_MAX_RESULTS,
-            isLoadingMore: false,
-            nextOffset: Math.min(nextState.jobs.length, MAP_MAX_RESULTS),
-            loadingLoaded: Math.min(nextState.jobs.length, MAP_PAGE_SIZE),
+            signal: controller.signal,
             loadingTarget: Math.min(MAP_PAGE_SIZE, MAP_MAX_RESULTS)
           });
         }
@@ -1917,17 +1912,12 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
           hasMore: nextState.jobs.length === MAP_PAGE_SIZE && offset + nextState.jobs.length < MAP_MAX_RESULTS
         });
       } else {
-        setRecommendationState((prev) => ({
-          ...prev,
-          status: prev.jobs.length ? 'success' : nextState.jobs.length ? 'success' : 'empty',
-          error: '',
-          payload: nextState.payload
-        }));
-        setProfileOffPageState({
+        await appendMapJobsIncrementally({
+          nextState,
+          replace: false,
+          offset,
           hasMore: nextState.jobs.length === MAP_PAGE_SIZE && offset + nextState.jobs.length < MAP_MAX_RESULTS,
-          isLoadingMore: false,
-          nextOffset: Math.min(offset + nextState.jobs.length, MAP_MAX_RESULTS),
-          loadingLoaded: Math.min(nextState.jobs.length, loadingTarget),
+          signal: controller.signal,
           loadingTarget
         });
       }
@@ -2202,7 +2192,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
 
   return {
     jobs: filteredJobs,
-    totalJobCount: Math.min(MAP_MAX_RESULTS, allJobs.length + (profileOffPageState.hasMore ? MAP_PAGE_SIZE : 0)),
+    totalJobCount: profileOffPageState.hasMore ? MAP_MAX_RESULTS : allJobs.length,
     hasMoreJobs: profileOffPageState.hasMore,
     isLoadingMoreJobs: profileOffPageState.isLoadingMore,
     recommendationProgress,

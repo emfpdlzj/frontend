@@ -1846,16 +1846,13 @@ export function MainPage({ view = 'home' }) {
       setAppliedAiEnabled(aiEnabled);
       setAppliedFilters(filters);
       if (hasProgressResult) {
-        setQuickState((prev) => ({
-          ...prev,
-          status: prev.rawJobs.length ? 'success' : jobs.length ? 'success' : 'empty',
-          error: '',
+        await appendQuickJobsIncrementally({
+          jobs,
+          replace: false,
+          offset: 0,
           hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
-          isLoadingMore: false,
-          nextOffset: Math.min(jobs.length, QUICK_MAX_RESULTS),
-          loadingLoaded: Math.min(jobs.length, QUICK_PAGE_SIZE),
-          loadingTarget: Math.min(QUICK_PAGE_SIZE, QUICK_MAX_RESULTS)
-        }));
+          signal
+        });
       } else {
         await appendQuickJobsIncrementally({
           jobs,
@@ -1975,16 +1972,14 @@ export function MainPage({ view = 'home' }) {
           hasMore: nextJobs.length === QUICK_PAGE_SIZE && offset + nextJobs.length < QUICK_MAX_RESULTS
         });
       } else {
-        setQuickState((prev) => ({
-          ...prev,
-          status: prev.rawJobs.length ? 'success' : nextJobs.length ? 'success' : 'empty',
-          error: '',
+        await appendQuickJobsIncrementally({
+          jobs: nextJobs,
+          replace: false,
+          offset,
           hasMore: nextJobs.length === QUICK_PAGE_SIZE && offset + nextJobs.length < QUICK_MAX_RESULTS,
-          isLoadingMore: false,
-          nextOffset: Math.min(offset + nextJobs.length, QUICK_MAX_RESULTS),
-          loadingLoaded: Math.min(nextJobs.length, loadingTarget),
+          signal: controller.signal,
           loadingTarget
-        }));
+        });
       }
     } catch (error) {
       if (error.name === 'AbortError') {
