@@ -500,7 +500,6 @@ a:hover {
   background: #ffffff;
   text-align: left;
   cursor: pointer;
-  animation: home-job-card-in 180ms ease-out both;
   transition:
     border-color 140ms ease,
     background-color 140ms ease;
@@ -520,6 +519,11 @@ a:hover {
 ::view-transition-new(*) {
   animation-duration: 420ms;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
 }
 
 @keyframes home-job-card-in {
@@ -7172,6 +7176,11 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   font-weight: 800;
 }
 
+.recommendation-loading__label {
+  position: relative;
+  z-index: 1;
+}
+
 .home-quick__loading-track,
 .accessibility-map__loading-track {
   position: absolute;
@@ -7265,7 +7274,6 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   background: #fff;
   padding: 12px 13px 13px;
   cursor: pointer;
-  animation: accessibility-map-job-card-in 180ms ease-out both;
   transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
 

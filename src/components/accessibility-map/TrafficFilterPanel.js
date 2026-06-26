@@ -74,6 +74,7 @@ export function TrafficFilterPanel({
   totalJobCount,
   hasMoreJobs = false,
   isLoadingMoreJobs = false,
+  recommendationProgress = { isLoading: false, loaded: 0, target: 20 },
   isAiEnabled,
   appliedAiEnabled,
   sortMode = 'score_desc',
@@ -93,8 +94,11 @@ export function TrafficFilterPanel({
   const [visibleJobCount, setVisibleJobCount] = useState(INITIAL_VISIBLE_MAP_JOB_COUNT);
   const sortMenuRef = useRef(null);
   const resultsBodyRef = useRef(null);
-  const isRecommendationBusy = viewState === 'loading' || viewState === 'calculating';
-  const resultCount = viewState === 'empty' || isRecommendationBusy ? 0 : jobs.length;
+  const isRecommendationLoading = Boolean(recommendationProgress?.isLoading);
+  const isRecommendationBusy = viewState === 'loading' || viewState === 'calculating' || isRecommendationLoading;
+  const loadingTarget = Math.max(1, Number(recommendationProgress?.target) || 20);
+  const loadingLoaded = Math.min(loadingTarget, Math.max(0, Number(recommendationProgress?.loaded) || 0));
+  const resultCount = viewState === 'empty' ? 0 : jobs.length;
   const usesServerPaging = true;
   const visibleJobs = useMemo(
     () => (usesServerPaging ? jobs : jobs.slice(0, visibleJobCount)),
@@ -416,10 +420,10 @@ export function TrafficFilterPanel({
           ) : null}
         </div>
       </div>
-      {isLoadingMoreJobs ? (
+      {isRecommendationLoading || isLoadingMoreJobs ? (
         <div className="accessibility-map__loading-bar" role="status" aria-live="polite">
           <span className="accessibility-map__loading-track" aria-hidden="true" />
-          다음 공고 계산중
+          <span className="recommendation-loading__label">불러오는 중 {loadingLoaded}/{loadingTarget}</span>
         </div>
       ) : null}
 
