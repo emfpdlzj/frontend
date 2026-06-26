@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
 import { mapApi } from '../api/mapApi';
 import { explainRecommendation, fetchMapJobRecommendations, fetchRecommendTaskStatus } from '../api/recommendApi';
 import { useAuth } from '../auth/AuthContext';
@@ -68,21 +67,6 @@ const delay = (ms) =>
   new Promise((resolve) => {
     window.setTimeout(resolve, ms);
   });
-
-const runListTransitionUpdate = (update) => {
-  if (typeof document !== 'undefined' && typeof document.startViewTransition === 'function') {
-    try {
-      document.startViewTransition(() => {
-        flushSync(update);
-      });
-      return;
-    } catch (error) {
-      // 전환 API가 진행 중이면 상태 반영만 보장한다.
-    }
-  }
-
-  update();
-};
 
 const toSafeText = (value, fallback = '-') => {
   const text = String(value ?? '').trim();
@@ -1531,21 +1515,19 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     const incomingJobs = Array.isArray(nextState?.jobs) ? nextState.jobs.slice(0, MAP_MAX_RESULTS - offset) : [];
 
     if (!incomingJobs.length) {
-      runListTransitionUpdate(() => {
-        setRecommendationState((prev) => ({
-          ...prev,
-          status: replace ? 'empty' : prev.jobs.length ? 'success' : 'empty',
-          error: '',
-          payload: nextState?.payload || prev.payload,
-          jobs: replace ? [] : prev.jobs
-        }));
-        setProfileOffPageState({
-          hasMore: false,
-          isLoadingMore: false,
-          nextOffset: Math.min(offset, MAP_MAX_RESULTS),
-          loadingLoaded: 0,
-          loadingTarget
-        });
+      setRecommendationState((prev) => ({
+        ...prev,
+        status: replace ? 'empty' : prev.jobs.length ? 'success' : 'empty',
+        error: '',
+        payload: nextState?.payload || prev.payload,
+        jobs: replace ? [] : prev.jobs
+      }));
+      setProfileOffPageState({
+        hasMore: false,
+        isLoadingMore: false,
+        nextOffset: Math.min(offset, MAP_MAX_RESULTS),
+        loadingLoaded: 0,
+        loadingTarget
       });
       return;
     }
@@ -1558,37 +1540,35 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
 
       let didAppendJob = false;
       let nextLoadingLoaded = 0;
-      runListTransitionUpdate(() => {
-        setRecommendationState((prev) => {
-          const baseJobs = replace && !didReplace ? [] : prev.jobs;
-          const existingIds = new Set(baseJobs.map((item) => item.id));
-          if (existingIds.has(job.id)) {
-            return prev;
-          }
-          const mergedJobs = existingIds.has(job.id)
-            ? baseJobs
-            : [...baseJobs, job].slice(0, MAP_MAX_RESULTS);
-          didAppendJob = mergedJobs.length !== baseJobs.length || (replace && !didReplace);
-          nextLoadingLoaded = Math.min(Math.max(0, mergedJobs.length - offset), loadingTarget);
-
-          return {
-            ...prev,
-            status: keepLoading || loadingMore ? 'refetching' : 'success',
-            error: '',
-            payload: nextState.payload,
-            jobs: mergedJobs
-          };
-        });
-        if (didAppendJob) {
-          setProfileOffPageState({
-            hasMore: false,
-            isLoadingMore: loadingMore,
-            nextOffset: Math.min(offset + incomingJobs.length, MAP_MAX_RESULTS),
-            loadingLoaded: nextLoadingLoaded,
-            loadingTarget
-          });
+      setRecommendationState((prev) => {
+        const baseJobs = replace && !didReplace ? [] : prev.jobs;
+        const existingIds = new Set(baseJobs.map((item) => item.id));
+        if (existingIds.has(job.id)) {
+          return prev;
         }
+        const mergedJobs = existingIds.has(job.id)
+          ? baseJobs
+          : [...baseJobs, job].slice(0, MAP_MAX_RESULTS);
+        didAppendJob = mergedJobs.length !== baseJobs.length || (replace && !didReplace);
+        nextLoadingLoaded = Math.min(Math.max(0, mergedJobs.length - offset), loadingTarget);
+
+        return {
+          ...prev,
+          status: keepLoading || loadingMore ? 'refetching' : 'success',
+          error: '',
+          payload: nextState.payload,
+          jobs: mergedJobs
+        };
       });
+      if (didAppendJob) {
+        setProfileOffPageState({
+          hasMore: false,
+          isLoadingMore: loadingMore,
+          nextOffset: Math.min(offset + incomingJobs.length, MAP_MAX_RESULTS),
+          loadingLoaded: nextLoadingLoaded,
+          loadingTarget
+        });
+      }
       didReplace = didReplace || didAppendJob;
 
       if (didAppendJob) {
@@ -1600,20 +1580,18 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
       return;
     }
 
-    runListTransitionUpdate(() => {
-      setRecommendationState((prev) => ({
-        ...prev,
-        status: keepLoading ? (prev.jobs.length ? 'refetching' : 'loading') : prev.jobs.length ? 'success' : 'empty',
-        error: '',
-        payload: nextState.payload
-      }));
-      setProfileOffPageState({
-        hasMore: keepLoading ? false : Boolean(hasMore) && offset + incomingJobs.length < MAP_MAX_RESULTS,
-        isLoadingMore: keepLoading ? loadingMore : false,
-        nextOffset: Math.min(offset + incomingJobs.length, MAP_MAX_RESULTS),
-        loadingLoaded: Math.min(Math.max(0, offset + incomingJobs.length - offset), loadingTarget),
-        loadingTarget
-      });
+    setRecommendationState((prev) => ({
+      ...prev,
+      status: keepLoading ? (prev.jobs.length ? 'refetching' : 'loading') : prev.jobs.length ? 'success' : 'empty',
+      error: '',
+      payload: nextState.payload
+    }));
+    setProfileOffPageState({
+      hasMore: keepLoading ? false : Boolean(hasMore) && offset + incomingJobs.length < MAP_MAX_RESULTS,
+      isLoadingMore: keepLoading ? loadingMore : false,
+      nextOffset: Math.min(offset + incomingJobs.length, MAP_MAX_RESULTS),
+      loadingLoaded: Math.min(Math.max(0, offset + incomingJobs.length - offset), loadingTarget),
+      loadingTarget
     });
   }, []);
 

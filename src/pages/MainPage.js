@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { noticeApi } from '../api/noticeApi';
 import { postingApi } from '../api/postingApi';
@@ -35,28 +34,6 @@ const delay = (ms) =>
   new Promise((resolve) => {
     window.setTimeout(resolve, ms);
   });
-
-const runListTransitionUpdate = (update) => {
-  if (typeof document !== 'undefined' && typeof document.startViewTransition === 'function') {
-    try {
-      document.startViewTransition(() => {
-        flushSync(update);
-      });
-      return;
-    } catch (error) {
-      // 전환 API가 진행 중이면 상태 반영만 보장한다.
-    }
-  }
-
-  update();
-};
-
-const toViewTransitionName = (prefix, value) => {
-  const normalized = String(value || '')
-    .replace(/[^a-zA-Z0-9_-]/g, '_')
-    .slice(0, 80);
-  return normalized ? `${prefix}-${normalized}` : 'none';
-};
 
 const unwrapApiResult = (payload) => payload?.result || payload?.data || payload;
 const getTaskRequestId = (payload) => payload?.requestId || payload?.request_id || payload?.id || '';
@@ -1663,18 +1640,16 @@ export function MainPage({ view = 'home' }) {
     const incomingJobs = Array.isArray(jobs) ? jobs.slice(0, QUICK_MAX_RESULTS - offset) : [];
 
     if (!incomingJobs.length) {
-      runListTransitionUpdate(() => {
-        setQuickState((prev) => ({
-          ...prev,
-          status: replace ? 'empty' : prev.rawJobs.length ? 'success' : 'empty',
-          rawJobs: replace ? [] : prev.rawJobs,
-          hasMore: false,
-          isLoadingMore: false,
-          nextOffset: Math.min(offset, QUICK_MAX_RESULTS),
-          loadingLoaded: 0,
-          loadingTarget
-        }));
-      });
+      setQuickState((prev) => ({
+        ...prev,
+        status: replace ? 'empty' : prev.rawJobs.length ? 'success' : 'empty',
+        rawJobs: replace ? [] : prev.rawJobs,
+        hasMore: false,
+        isLoadingMore: false,
+        nextOffset: Math.min(offset, QUICK_MAX_RESULTS),
+        loadingLoaded: 0,
+        loadingTarget
+      }));
       return;
     }
 
@@ -1685,28 +1660,26 @@ export function MainPage({ view = 'home' }) {
       }
 
       let didAppendJob = false;
-      runListTransitionUpdate(() => {
-        setQuickState((prev) => {
-          const baseJobs = replace && !didReplace ? [] : prev.rawJobs;
-          const jobKey = getQuickJobKey(job);
-          if (jobKey && baseJobs.some((item) => getQuickJobKey(item) === jobKey)) {
-            return prev;
-          }
-          const mergedJobs = mergeUniqueQuickJobs(baseJobs, [job]).slice(0, QUICK_MAX_RESULTS);
-          didAppendJob = mergedJobs.length !== baseJobs.length || (replace && !didReplace);
+      setQuickState((prev) => {
+        const baseJobs = replace && !didReplace ? [] : prev.rawJobs;
+        const jobKey = getQuickJobKey(job);
+        if (jobKey && baseJobs.some((item) => getQuickJobKey(item) === jobKey)) {
+          return prev;
+        }
+        const mergedJobs = mergeUniqueQuickJobs(baseJobs, [job]).slice(0, QUICK_MAX_RESULTS);
+        didAppendJob = mergedJobs.length !== baseJobs.length || (replace && !didReplace);
 
-          return {
-            ...prev,
-            status: keepLoading || loadingMore ? 'refetching' : 'success',
-            error: '',
-            rawJobs: mergedJobs,
-            hasMore: false,
-            isLoadingMore: loadingMore,
-            nextOffset: Math.min(mergedJobs.length, QUICK_MAX_RESULTS),
-            loadingLoaded: Math.min(Math.max(0, mergedJobs.length - offset), loadingTarget),
-            loadingTarget
-          };
-        });
+        return {
+          ...prev,
+          status: keepLoading || loadingMore ? 'refetching' : 'success',
+          error: '',
+          rawJobs: mergedJobs,
+          hasMore: false,
+          isLoadingMore: loadingMore,
+          nextOffset: Math.min(mergedJobs.length, QUICK_MAX_RESULTS),
+          loadingLoaded: Math.min(Math.max(0, mergedJobs.length - offset), loadingTarget),
+          loadingTarget
+        };
       });
       didReplace = didReplace || didAppendJob;
 
@@ -1719,18 +1692,16 @@ export function MainPage({ view = 'home' }) {
       return;
     }
 
-    runListTransitionUpdate(() => {
-      setQuickState((prev) => ({
-        ...prev,
-        status: keepLoading ? (prev.rawJobs.length ? 'refetching' : 'loading') : prev.rawJobs.length ? 'success' : 'empty',
-        error: '',
-        hasMore: keepLoading ? false : Boolean(hasMore) && prev.rawJobs.length < QUICK_MAX_RESULTS,
-        isLoadingMore: keepLoading ? loadingMore : false,
-        nextOffset: Math.min(prev.rawJobs.length, QUICK_MAX_RESULTS),
-        loadingLoaded: Math.min(Math.max(0, prev.rawJobs.length - offset), loadingTarget),
-        loadingTarget
-      }));
-    });
+    setQuickState((prev) => ({
+      ...prev,
+      status: keepLoading ? (prev.rawJobs.length ? 'refetching' : 'loading') : prev.rawJobs.length ? 'success' : 'empty',
+      error: '',
+      hasMore: keepLoading ? false : Boolean(hasMore) && prev.rawJobs.length < QUICK_MAX_RESULTS,
+      isLoadingMore: keepLoading ? loadingMore : false,
+      nextOffset: Math.min(prev.rawJobs.length, QUICK_MAX_RESULTS),
+      loadingLoaded: Math.min(Math.max(0, prev.rawJobs.length - offset), loadingTarget),
+      loadingTarget
+    }));
   }, []);
 
   const applyQuickJobsImmediately = useCallback(({ jobs, replace = false, offset = 0, hasMore = false }) => {
@@ -2682,7 +2653,6 @@ export function MainPage({ view = 'home' }) {
                       type="button"
                       className={`home-job-card${appliedAiEnabled && typeof job.fitScore === 'number' && job.fitScore >= 80 ? ' is-recommended' : ''}`}
                       key={job.id}
-                      style={{ viewTransitionName: toViewTransitionName('quick-job', job.id) }}
                       onClick={() => handleOpenQuickPosting(job)}
                       aria-label={`${job.title} 상세 보기`}
                     >

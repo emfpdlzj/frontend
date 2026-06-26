@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import infoIcon from '../../assets/accessibility-map/info-icon.png';
 import triangleDownBlue from '../../assets/accessibility-map/triangle-down-blue.png';
 
@@ -59,11 +59,14 @@ const FILTER_ALL_VALUE = '전체';
 const INITIAL_VISIBLE_MAP_JOB_COUNT = 20;
 const VISIBLE_MAP_JOB_INCREMENT = 20;
 
-const toViewTransitionName = (prefix, value) => {
-  const normalized = String(value || '')
-    .replace(/[^a-zA-Z0-9_-]/g, '_')
-    .slice(0, 80);
-  return normalized ? `${prefix}-${normalized}` : 'none';
+const LIST_MOVE_ANIMATION_OPTIONS = {
+  duration: 420,
+  easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+};
+
+const LIST_INSERT_ANIMATION_OPTIONS = {
+  duration: 360,
+  easing: 'cubic-bezier(0.18, 0.9, 0.24, 1)'
 };
 
 export function TrafficFilterPanel({
@@ -94,6 +97,7 @@ export function TrafficFilterPanel({
   const [visibleJobCount, setVisibleJobCount] = useState(INITIAL_VISIBLE_MAP_JOB_COUNT);
   const sortMenuRef = useRef(null);
   const resultsBodyRef = useRef(null);
+  const listItemRectsRef = useRef(new Map());
   const isRecommendationLoading = Boolean(recommendationProgress?.isLoading);
   const isRecommendationBusy = viewState === 'loading' || viewState === 'calculating' || isRecommendationLoading;
   const loadingTarget = Math.max(1, Number(recommendationProgress?.target) || 20);
@@ -113,6 +117,58 @@ export function TrafficFilterPanel({
   useEffect(() => {
     setVisibleJobCount(INITIAL_VISIBLE_MAP_JOB_COUNT);
   }, [jobs]);
+
+  const visibleJobSignature = useMemo(
+    () => visibleJobs.map((job) => String(job.id)).join('|'),
+    [visibleJobs]
+  );
+
+  useLayoutEffect(() => {
+    const container = resultsBodyRef.current;
+    if (!container) {
+      return;
+    }
+
+    const cards = Array.from(container.querySelectorAll('.accessibility-map__job-card[data-job-id]'));
+    const previousRects = listItemRectsRef.current;
+    const nextRects = new Map();
+
+    cards.forEach((card) => {
+      const key = card.getAttribute('data-job-id');
+      if (!key) {
+        return;
+      }
+
+      const nextRect = card.getBoundingClientRect();
+      nextRects.set(key, nextRect);
+      const previousRect = previousRects.get(key);
+
+      if (previousRect) {
+        const deltaX = previousRect.left - nextRect.left;
+        const deltaY = previousRect.top - nextRect.top;
+        if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
+          card.animate(
+            [
+              { transform: `translate(${deltaX}px, ${deltaY}px)` },
+              { transform: 'translate(0, 0)' }
+            ],
+            LIST_MOVE_ANIMATION_OPTIONS
+          );
+        }
+        return;
+      }
+
+      card.animate(
+        [
+          { opacity: 0, transform: 'translateY(14px) scale(0.98)' },
+          { opacity: 1, transform: 'translateY(0) scale(1)' }
+        ],
+        LIST_INSERT_ANIMATION_OPTIONS
+      );
+    });
+
+    listItemRectsRef.current = nextRects;
+  }, [visibleJobSignature]);
 
   const handleResultsScroll = useCallback((event) => {
     if (appliedAiEnabled) {
@@ -459,7 +515,7 @@ export function TrafficFilterPanel({
                 key={job.id}
                 type="button"
                 className={`accessibility-map__job-card${selectedJobId === job.id ? ' is-selected' : ''}`}
-                style={{ viewTransitionName: toViewTransitionName('map-job', job.id) }}
+                data-job-id={job.id}
                 aria-pressed={selectedJobId === job.id}
                 onClick={() => onSelectJob(job.id)}
               >
