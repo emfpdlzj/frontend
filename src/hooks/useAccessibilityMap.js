@@ -2438,22 +2438,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
   }, [isAiEnabled]);
 
   const toggleAiScoring = useCallback(() => {
-    setIsAiEnabled((current) => {
-      const nextEnabled = !current;
-      if (!nextEnabled) {
-        setSelectedFilters((filters) => ({
-          ...filters,
-          [COMMUTABLE_FILTER_ID]: false
-        }));
-      } else {
-        setSelectedFilters((filters) => ({
-          ...filters,
-          [COMMUTABLE_FILTER_ID]: true,
-          region: FILTER_ALL_VALUE
-        }));
-      }
-      return nextEnabled;
-    });
+    setIsAiEnabled((current) => !current);
   }, []);
 
   const viewState =

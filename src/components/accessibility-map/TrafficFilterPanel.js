@@ -124,18 +124,22 @@ export function TrafficFilterPanel({
   }, [filterGroups]);
 
   useEffect(() => {
-    if (isAiEnabled) {
-      return;
-    }
+    setDraftFilterValues((current) => {
+      if (isAiEnabled) {
+        return {
+          ...current,
+          [COMMUTABLE_FILTER_ID]: true,
+          region: FILTER_ALL_VALUE
+        };
+      }
 
-    setDraftFilterValues((current) => (
-      current[COMMUTABLE_FILTER_ID]
+      return current[COMMUTABLE_FILTER_ID]
         ? {
             ...current,
             [COMMUTABLE_FILTER_ID]: false
           }
-        : current
-    ));
+        : current;
+    });
   }, [isAiEnabled]);
 
   useEffect(() => {
@@ -498,7 +502,7 @@ export function TrafficFilterPanel({
           <div className="accessibility-map__results-title-stack">
             <h3>
               <span>검색 결과 {resultCount}개</span>
-              {totalJobCount > resultCount ? <span> / 최대 {totalJobCount}개</span> : null}
+              {appliedAiEnabled && totalJobCount > resultCount ? <span> / 최대 {totalJobCount}개</span> : null}
             </h3>
             {isCommutableOnlyApplied ? (
               <p className="accessibility-map__results-subtext">통근 가능한 기업 공고 {resultCount}개</p>

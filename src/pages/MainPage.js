@@ -1489,26 +1489,22 @@ export function MainPage({ view = 'home' }) {
   }, [isQuickPage]);
 
   useEffect(() => {
-    if (isAiEnabled) {
-      return;
-    }
+    setDraftFilters((current) => {
+      if (isAiEnabled) {
+        return {
+          ...current,
+          [COMMUTABLE_FILTER_ID]: true,
+          region: FILTER_ALL_VALUE
+        };
+      }
 
-    setDraftFilters((current) => (
-      current[COMMUTABLE_FILTER_ID]
+      return current[COMMUTABLE_FILTER_ID]
         ? {
             ...current,
             [COMMUTABLE_FILTER_ID]: false
           }
-        : current
-    ));
-    setAppliedFilters((current) => (
-      current[COMMUTABLE_FILTER_ID]
-        ? {
-            ...current,
-            [COMMUTABLE_FILTER_ID]: false
-          }
-        : current
-    ));
+        : current;
+    });
   }, [isAiEnabled]);
 
   useLayoutEffect(() => {
@@ -2750,10 +2746,6 @@ export function MainPage({ view = 'home' }) {
           ...filters,
           [COMMUTABLE_FILTER_ID]: false
         }));
-        setAppliedFilters((filters) => ({
-          ...filters,
-          [COMMUTABLE_FILTER_ID]: false
-        }));
       } else {
         setDraftFilters((filters) => ({
           ...filters,
@@ -3097,7 +3089,7 @@ export function MainPage({ view = 'home' }) {
                     <div className="accessibility-map__results-title-stack">
                       <h3>
                         <span>검색 결과 {filteredQuickJobs.length}개</span>
-                        {quickState.hasMore || quickState.rawJobs.length > filteredQuickJobs.length ? <span> / 최대 {QUICK_MAX_RESULTS}개</span> : null}
+                        {appliedAiEnabled && (quickState.hasMore || quickState.rawJobs.length > filteredQuickJobs.length) ? <span> / 최대 {QUICK_MAX_RESULTS}개</span> : null}
                       </h3>
                       {isQuickCommutableOnlyApplied ? (
                         <p className="accessibility-map__results-subtext">통근 가능한 기업 공고 {filteredQuickJobs.length}개</p>
