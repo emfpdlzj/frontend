@@ -13,6 +13,7 @@ import {
   setCachedRecommendation
 } from '../cache/recommendationCache';
 import { getProfileScoringSignature } from '../utils/profileScoringSignature';
+import { getAddressCoordinate, getAddressDistrict } from '../utils/addressCoordinates';
 import { useJobFilterOptions } from './useJobFilterOptions';
 import { useProfiles } from './useProfiles';
 
@@ -378,39 +379,6 @@ const toIntegerOrNull = (value) => {
 
   return null;
 };
-
-const SEOUL_DISTRICT_COORDINATES = {
-  강남구: { latitude: 37.5172, longitude: 127.0473 },
-  강동구: { latitude: 37.5301, longitude: 127.1238 },
-  강북구: { latitude: 37.6396, longitude: 127.0257 },
-  강서구: { latitude: 37.5509, longitude: 126.8495 },
-  관악구: { latitude: 37.4784, longitude: 126.9516 },
-  광진구: { latitude: 37.5385, longitude: 127.0823 },
-  구로구: { latitude: 37.4955, longitude: 126.8877 },
-  금천구: { latitude: 37.4569, longitude: 126.8958 },
-  노원구: { latitude: 37.6542, longitude: 127.0568 },
-  도봉구: { latitude: 37.6688, longitude: 127.0471 },
-  동대문구: { latitude: 37.5744, longitude: 127.0396 },
-  동작구: { latitude: 37.5124, longitude: 126.9393 },
-  마포구: { latitude: 37.5663, longitude: 126.9016 },
-  서대문구: { latitude: 37.5791, longitude: 126.9368 },
-  서초구: { latitude: 37.4837, longitude: 127.0324 },
-  성동구: { latitude: 37.5633, longitude: 127.0371 },
-  성북구: { latitude: 37.5894, longitude: 127.0167 },
-  송파구: { latitude: 37.5145, longitude: 127.1059 },
-  양천구: { latitude: 37.5169, longitude: 126.8664 },
-  영등포구: { latitude: 37.5264, longitude: 126.8963 },
-  용산구: { latitude: 37.5326, longitude: 126.9904 },
-  은평구: { latitude: 37.6176, longitude: 126.9227 },
-  종로구: { latitude: 37.5735, longitude: 126.9788 },
-  중구: { latitude: 37.5636, longitude: 126.9976 },
-  중랑구: { latitude: 37.6063, longitude: 127.0927 }
-};
-
-const getAddressDistrict = (address) =>
-  String(address ?? '').trim().split(/\s+/).find((token) => /[가-힣]+구$/.test(token)) || '';
-
-const getAddressCoordinate = (address) => SEOUL_DISTRICT_COORDINATES[getAddressDistrict(address)] || null;
 
 const getDistanceKm = (from, to) => {
   if (!from || !to) {

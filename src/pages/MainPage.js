@@ -27,6 +27,7 @@ import { LoginModal } from '../components/auth/LoginModal';
 import { DefinitionGrid } from '../components/jobs/JobDetailPanel';
 import { AccessibilityScoreHelpButton } from '../components/accessibility-map/AccessibilityMapDetailPanel';
 import { LlmExplanationProgress } from '../components/common/LlmExplanationProgress';
+import { getAddressCoordinate, getAddressDistrict } from '../utils/addressCoordinates';
 
 const FILTER_ALL_VALUE = '전체';
 const COMMUTABLE_FILTER_ID = 'commutableOnly';
@@ -164,39 +165,6 @@ const getRegionFromAddress = (address) => {
   return tokens[0] || '없음';
 };
 
-const KNOWN_DISTRICT_COORDINATES = {
-  강남구: { latitude: 37.5172, longitude: 127.0473 },
-  강동구: { latitude: 37.5301, longitude: 127.1238 },
-  강북구: { latitude: 37.6396, longitude: 127.0257 },
-  강서구: { latitude: 37.5509, longitude: 126.8495 },
-  관악구: { latitude: 37.4784, longitude: 126.9516 },
-  광진구: { latitude: 37.5385, longitude: 127.0823 },
-  구로구: { latitude: 37.4955, longitude: 126.8877 },
-  금천구: { latitude: 37.4569, longitude: 126.8958 },
-  노원구: { latitude: 37.6542, longitude: 127.0568 },
-  도봉구: { latitude: 37.6688, longitude: 127.0471 },
-  동대문구: { latitude: 37.5744, longitude: 127.0396 },
-  동작구: { latitude: 37.5124, longitude: 126.9393 },
-  마포구: { latitude: 37.5663, longitude: 126.9016 },
-  서대문구: { latitude: 37.5791, longitude: 126.9368 },
-  서초구: { latitude: 37.4837, longitude: 127.0324 },
-  성동구: { latitude: 37.5633, longitude: 127.0371 },
-  성북구: { latitude: 37.5894, longitude: 127.0167 },
-  송파구: { latitude: 37.5145, longitude: 127.1059 },
-  양천구: { latitude: 37.5169, longitude: 126.8664 },
-  영등포구: { latitude: 37.5264, longitude: 126.8963 },
-  용산구: { latitude: 37.5326, longitude: 126.9904 },
-  은평구: { latitude: 37.6176, longitude: 126.9227 },
-  종로구: { latitude: 37.5735, longitude: 126.9788 },
-  중구: { latitude: 37.5636, longitude: 126.9976 },
-  중랑구: { latitude: 37.6063, longitude: 127.0927 }
-};
-
-const parseAddressDistrict = (address) => {
-  const tokens = String(address ?? '').trim().split(/\s+/).filter(Boolean);
-  return tokens.find((token) => /[가-힣]+구$/.test(token)) || '';
-};
-
 const toNumberOrNull = (value) => {
   if (value === null || value === undefined || value === '') {
     return null;
@@ -204,8 +172,6 @@ const toNumberOrNull = (value) => {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 };
-
-const resolveAddressCoordinate = (address) => KNOWN_DISTRICT_COORDINATES[parseAddressDistrict(address)] || null;
 
 const getDistanceKm = (from, to) => {
   if (!from || !to) {
@@ -248,11 +214,11 @@ const estimateCommuteMinutes = (profile, job) => {
   const homeLongitude = toNumberOrNull(firstNonBlank(profile?.homeLng, profile?.home_lng));
   const homeCoordinate = homeLatitude !== null && homeLongitude !== null
     ? { latitude: homeLatitude, longitude: homeLongitude }
-    : resolveAddressCoordinate(homeAddress);
+    : getAddressCoordinate(homeAddress);
   const workCoordinate = (
     toNumberOrNull(job?.workLatitude) !== null && toNumberOrNull(job?.workLongitude) !== null
       ? { latitude: toNumberOrNull(job.workLatitude), longitude: toNumberOrNull(job.workLongitude) }
-      : resolveAddressCoordinate(job?.location)
+      : getAddressCoordinate(job?.location)
   );
   const distanceKm = getDistanceKm(homeCoordinate, workCoordinate);
 
@@ -260,8 +226,8 @@ const estimateCommuteMinutes = (profile, job) => {
     return { label: '확인 필요', minutes: null, source: 'missing' };
   }
 
-  const homeDistrict = parseAddressDistrict(homeAddress);
-  const workDistrict = parseAddressDistrict(job?.location);
+  const homeDistrict = getAddressDistrict(homeAddress);
+  const workDistrict = getAddressDistrict(job?.location);
   if (homeDistrict && workDistrict && homeDistrict === workDistrict) {
     const minutes = 20 + distanceKm * 4;
     return { label: formatCommuteEstimate(minutes), minutes, source: 'estimated' };
@@ -269,6 +235,21 @@ const estimateCommuteMinutes = (profile, job) => {
 
   const minutes = 18 + distanceKm * 5.2;
   return { label: formatCommuteEstimate(minutes), minutes, source: 'estimated' };
+};
+
+const hasProfileCommuteOrigin = (profile) => {
+  if (!profile) {
+    return false;
+  }
+
+  const homeLatitude = toNumberOrNull(firstNonBlank(profile?.homeLat, profile?.home_lat));
+  const homeLongitude = toNumberOrNull(firstNonBlank(profile?.homeLng, profile?.home_lng));
+  if (homeLatitude !== null && homeLongitude !== null) {
+    return true;
+  }
+
+  const homeAddress = firstNonBlank(profile?.detailAddress, profile?.address);
+  return Boolean(getAddressCoordinate(homeAddress));
 };
 
 const getDday = (value) => {
@@ -1391,24 +1372,27 @@ export function MainPage({ view = 'home' }) {
     () => profilesState.profiles.find((profile) => getProfileId(profile) === String(selectedProfileId)) || null,
     [profilesState.profiles, selectedProfileId]
   );
-  const selectedProfileForScoring = useMemo(() => {
-    if (!selectedProfileDetail || getProfileId(selectedProfileDetail) !== String(selectedProfileId)) {
-      return selectedProfile;
-    }
-
-    return {
-      ...(selectedProfile || {}),
-      ...selectedProfileDetail
-    };
-  }, [selectedProfile, selectedProfileDetail, selectedProfileId]);
   const orderedProfiles = useMemo(() => {
     const profiles = [...profilesState.profiles];
     profiles.sort((left, right) => Number(Boolean(right?.isDefault)) - Number(Boolean(left?.isDefault)));
     return profiles;
   }, [profilesState.profiles]);
-  const visibleSelectedProfile = selectedProfileForScoring || orderedProfiles[0] || null;
+  const fallbackSelectedProfile = selectedProfile || orderedProfiles[0] || null;
+  const effectiveSelectedProfileId = selectedProfileId || getProfileId(fallbackSelectedProfile);
+  const selectedProfileForScoring = useMemo(() => {
+    if (!selectedProfileDetail || getProfileId(selectedProfileDetail) !== String(effectiveSelectedProfileId)) {
+      return fallbackSelectedProfile;
+    }
+
+    return {
+      ...(fallbackSelectedProfile || {}),
+      ...selectedProfileDetail
+    };
+  }, [effectiveSelectedProfileId, fallbackSelectedProfile, selectedProfileDetail]);
+  const visibleSelectedProfile = selectedProfileForScoring || fallbackSelectedProfile;
   const closedProfileLabel = getProfileDisplayName(visibleSelectedProfile);
-  const isQuickProfileDetailReady = !selectedProfileId || getProfileId(selectedProfileDetail) === String(selectedProfileId);
+  const isQuickProfileDetailReady = !effectiveSelectedProfileId || getProfileId(selectedProfileDetail) === String(effectiveSelectedProfileId);
+  const canUseQuickCommutableFilter = isQuickProfileDetailReady && hasProfileCommuteOrigin(visibleSelectedProfile);
   const getQuickProfileForScoring = useCallback((profileId) => {
     const listProfile = profilesState.profiles.find((profile) => getProfileId(profile) === String(profileId)) || null;
     if (selectedProfileDetail && getProfileId(selectedProfileDetail) === String(profileId)) {
@@ -1769,7 +1753,7 @@ export function MainPage({ view = 'home' }) {
   }, [callWithAuth, isAuthenticated, isInitializing, isQuickPage]);
 
   useEffect(() => {
-    if (!isQuickPage || !isAuthenticated || !selectedProfileId) {
+    if (!isQuickPage || !isAuthenticated || !effectiveSelectedProfileId) {
       setSelectedProfileDetail(null);
       return undefined;
     }
@@ -1779,7 +1763,7 @@ export function MainPage({ view = 'home' }) {
     const loadSelectedProfileDetail = async () => {
       try {
         const profileDetail = await callWithAuth((accessToken) =>
-          profileApi.getProfile(accessToken, selectedProfileId, controller.signal)
+          profileApi.getProfile(accessToken, effectiveSelectedProfileId, controller.signal)
         );
         setSelectedProfileDetail(profileDetail || null);
       } catch (error) {
@@ -1795,7 +1779,7 @@ export function MainPage({ view = 'home' }) {
     return () => {
       controller.abort();
     };
-  }, [callWithAuth, isAuthenticated, isQuickPage, selectedProfileId]);
+  }, [callWithAuth, effectiveSelectedProfileId, isAuthenticated, isQuickPage]);
 
   useEffect(() => {
     quickRenderedJobKeysRef.current = new Set(quickState.rawJobs.map(getQuickJobKey).filter(Boolean));
@@ -2499,7 +2483,7 @@ export function MainPage({ view = 'home' }) {
   }, [callWithAuth, getQuickProfileForScoring, loadQuickExplanation, selectedProfileId]);
 
   const handleApplyQuickFilters = useCallback(async () => {
-    if (!selectedProfileId || quickState.status === 'loading' || quickState.status === 'refetching') {
+    if (!effectiveSelectedProfileId || quickState.status === 'loading' || quickState.status === 'refetching') {
       return;
     }
     if (isAiEnabled && draftFilters[COMMUTABLE_FILTER_ID] && !isQuickProfileDetailReady) {
@@ -2513,7 +2497,7 @@ export function MainPage({ view = 'home' }) {
       region: commutableOnly ? FILTER_ALL_VALUE : draftFilters.region
     };
     const requestKey = JSON.stringify({
-      profileId: selectedProfileId,
+      profileId: effectiveSelectedProfileId,
       aiEnabled: isAiEnabled,
       filters: normalizedDraftFilters
     });
@@ -2526,7 +2510,7 @@ export function MainPage({ view = 'home' }) {
 
     try {
       await runQuickRecommendation({
-        profileId: selectedProfileId,
+        profileId: effectiveSelectedProfileId,
         aiEnabled: isAiEnabled,
         filters: normalizedDraftFilters,
         signal: controller.signal
@@ -2542,7 +2526,7 @@ export function MainPage({ view = 'home' }) {
         quickSearchInFlightKeyRef.current = '';
       }
     }
-  }, [draftFilters, isAiEnabled, isQuickProfileDetailReady, quickState.status, runQuickRecommendation, selectedProfileId]);
+  }, [draftFilters, effectiveSelectedProfileId, isAiEnabled, isQuickProfileDetailReady, quickState.status, runQuickRecommendation]);
 
   useEffect(() => {
     if (
@@ -2680,7 +2664,7 @@ export function MainPage({ view = 'home' }) {
   const quickLoadingTarget = Math.max(1, Math.min(quickState.loadingTarget || QUICK_PAGE_SIZE, QUICK_PAGE_SIZE));
   const quickLoadingLoaded = Math.min(quickLoadingTarget, Math.max(0, quickState.loadingLoaded || 0));
   const isGuestUser = !isAuthenticated;
-  const isQuickCommutableToggleDisabled = !isAiEnabled || isQuickBatchLoading || !isQuickProfileDetailReady;
+  const isQuickCommutableToggleDisabled = !isAiEnabled || isQuickBatchLoading || !canUseQuickCommutableFilter;
   const shouldShowQuickHeader = !isGuestUser && (filteredQuickJobs.length > 0 || isQuickBatchLoading);
   const shouldShowQuickResults = !isGuestUser && filteredQuickJobs.length > 0 && ['success', 'refetching', 'loading'].includes(quickState.status);
   const openLoginModal = useCallback(() => {
@@ -3046,7 +3030,7 @@ export function MainPage({ view = 'home' }) {
                   type="button"
                   className="primary-button accessibility-map__filter-apply-button"
                   onClick={isGuestUser ? openLoginModal : handleApplyQuickFilters}
-                  disabled={!isGuestUser && (isQuickBatchLoading || !selectedProfileId)}
+                  disabled={!isGuestUser && (isQuickBatchLoading || !effectiveSelectedProfileId)}
                 >
                   {isQuickBatchLoading ? '로딩중' : '검색'}
                 </button>
