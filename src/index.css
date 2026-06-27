@@ -643,6 +643,10 @@ a:hover {
   font-weight: 700;
 }
 
+.home-job-meta__commute-warning {
+  color: var(--danger);
+}
+
 .home-job-meta__salary dd {
   color: #111827;
   font-size: 17px;
@@ -7424,6 +7428,10 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 .accessibility-map__job-meta strong,
 .accessibility-map__job-pay strong {
   font-weight: 700;
+}
+
+.accessibility-map__commute-warning {
+  color: var(--danger);
 }
 
 .accessibility-map__empty-panel {

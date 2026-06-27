@@ -246,6 +246,7 @@ export function AccessibilityMapPage() {
             job={selectedJob}
             selectedPersonaKey={selectedPersona}
             selectedTab={selectedTab}
+            isAiEnabled={appliedAiEnabled}
             explanation={explanation}
             explanationViewState={explanationViewState}
             explanationErrorMessage={explanationErrorMessage}

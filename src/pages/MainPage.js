@@ -195,11 +195,16 @@ const formatCommuteEstimate = (minutes) => {
   if (!Number.isFinite(minutes)) {
     return '확인 필요';
   }
+  if (minutes >= 75) {
+    return '75분 이상';
+  }
   if (minutes >= 75 * 60) {
     return '75시간 이상';
   }
   return `${Math.max(10, Math.round(minutes / 5) * 5)}분`;
 };
+
+const isLongCommuteMinutes = (minutes) => Number.isFinite(minutes) && minutes >= 75;
 
 const estimateCommuteMinutes = (profile, job) => {
   const transitTime = job?.transitTime || job?.transit_time || {};
@@ -3149,7 +3154,12 @@ export function MainPage({ view = 'home' }) {
                           <div>
                             <dt>통근</dt>
                             <dd>
-                              <span data-i18n-skip>{job.commuteEstimate?.label || '확인 필요'}</span>
+                              <span
+                                className={isLongCommuteMinutes(job.commuteEstimate?.minutes) ? 'home-job-meta__commute-warning' : undefined}
+                                data-i18n-skip
+                              >
+                                {job.commuteEstimate?.label || '확인 필요'}
+                              </span>
                               {job.commuteEstimate?.source === 'transit_estimate' ? <span className="home-job-meta__hint">대중교통</span> : null}
                               {job.commuteEstimate?.source === 'estimated' ? <span className="home-job-meta__hint">거리 기반</span> : null}
                             </dd>
@@ -3159,21 +3169,19 @@ export function MainPage({ view = 'home' }) {
                           <div><dt>등록일</dt><dd>{job.registeredDateText || '없음'}</dd></div>
                           {job.dueLabel ? <div><dt>마감</dt><dd>{job.dueLabel}</dd></div> : null}
                         </dl>
-                        <div className="home-job-tags">
-                          {appliedAiEnabled ? (
+                        {appliedAiEnabled ? (
+                          <div className="home-job-tags">
                             <span className={`home-badge ${job.fitScore && job.fitScore >= 80 ? 'home-badge--match' : 'home-badge--neutral'}`}>
                               직무 적합도 {job.fitLabel}
                             </span>
-                          ) : (
-                            <span className="home-badge home-badge--neutral">최신 공고 순 정렬</span>
-                          )}
-                          {appliedAiEnabled && job.fitGrade ? (
-                            <span className={`accessibility-map__mini-badge home-job-grade-badge is-grade ${getQuickGradeClassName(job.fitGrade)}`}>
-                              {job.fitGrade}
-                            </span>
-                          ) : null}
-                          <span className="home-badge home-badge--neutral">AI {appliedAiEnabled ? 'ON' : 'OFF'}</span>
-                        </div>
+                            {job.fitGrade ? (
+                              <span className={`accessibility-map__mini-badge home-job-grade-badge is-grade ${getQuickGradeClassName(job.fitGrade)}`}>
+                                {job.fitGrade}
+                              </span>
+                            ) : null}
+                            <span className="home-badge home-badge--neutral">AI ON</span>
+                          </div>
+                        ) : null}
                       </div>
                       {appliedAiEnabled ? (
                         <div className="home-job-score-panel" aria-label={`직무 적합도 점수 ${job.fitLabel}`}>

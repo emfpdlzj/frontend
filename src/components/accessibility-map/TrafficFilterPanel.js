@@ -36,8 +36,8 @@ const formatCommuteMinutes = (value) => {
   }
 
   const roundedMinutes = Math.max(0, Math.round(value));
-  if (roundedMinutes >= 75 * 60) {
-    return '75시간 이상';
+  if (roundedMinutes >= 75) {
+    return '75분 이상';
   }
 
   const hours = Math.floor(roundedMinutes / 60);
@@ -51,6 +51,8 @@ const formatCommuteMinutes = (value) => {
   }
   return `${hours}시간 ${minutes}분`;
 };
+
+const isLongCommuteMinutes = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 75;
 
 const getFilterValueSnapshot = (filterGroups) =>
   Object.fromEntries(
@@ -352,7 +354,7 @@ export function TrafficFilterPanel({
       <section className="accessibility-map__ai-toggle" aria-label="AI 스코어링 설정">
         <div>
           <strong>AI 스코어링</strong>
-          <span>{isAiEnabled ? '프로필 기반 종합 점수 계산' : '프로필 기반 종합 점수 계산 해제'}</span>
+          <span>프로필 기반 종합 점수 계산</span>
         </div>
         <button
           type="button"
@@ -592,29 +594,36 @@ export function TrafficFilterPanel({
                 onClick={() => onSelectJob(job.id)}
               >
                 <div className="accessibility-map__job-card-top">
-                  <div className="accessibility-map__badge-row">
-                    {job.badges.map((badge) => (
-                      <span
-                        key={badge}
-                        className={`accessibility-map__mini-badge ${
-                          STATUS_CLASS_BY_BADGE[badge] || ''
-                        }`}
-                      >
-                        {badge}
-                      </span>
-                    ))}
-                    {formatScoreBadge(job.score) ? (
-                      <span className={`accessibility-map__mini-badge ${getScoreBadgeClassName(job.score)}`}>
-                        {formatScoreBadge(job.score)}
-                      </span>
-                    ) : null}
-                  </div>
+                  {appliedAiEnabled ? (
+                    <div className="accessibility-map__badge-row">
+                      {job.badges.map((badge) => (
+                        <span
+                          key={badge}
+                          className={`accessibility-map__mini-badge ${
+                            STATUS_CLASS_BY_BADGE[badge] || ''
+                          }`}
+                        >
+                          {badge}
+                        </span>
+                      ))}
+                      {formatScoreBadge(job.score) ? (
+                        <span className={`accessibility-map__mini-badge ${getScoreBadgeClassName(job.score)}`}>
+                          {formatScoreBadge(job.score)}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : <span />}
                   {job.dueLabel ? <strong className="accessibility-map__dday">{job.dueLabel}</strong> : null}
                 </div>
                 <strong className="accessibility-map__job-company">{job.company}</strong>
                 <p className="accessibility-map__job-title">{job.title}</p>
                 <div className="accessibility-map__job-meta">
-                  <span>통근 <strong>{formatCommuteMinutes(job.commuteMinutes)}</strong></span>
+                  <span>
+                    통근{' '}
+                    <strong className={isLongCommuteMinutes(job.commuteMinutes) ? 'accessibility-map__commute-warning' : undefined}>
+                      {formatCommuteMinutes(job.commuteMinutes)}
+                    </strong>
+                  </span>
                   <span>고용 <strong>{job.employmentType}</strong></span>
                 </div>
                 <div className="accessibility-map__job-pay">임금 <strong>{job.payText}</strong></div>

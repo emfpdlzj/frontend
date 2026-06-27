@@ -232,6 +232,7 @@ export function AccessibilityMapDetailPanel({
   job,
   selectedPersonaKey,
   selectedTab,
+  isAiEnabled = true,
   explanation,
   explanationViewState,
   explanationErrorMessage,
@@ -240,6 +241,7 @@ export function AccessibilityMapDetailPanel({
   scrapErrorMessage = ''
 }) {
   const accessibility = job.accessibilityByPersona[selectedPersonaKey];
+  const effectiveSelectedTab = isAiEnabled ? selectedTab : 'job';
   const scoreTone = getScoreGradeTone(job.score);
   const [scoreRingAnimationKey, setScoreRingAnimationKey] = useState(0);
   const visibleCommuteStats = getVisibleCommuteStats(accessibility.commuteStats);
@@ -249,7 +251,7 @@ export function AccessibilityMapDetailPanel({
   const normalizedShortSummary = formatRecommendationExplanationText(shortSummary, job.score);
 
   useEffect(() => {
-    if (selectedTab !== 'accessibility') {
+    if (effectiveSelectedTab !== 'accessibility') {
       return undefined;
     }
 
@@ -260,22 +262,24 @@ export function AccessibilityMapDetailPanel({
     return () => {
       window.cancelAnimationFrame(frameId);
     };
-  }, [job.id, job.score, selectedTab]);
+  }, [effectiveSelectedTab, job.id, job.score]);
 
   return (
     <aside className="accessibility-map__detail-panel" aria-label="공고 상세 패널">
       <header className="accessibility-map__detail-header">
         <div className="accessibility-map__detail-header-top">
-          <div className="accessibility-map__badge-row">
-            {job.badges.map((badge) => (
-              <span
-                key={badge}
-                className={`accessibility-map__mini-badge ${getMiniBadgeClassName(badge)}`}
-              >
-                {badge}
-              </span>
-            ))}
-          </div>
+          {isAiEnabled ? (
+            <div className="accessibility-map__badge-row">
+              {job.badges.map((badge) => (
+                <span
+                  key={badge}
+                  className={`accessibility-map__mini-badge ${getMiniBadgeClassName(badge)}`}
+                >
+                  {badge}
+                </span>
+              ))}
+            </div>
+          ) : <span />}
           {job.dueDateText ? <span>{job.dueDateText}</span> : null}
         </div>
         <div className="accessibility-map__title-row">
@@ -283,30 +287,32 @@ export function AccessibilityMapDetailPanel({
           {job.dueLabel ? <strong>{job.dueLabel}</strong> : null}
         </div>
         <p data-i18n-skip>{job.company}</p>
-        <div className="accessibility-map__tab-row" role="tablist" aria-label="상세 정보 탭">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={selectedTab === 'accessibility'}
-            className={`accessibility-map__tab-button${selectedTab === 'accessibility' ? ' is-active' : ''}`}
-            onClick={() => onChangeTab('accessibility')}
-          >
-            접근성 {formatScoreLabel(job.score)}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={selectedTab === 'job'}
-            className={`accessibility-map__tab-button${selectedTab === 'job' ? ' is-active' : ''}`}
-            onClick={() => onChangeTab('job')}
-          >
-            공고정보
-          </button>
-        </div>
+        {isAiEnabled ? (
+          <div className="accessibility-map__tab-row" role="tablist" aria-label="상세 정보 탭">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={effectiveSelectedTab === 'accessibility'}
+              className={`accessibility-map__tab-button${effectiveSelectedTab === 'accessibility' ? ' is-active' : ''}`}
+              onClick={() => onChangeTab('accessibility')}
+            >
+              접근성 {formatScoreLabel(job.score)}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={effectiveSelectedTab === 'job'}
+              className={`accessibility-map__tab-button${effectiveSelectedTab === 'job' ? ' is-active' : ''}`}
+              onClick={() => onChangeTab('job')}
+            >
+              공고정보
+            </button>
+          </div>
+        ) : null}
       </header>
 
       <div className="accessibility-map__detail-content">
-        {selectedTab === 'job' ? (
+        {effectiveSelectedTab === 'job' ? (
           <>
             <div className="accessibility-map__info-card is-highlighted">
               {job.dueLabel ? <div className="accessibility-map__highlight-badge">{job.dueLabel}</div> : null}
@@ -326,7 +332,7 @@ export function AccessibilityMapDetailPanel({
           </>
         ) : null}
 
-        {selectedTab === 'accessibility' ? (
+        {effectiveSelectedTab === 'accessibility' ? (
           <>
             <section className="accessibility-map__score-card">
               <div className="accessibility-map__score-header">
@@ -436,9 +442,6 @@ export function AccessibilityMapDetailPanel({
           onClick={onScrap}
         >
           {!job.postingId ? '스크랩 불가' : job.scrappedByMe ? '스크랩 완료' : '공고 스크랩'}
-        </button>
-        <button type="button" className="secondary-button accessibility-map__apply-button" disabled>
-          지원 정보 확인 필요
         </button>
       </footer>
     </aside>
