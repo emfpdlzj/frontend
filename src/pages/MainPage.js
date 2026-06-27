@@ -209,7 +209,7 @@ const estimateCommuteMinutes = (profile, job) => {
     ?? job?.commute_minutes
   );
   if (explicitMinutes !== null) {
-    const source = transitTime?.durationMinutes != null || transitTime?.duration_minutes != null ? 'odsay' : 'provided';
+    const source = transitTime?.durationMinutes != null || transitTime?.duration_minutes != null ? 'transit_estimate' : 'provided';
     return { label: formatCommuteEstimate(explicitMinutes), minutes: explicitMinutes, source };
   }
 
@@ -3105,7 +3105,7 @@ export function MainPage({ view = 'home' }) {
                             <dt>통근</dt>
                             <dd>
                               <span data-i18n-skip>{job.commuteEstimate?.label || '확인 필요'}</span>
-                              {job.commuteEstimate?.source === 'odsay' ? <span className="home-job-meta__hint">대중교통</span> : null}
+                              {job.commuteEstimate?.source === 'transit_estimate' ? <span className="home-job-meta__hint">대중교통</span> : null}
                               {job.commuteEstimate?.source === 'estimated' ? <span className="home-job-meta__hint">거리 기반</span> : null}
                             </dd>
                           </div>
