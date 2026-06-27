@@ -12,8 +12,8 @@ const WORK_AVAILABILITY_OPTIONS = [
 
 const DISABILITY_SEVERITY_OPTIONS = [
   { value: 'SEVERE', label: '중증' },
-  { value: 'MILD', label: '경증' },
-  { value: 'NONE', label: '해당 없음' }
+  { value: 'MODERATE', label: '중등도' },
+  { value: 'MILD', label: '경증' }
 ];
 
 const graduationOptions = [
