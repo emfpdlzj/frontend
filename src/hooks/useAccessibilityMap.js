@@ -49,6 +49,7 @@ const MAP_RADIUS_METERS = 850;
 const COMMUTABLE_FILTER_ID = 'commutableOnly';
 const DEFAULT_COMMUTABLE_DISTANCE_KM = 25;
 const DEFAULT_COMMUTABLE_MINUTES = 75;
+const MAX_DISPLAY_COMMUTE_MINUTES = 75 * 60;
 const REGION_ALIASES = {
   서울: ['서울', '서울특별시'],
   부산: ['부산', '부산광역시'],
@@ -775,6 +776,10 @@ const formatDurationMinutes = (value) => {
   }
 
   const roundedMinutes = Math.max(0, Math.round(minutesValue));
+  if (roundedMinutes >= MAX_DISPLAY_COMMUTE_MINUTES) {
+    return '75시간 이상';
+  }
+
   const hours = Math.floor(roundedMinutes / 60);
   const minutes = roundedMinutes % 60;
 

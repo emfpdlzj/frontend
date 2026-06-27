@@ -36,6 +36,10 @@ const formatCommuteMinutes = (value) => {
   }
 
   const roundedMinutes = Math.max(0, Math.round(value));
+  if (roundedMinutes >= 75 * 60) {
+    return '75시간 이상';
+  }
+
   const hours = Math.floor(roundedMinutes / 60);
   const minutes = roundedMinutes % 60;
 

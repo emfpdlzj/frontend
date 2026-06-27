@@ -195,6 +195,9 @@ const formatCommuteEstimate = (minutes) => {
   if (!Number.isFinite(minutes)) {
     return '확인 필요';
   }
+  if (minutes >= 75 * 60) {
+    return '75시간 이상';
+  }
   return `${Math.max(10, Math.round(minutes / 5) * 5)}분`;
 };
 
