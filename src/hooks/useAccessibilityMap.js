@@ -1889,22 +1889,24 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
             offset: 0
           },
           controller.signal,
-          async (progressPayload) => {
-            const progressState = buildRecommendationStateFromPayload(progressPayload, appliedAiEnabled, selectedProfile);
-            if (!progressState.jobs.length) {
-              return;
+          appliedAiEnabled
+            ? async (progressPayload) => {
+              const progressState = buildRecommendationStateFromPayload(progressPayload, appliedAiEnabled, selectedProfile);
+              if (!progressState.jobs.length) {
+                return;
+              }
+              await appendMapJobsIncrementally({
+                nextState: progressState,
+                replace: !hasProgressResult,
+                offset: 0,
+                hasMore: false,
+                signal: controller.signal,
+                keepLoading: true,
+                loadingTarget: Math.min(MAP_PAGE_SIZE, MAP_MAX_RESULTS)
+              });
+              hasProgressResult = true;
             }
-            await appendMapJobsIncrementally({
-              nextState: progressState,
-              replace: !hasProgressResult,
-              offset: 0,
-              hasMore: false,
-              signal: controller.signal,
-              keepLoading: true,
-              loadingTarget: Math.min(MAP_PAGE_SIZE, MAP_MAX_RESULTS)
-            });
-            hasProgressResult = true;
-          }
+            : undefined
         );
         const completedPayload = completedResult.payload;
 
@@ -1925,7 +1927,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
           });
         }
         activeRecommendationCacheKeyRef.current = cacheKey;
-        if (completedResult.cached) {
+        if (completedResult.cached || !appliedAiEnabled) {
           applyMapStateImmediately({
             nextState,
             replace: true,
@@ -2068,23 +2070,25 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
             offset
           },
           controller.signal,
-          async (progressPayload) => {
-            const progressState = buildRecommendationStateFromPayload(progressPayload, appliedAiEnabled, selectedProfile);
-            if (!progressState.jobs.length) {
-              return;
+          appliedAiEnabled
+            ? async (progressPayload) => {
+              const progressState = buildRecommendationStateFromPayload(progressPayload, appliedAiEnabled, selectedProfile);
+              if (!progressState.jobs.length) {
+                return;
+              }
+              await appendMapJobsIncrementally({
+                nextState: progressState,
+                replace: false,
+                offset,
+                hasMore: false,
+                signal: controller.signal,
+                loadingMore: true,
+                keepLoading: true,
+                loadingTarget
+              });
+              hasProgressResult = true;
             }
-            await appendMapJobsIncrementally({
-              nextState: progressState,
-              replace: false,
-              offset,
-              hasMore: false,
-              signal: controller.signal,
-              loadingMore: true,
-              keepLoading: true,
-              loadingTarget
-            });
-            hasProgressResult = true;
-          }
+            : undefined
         );
       const completedPayload = completedResult.payload;
       if (pageCacheKey) {
@@ -2104,7 +2108,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
       }
       const nextState = buildRecommendationStateFromPayload(completedPayload, appliedAiEnabled, selectedProfile);
 
-      if (completedResult.cached) {
+      if (completedResult.cached || !appliedAiEnabled) {
         applyMapStateImmediately({
           nextState,
           replace: false,

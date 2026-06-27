@@ -1961,6 +1961,15 @@ export function MainPage({ view = 'home' }) {
         const directJobs = parseQuickJobsFromResult(taskResult);
         setAppliedAiEnabled(aiEnabled);
         setAppliedFilters(filters);
+        if (!aiEnabled) {
+          applyQuickJobsImmediately({
+            jobs: directJobs,
+            replace: true,
+            offset: 0,
+            hasMore: directJobs.length === QUICK_PAGE_SIZE && directJobs.length < QUICK_MAX_RESULTS
+          });
+          return;
+        }
         await appendQuickJobsIncrementally({
           jobs: directJobs,
           replace: true,
@@ -1995,6 +2004,15 @@ export function MainPage({ view = 'home' }) {
           });
           return;
         }
+        if (!aiEnabled) {
+          applyQuickJobsImmediately({
+            jobs,
+            replace: true,
+            offset: 0,
+            hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS
+          });
+          return;
+        }
         await appendQuickJobsIncrementally({
           jobs,
           replace: true,
@@ -2023,6 +2041,9 @@ export function MainPage({ view = 'home' }) {
 
       let hasProgressResult = false;
       const completed = await waitForRecommendTask(callWithAuth, taskRequestId, signal, async (progressResult) => {
+        if (!aiEnabled) {
+          return;
+        }
         const progressJobs = parseQuickJobsFromResult(progressResult);
         if (!progressJobs.length) {
           return;
@@ -2058,6 +2079,13 @@ export function MainPage({ view = 'home' }) {
           replace: true,
           offset: 0,
           hasMore: jobs.length > 0 && jobs.length < QUICK_MAX_RESULTS && jobs.length % QUICK_PAGE_SIZE === 0
+        });
+      } else if (!aiEnabled) {
+        applyQuickJobsImmediately({
+          jobs,
+          replace: true,
+          offset: 0,
+          hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS
         });
       } else if (hasProgressResult) {
         await appendQuickJobsIncrementally({
@@ -2175,23 +2203,25 @@ export function MainPage({ view = 'home' }) {
             offset
           },
           controller.signal,
-          async (progressResult) => {
-            const progressJobs = parseQuickJobsFromResult(progressResult);
-            if (!progressJobs.length) {
-              return;
+          appliedAiEnabled
+            ? async (progressResult) => {
+              const progressJobs = parseQuickJobsFromResult(progressResult);
+              if (!progressJobs.length) {
+                return;
+              }
+              await appendQuickJobsIncrementally({
+                jobs: progressJobs,
+                replace: false,
+                offset,
+                hasMore: false,
+                signal: controller.signal,
+                loadingMore: true,
+                keepLoading: true,
+                loadingTarget
+              });
+              hasProgressResult = true;
             }
-            await appendQuickJobsIncrementally({
-              jobs: progressJobs,
-              replace: false,
-              offset,
-              hasMore: false,
-              signal: controller.signal,
-              loadingMore: true,
-              keepLoading: true,
-              loadingTarget
-            });
-            hasProgressResult = true;
-          }
+            : undefined
         );
       const completedPayload = completedResult.payload;
       if (pageCacheKey) {
@@ -2211,7 +2241,7 @@ export function MainPage({ view = 'home' }) {
       }
       const nextJobs = parseQuickJobsFromResult(completedPayload);
 
-      if (completedResult.cached) {
+      if (completedResult.cached || !appliedAiEnabled) {
         applyQuickJobsImmediately({
           jobs: nextJobs,
           replace: false,
