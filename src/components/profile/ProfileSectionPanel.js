@@ -670,10 +670,8 @@ function ExtraPanel({ profile, onChange }) {
 function Field({ label, required = false, hint, error, children, width }) {
   const generatedId = useId();
   const fieldId = `profile-field-${generatedId}`;
-  const labelableChildNames = new Set(['Input', 'SelectBox', 'TextArea', 'ChipEditor']);
-  const childTypeName = isValidElement(children) && typeof children.type === 'function' ? children.type.name : '';
-  const isLabelable = labelableChildNames.has(childTypeName);
-  const labeledChildren = isLabelable
+  const isSingleControl = isValidElement(children);
+  const labeledChildren = isSingleControl
     ? cloneElement(children, {
       id: children.props.id || fieldId,
       'aria-label': children.props['aria-label'] || label
@@ -682,7 +680,7 @@ function Field({ label, required = false, hint, error, children, width }) {
 
   return (
     <div className={`profile-field${width ? ` profile-field--${width}` : ''}`}>
-      <label className="profile-label" htmlFor={isLabelable ? fieldId : undefined}>
+      <label className="profile-label" htmlFor={isSingleControl ? fieldId : undefined}>
         {label}
         {required ? <RequiredMark /> : null}
       </label>
