@@ -483,7 +483,8 @@ const isCommutableJob = (job, profile) => {
     return distanceKm <= parseMobilityRangeKm(profile);
   }
 
-  return false;
+  // 프로필 주소/좌표나 공고 좌표가 부족한 경우에는 프론트에서 통근 가능 여부를 단정하지 않는다.
+  return true;
 };
 
 const parseDurationMinutes = (value) => {

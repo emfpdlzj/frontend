@@ -115,6 +115,17 @@ describe('filterAccessibilityMapJobs', () => {
       ).map((job) => job.id)
     ).toEqual(['job-1']);
   });
+
+  it('does not hide jobs when commute distance cannot be calculated', () => {
+    expect(
+      filterAccessibilityMapJobs(
+        jobs,
+        { commutableOnly: true },
+        jobCategories,
+        { commuteRange: '대중교통 75분 이내' }
+      ).map((job) => job.id)
+    ).toEqual(['job-1', 'job-2']);
+  });
 });
 
 describe('buildRecommendationStateFromPayload', () => {
