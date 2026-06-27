@@ -8084,6 +8084,12 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   cursor: pointer;
   pointer-events: auto;
   padding: 0 12px;
+  transition: width 180ms ease, min-width 180ms ease, height 180ms ease, padding 180ms ease, border-radius 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.accessibility-map__job-map-marker.is-no-score {
+  grid-template-columns: 12px minmax(72px, 1fr);
+  min-width: 132px;
 }
 
 .accessibility-map__job-map-marker.is-good {
@@ -8126,12 +8132,64 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   background: #fcebe7;
 }
 
+.accessibility-map__job-map-marker.is-zoom-compact {
+  grid-template-columns: 10px minmax(44px, 1fr);
+  gap: 7px;
+  min-width: 96px;
+  max-width: 132px;
+  height: 34px;
+  padding: 0 10px;
+  border-width: 2px;
+  border-radius: 999px;
+  box-shadow: 0 6px 12px rgba(17, 24, 39, 0.12), 0 1px 2px rgba(17, 24, 39, 0.08);
+}
+
+.accessibility-map__job-map-marker.is-zoom-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  width: 20px;
+  max-width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 999px;
+  border-width: 2px;
+  background: #ffffff;
+  box-shadow: 0 3px 8px rgba(17, 24, 39, 0.18);
+}
+
+.accessibility-map__job-map-marker.is-zoom-dot.is-selected {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18), 0 4px 10px rgba(17, 24, 39, 0.18);
+}
+
+.accessibility-map__job-map-marker.is-zoom-compact.is-selected::after {
+  bottom: -9px;
+  width: 14px;
+  height: 14px;
+}
+
+.accessibility-map__job-map-marker.is-zoom-dot.is-selected::after {
+  content: none;
+}
+
 .accessibility-map__job-map-marker-dot {
   width: 12px;
   height: 12px;
   border-radius: 999px;
   background: var(--job-marker-color);
   z-index: 1;
+}
+
+.accessibility-map__job-map-marker.is-zoom-compact .accessibility-map__job-map-marker-dot {
+  width: 10px;
+  height: 10px;
+}
+
+.accessibility-map__job-map-marker.is-zoom-dot .accessibility-map__job-map-marker-dot {
+  width: 10px;
+  height: 10px;
 }
 
 .accessibility-map__job-map-marker strong {
@@ -8144,6 +8202,19 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   text-overflow: ellipsis;
   white-space: nowrap;
   z-index: 1;
+}
+
+.accessibility-map__job-map-marker.is-zoom-compact strong {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.accessibility-map__job-map-marker.is-zoom-dot strong,
+.accessibility-map__job-map-marker.is-zoom-dot .accessibility-map__job-map-marker-divider,
+.accessibility-map__job-map-marker.is-zoom-dot em,
+.accessibility-map__job-map-marker.is-zoom-compact .accessibility-map__job-map-marker-divider,
+.accessibility-map__job-map-marker.is-zoom-compact em {
+  display: none;
 }
 
 .accessibility-map__job-map-marker-divider {

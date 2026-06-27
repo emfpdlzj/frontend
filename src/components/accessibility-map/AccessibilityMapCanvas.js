@@ -24,6 +24,11 @@ const SCORE_LEGEND_ITEMS = [
   { grade: 'B', label: '60 ~ 79', tone: 'warning' },
   { grade: 'C', label: '60 미만', tone: 'danger' }
 ];
+const MARKER_ZOOM_MODE = {
+  DETAIL: 'detail',
+  COMPACT: 'compact',
+  DOT: 'dot'
+};
 
 function createNaverLatLng(location) {
   if (!location) {
@@ -50,7 +55,33 @@ function getSafeOfficeMarkerTone(tone) {
   return ['good', 'warning', 'danger'].includes(tone) ? tone : 'warning';
 }
 
-function createMarkerElement(marker) {
+function getMarkerZoomMode(zoom) {
+  const normalizedZoom = Number(zoom);
+  if (!Number.isFinite(normalizedZoom) || normalizedZoom >= 15) {
+    return MARKER_ZOOM_MODE.DETAIL;
+  }
+  if (normalizedZoom >= 13) {
+    return MARKER_ZOOM_MODE.COMPACT;
+  }
+  return MARKER_ZOOM_MODE.DOT;
+}
+
+function getOfficeMarkerAnchor(marker, zoomMode) {
+  if (zoomMode === MARKER_ZOOM_MODE.DOT) {
+    return new window.naver.maps.Point(10, 10);
+  }
+  if (zoomMode === MARKER_ZOOM_MODE.COMPACT) {
+    return marker.isSelected
+      ? new window.naver.maps.Point(48, 38)
+      : new window.naver.maps.Point(48, 18);
+  }
+
+  return marker.isSelected
+    ? new window.naver.maps.Point(76, 54)
+    : new window.naver.maps.Point(76, 22);
+}
+
+function createMarkerElement(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) {
   const markerType = getSafeMarkerType(marker.type);
   if (markerType === 'support-agency') {
     const wrapper = document.createElement('div');
@@ -70,7 +101,14 @@ function createMarkerElement(marker) {
 
   const tone = getSafeOfficeMarkerTone(marker.tone);
   const wrapper = document.createElement('div');
-  wrapper.className = `accessibility-map__job-map-marker is-${tone}${marker.isSelected ? ' is-selected' : ''}`;
+  const hasScore = typeof marker.score === 'number' && Number.isFinite(marker.score);
+  wrapper.className = [
+    'accessibility-map__job-map-marker',
+    `is-${tone}`,
+    `is-zoom-${zoomMode}`,
+    marker.isSelected ? 'is-selected' : '',
+    hasScore ? '' : 'is-no-score'
+  ].filter(Boolean).join(' ');
   wrapper.setAttribute('aria-hidden', 'true');
 
   const dot = document.createElement('span');
@@ -82,27 +120,27 @@ function createMarkerElement(marker) {
   const divider = document.createElement('span');
   divider.className = 'accessibility-map__job-map-marker-divider';
 
-  const score = document.createElement('em');
-  score.textContent = typeof marker.score === 'number' ? String(marker.score) : '확인';
-
-  wrapper.append(dot, label, divider, score);
+  wrapper.append(dot, label);
+  if (hasScore) {
+    const score = document.createElement('em');
+    score.textContent = String(marker.score);
+    wrapper.append(divider, score);
+  }
   return wrapper;
 }
 
-function createMarkerIcon(marker) {
+function createMarkerIcon(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) {
   if (marker.type === 'support-agency') {
     return {
-      content: createMarkerElement(marker),
+      content: createMarkerElement(marker, zoomMode),
       anchor: new window.naver.maps.Point(90, 25)
     };
   }
 
   if (marker.type === 'office') {
     return {
-      content: createMarkerElement(marker),
-      anchor: marker.isSelected
-        ? new window.naver.maps.Point(76, 54)
-        : new window.naver.maps.Point(76, 22)
+      content: createMarkerElement(marker, zoomMode),
+      anchor: getOfficeMarkerAnchor(marker, zoomMode)
     };
   }
 
@@ -183,8 +221,10 @@ function AccessibilityMapCanvasComponent({
     NAVER_MAP_CONFIG.clientId ? 'loading' : 'missing-client-id'
   );
   const [mapInitError, setMapInitError] = useState('');
+  const [mapZoom, setMapZoom] = useState(viewport.zoom);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const renderableMarkers = useMemo(() => toRenderableMarkers(markers, viewport.zoom), [markers, viewport.zoom]);
+  const markerZoomMode = useMemo(() => getMarkerZoomMode(mapZoom), [mapZoom]);
+  const renderableMarkers = useMemo(() => toRenderableMarkers(markers, mapZoom), [markers, mapZoom]);
   const officeMarkerCount = useMemo(
     () => markers.filter((marker) => marker.type === 'office').length,
     [markers]
@@ -269,6 +309,7 @@ function AccessibilityMapCanvasComponent({
           zoomOrigin: createNaverLatLng(currentLocation)
         });
 
+        setMapZoom(viewport.zoom);
         setMapInitError('');
       } catch (error) {
         setMapInitError(error.message || 'map-init-failed');
@@ -292,7 +333,28 @@ function AccessibilityMapCanvasComponent({
 
     mapInstanceRef.current.setCenter(new window.naver.maps.LatLng(viewport.center.lat, viewport.center.lng));
     mapInstanceRef.current.setZoom(viewport.zoom, false);
+    setMapZoom(viewport.zoom);
   }, [mapScriptStatus, viewport, viewState]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current || mapScriptStatus !== 'ready' || !canRenderMap(viewState)) {
+      return undefined;
+    }
+
+    const map = mapInstanceRef.current;
+    const syncZoom = () => {
+      const nextZoom = Number(map.getZoom?.());
+      if (Number.isFinite(nextZoom)) {
+        setMapZoom(nextZoom);
+      }
+    };
+    const listener = window.naver.maps.Event.addListener(map, 'zoom_changed', syncZoom);
+    syncZoom();
+
+    return () => {
+      window.naver.maps.Event.removeListener(listener);
+    };
+  }, [mapScriptStatus, viewState]);
 
   useEffect(() => {
     if (!mapInstanceRef.current || mapScriptStatus !== 'ready' || !canRenderMap(viewState)) {
@@ -367,7 +429,7 @@ function AccessibilityMapCanvasComponent({
           position: new window.naver.maps.LatLng(Number(marker.lat), Number(marker.lng)),
           map: mapInstanceRef.current,
           title: marker.label,
-          icon: createMarkerIcon(marker)
+          icon: createMarkerIcon(marker, markerZoomMode)
         });
 
         if (marker.type === 'office') {
@@ -378,7 +440,7 @@ function AccessibilityMapCanvasComponent({
 
         return mapMarker;
       });
-  }, [mapScriptStatus, onSelectMarker, renderableMarkers, viewState]);
+  }, [mapScriptStatus, markerZoomMode, onSelectMarker, renderableMarkers, viewState]);
 
   useEffect(
     () => () => {
