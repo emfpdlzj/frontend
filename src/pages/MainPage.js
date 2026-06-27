@@ -1346,14 +1346,14 @@ export function MainPage({ view = 'home' }) {
     region: FILTER_ALL_VALUE,
     employmentType: FILTER_ALL_VALUE,
     salaryType: FILTER_ALL_VALUE,
-    [COMMUTABLE_FILTER_ID]: false
+    [COMMUTABLE_FILTER_ID]: true
   });
   const [appliedFilters, setAppliedFilters] = useState({
     jobCategory: FILTER_ALL_VALUE,
     region: FILTER_ALL_VALUE,
     employmentType: FILTER_ALL_VALUE,
     salaryType: FILTER_ALL_VALUE,
-    [COMMUTABLE_FILTER_ID]: false
+    [COMMUTABLE_FILTER_ID]: true
   });
 
   const [quickState, setQuickState] = useState({
@@ -2573,7 +2573,7 @@ export function MainPage({ view = 'home' }) {
       region: FILTER_ALL_VALUE,
       employmentType: FILTER_ALL_VALUE,
       salaryType: FILTER_ALL_VALUE,
-      [COMMUTABLE_FILTER_ID]: false
+      [COMMUTABLE_FILTER_ID]: true
     };
     const normalizedFilters = {
       ...filters,
@@ -2610,9 +2610,9 @@ export function MainPage({ view = 'home' }) {
       region: FILTER_ALL_VALUE,
       employmentType: FILTER_ALL_VALUE,
       salaryType: FILTER_ALL_VALUE,
-      [COMMUTABLE_FILTER_ID]: false
+      [COMMUTABLE_FILTER_ID]: isAiEnabled
     });
-  }, []);
+  }, [isAiEnabled]);
 
   const handleScrapConfirm = useCallback(async () => {
     if (!selectedPostingId || isScrapping) {
@@ -2676,6 +2676,7 @@ export function MainPage({ view = 'home' }) {
   const quickLoadingLoaded = Math.min(quickLoadingTarget, Math.max(0, quickState.loadingLoaded || 0));
   const isGuestUser = !isAuthenticated;
   const isQuickCommutableToggleDisabled = !isAiEnabled || isQuickBatchLoading || !canUseQuickCommutableFilter;
+  const isQuickCommutableOnlyApplied = Boolean(appliedAiEnabled && appliedFilters[COMMUTABLE_FILTER_ID]);
   const shouldShowQuickHeader = !isGuestUser && (filteredQuickJobs.length > 0 || isQuickBatchLoading);
   const shouldShowQuickResults = !isGuestUser && filteredQuickJobs.length > 0 && ['success', 'refetching', 'loading'].includes(quickState.status);
   const openLoginModal = useCallback(() => {
@@ -2717,6 +2718,12 @@ export function MainPage({ view = 'home' }) {
         setAppliedFilters((filters) => ({
           ...filters,
           [COMMUTABLE_FILTER_ID]: false
+        }));
+      } else {
+        setDraftFilters((filters) => ({
+          ...filters,
+          [COMMUTABLE_FILTER_ID]: true,
+          region: FILTER_ALL_VALUE
         }));
       }
       return nextEnabled;
@@ -3052,10 +3059,15 @@ export function MainPage({ view = 'home' }) {
               {shouldShowQuickHeader ? (
                 <div className="accessibility-map__results-header home-quick__results-header">
                   <div className="accessibility-map__results-title-row">
-                    <h3>
-                      <span>검색 결과 {filteredQuickJobs.length}개</span>
-                      {quickState.hasMore || quickState.rawJobs.length > filteredQuickJobs.length ? <span> / 최대 {QUICK_MAX_RESULTS}개</span> : null}
-                    </h3>
+                    <div className="accessibility-map__results-title-stack">
+                      <h3>
+                        <span>검색 결과 {filteredQuickJobs.length}개</span>
+                        {quickState.hasMore || quickState.rawJobs.length > filteredQuickJobs.length ? <span> / 최대 {QUICK_MAX_RESULTS}개</span> : null}
+                      </h3>
+                      {isQuickCommutableOnlyApplied ? (
+                        <p className="accessibility-map__results-subtext">통근 가능한 기업 공고 {filteredQuickJobs.length}개</p>
+                      ) : null}
+                    </div>
                     {quickState.hasMore && appliedAiEnabled ? (
                       <button
                         type="button"

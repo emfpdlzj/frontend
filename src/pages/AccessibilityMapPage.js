@@ -79,6 +79,7 @@ export function AccessibilityMapPage() {
     selectedTab,
     isAiEnabled,
     appliedAiEnabled,
+    isCommutableOnlyApplied,
     showSupportAgencies,
     sortMode,
     viewState,
@@ -206,6 +207,7 @@ export function AccessibilityMapPage() {
           recommendationProgress={recommendationProgress}
           isAiEnabled={isAiEnabled}
           appliedAiEnabled={appliedAiEnabled}
+          isCommutableOnlyApplied={isCommutableOnlyApplied}
           sortMode={sortMode}
           selectedJobId={selectedJobId}
           viewState={viewState}

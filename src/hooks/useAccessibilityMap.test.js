@@ -363,7 +363,7 @@ describe('buildRecommendationStateFromPayload', () => {
     expect(state.jobs[0].accessibilityByPersona.wheelchair.source).toContain('장애인 고용직무분류');
     expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([
       '점수 산정 근거',
-      '총점 84점은 계산 가능한 8개 항목을 동일 비중 평균으로 산정했습니다. 강점: 직무 적합도 92점. 확인 필요: 접근성 58점.',
+      '총점 84점은 계산 가능한 8개 항목을 동일 비중 평균으로 산정했습니다.\n강점: 직무 적합도 92점.\n확인 필요: 접근성 58점.',
       '주의 필요'
     ]);
     expect(state.jobs[0].accessibilityByPersona.wheelchair.detailItems).toContainEqual([

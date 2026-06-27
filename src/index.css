@@ -7115,9 +7115,16 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   flex: 1 1 240px;
   min-width: min(100%, 150px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.accessibility-map__results-title-stack {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
 }
 
 .accessibility-map__results-header h3 {
@@ -7131,6 +7138,14 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   font-size: 18px;
   font-weight: 800;
   line-height: 1.25;
+}
+
+.accessibility-map__results-subtext {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .accessibility-map__load-more-button {
@@ -8478,6 +8493,10 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   color: #293241;
   font-size: 16px;
   line-height: 1.55;
+}
+
+.accessibility-map__accessibility-list p {
+  white-space: pre-line;
 }
 
 .accessibility-map__score-stats {

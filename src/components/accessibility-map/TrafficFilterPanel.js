@@ -85,6 +85,7 @@ export function TrafficFilterPanel({
   recommendationProgress = { isLoading: false, loaded: 0, target: 20 },
   isAiEnabled,
   appliedAiEnabled,
+  isCommutableOnlyApplied = false,
   sortMode = 'score_desc',
   selectedJobId,
   viewState,
@@ -492,10 +493,15 @@ export function TrafficFilterPanel({
 
       <div className="accessibility-map__results-header">
         <div className="accessibility-map__results-title-row">
-          <h3>
-            <span>검색 결과 {resultCount}개</span>
-            {totalJobCount > resultCount ? <span> / 최대 {totalJobCount}개</span> : null}
-          </h3>
+          <div className="accessibility-map__results-title-stack">
+            <h3>
+              <span>검색 결과 {resultCount}개</span>
+              {totalJobCount > resultCount ? <span> / 최대 {totalJobCount}개</span> : null}
+            </h3>
+            {isCommutableOnlyApplied ? (
+              <p className="accessibility-map__results-subtext">통근 가능한 기업 공고 {resultCount}개</p>
+            ) : null}
+          </div>
           {hasMoreVisibleJobs && appliedAiEnabled ? (
             <button
               type="button"

@@ -695,6 +695,12 @@ const getEvidenceSourceSummary = (evidenceItems) => {
   return `데이터 출처 · ${visibleNames}${suffix}`;
 };
 
+const formatScoreBreakdownDescription = (description) =>
+  String(description || '')
+    .replace(/\s*(강점:)/g, '\n$1')
+    .replace(/\s*(확인 필요:)/g, '\n$1')
+    .trim();
+
 const buildEvidenceDetailItems = (evidenceItems) => {
   const normalizedItems = normalizeEvidenceItems(evidenceItems);
   const filterBySourceTypes = (sourceTypes) =>
@@ -727,10 +733,12 @@ const buildEvidenceDetailItems = (evidenceItems) => {
   const cautionComponents = Array.isArray(scoreBreakdownFields.caution_components)
     ? scoreBreakdownFields.caution_components
     : [];
-  const scoreBreakdownDescription = scoreBreakdownItem
-    ? scoreBreakdownItem.description ||
-      `총점은 ${scoreComponents.length || '여러'}개 항목을 동일 비중으로 계산했습니다.`
-    : '점수 항목별 산정 근거는 추천 결과 상세 설명에서 확인할 수 있습니다.';
+  const scoreBreakdownDescription = formatScoreBreakdownDescription(
+    scoreBreakdownItem
+      ? scoreBreakdownItem.description ||
+        `총점은 ${scoreComponents.length || '여러'}개 항목을 동일 비중으로 계산했습니다.`
+      : '점수 항목별 산정 근거는 추천 결과 상세 설명에서 확인할 수 있습니다.'
+  );
   const hasCautionScoreComponent = cautionComponents.length > 0;
 
   return [
@@ -1100,7 +1108,7 @@ const buildFilterGroups = (selectedFilters, optionState) => [
   {
     id: COMMUTABLE_FILTER_ID,
     hidden: true,
-    defaultValue: false,
+    defaultValue: true,
     selectedValue: Boolean(selectedFilters[COMMUTABLE_FILTER_ID])
   },
   {
@@ -1487,7 +1495,13 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
   const [hasAppliedConditions, setHasAppliedConditions] = useState(false);
   const [sortMode, setSortMode] = useState('score_desc');
   const [showSupportAgencies, setShowSupportAgencies] = useState(false);
-  const [selectedFilters, setSelectedFilters] = useState({});
+  const [selectedFilters, setSelectedFilters] = useState({
+    jobCategory: FILTER_ALL_VALUE,
+    region: FILTER_ALL_VALUE,
+    employmentType: FILTER_ALL_VALUE,
+    salaryType: FILTER_ALL_VALUE,
+    [COMMUTABLE_FILTER_ID]: true
+  });
   const [reloadKey, setReloadKey] = useState(0);
   const [recommendationState, setRecommendationState] = useState({
     status: 'idle',
@@ -1718,8 +1732,22 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
       return;
     }
 
-    const filters = activeTask.filters || {};
-    setSelectedFilters(filters);
+    const activeTaskFilters = activeTask.filters || {};
+    const hasStoredCommutableChoice = Object.prototype.hasOwnProperty.call(activeTaskFilters, COMMUTABLE_FILTER_ID);
+    const filters = {
+      jobCategory: FILTER_ALL_VALUE,
+      region: FILTER_ALL_VALUE,
+      employmentType: FILTER_ALL_VALUE,
+      salaryType: FILTER_ALL_VALUE,
+      [COMMUTABLE_FILTER_ID]: true,
+      ...activeTaskFilters
+    };
+    const normalizedFilters = {
+      ...filters,
+      [COMMUTABLE_FILTER_ID]: hasStoredCommutableChoice ? Boolean(filters[COMMUTABLE_FILTER_ID]) : true,
+      region: filters[COMMUTABLE_FILTER_ID] ? FILTER_ALL_VALUE : filters.region
+    };
+    setSelectedFilters(normalizedFilters);
     setIsAiEnabled(true);
     setAppliedAiEnabled(true);
     setSortMode('score_desc');
@@ -2413,6 +2441,12 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
           ...filters,
           [COMMUTABLE_FILTER_ID]: false
         }));
+      } else {
+        setSelectedFilters((filters) => ({
+          ...filters,
+          [COMMUTABLE_FILTER_ID]: true,
+          region: FILTER_ALL_VALUE
+        }));
       }
       return nextEnabled;
     });
@@ -2464,6 +2498,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     selectedTab: VALID_TABS.includes(selectedTab) ? selectedTab : 'accessibility',
     isAiEnabled,
     appliedAiEnabled,
+    isCommutableOnlyApplied: Boolean(appliedAiEnabled && selectedFilters[COMMUTABLE_FILTER_ID]),
     showSupportAgencies,
     sortMode,
     viewState,
