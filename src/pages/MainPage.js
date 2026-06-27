@@ -199,14 +199,18 @@ const formatCommuteEstimate = (minutes) => {
 };
 
 const estimateCommuteMinutes = (profile, job) => {
+  const transitTime = job?.transitTime || job?.transit_time || {};
   const explicitMinutes = toNumberOrNull(
-    job?.totalMinutes
+    transitTime?.durationMinutes
+    ?? transitTime?.duration_minutes
+    ?? job?.totalMinutes
     ?? job?.total_minutes
     ?? job?.commuteMinutes
     ?? job?.commute_minutes
   );
   if (explicitMinutes !== null) {
-    return { label: formatCommuteEstimate(explicitMinutes), minutes: explicitMinutes, source: 'provided' };
+    const source = transitTime?.durationMinutes != null || transitTime?.duration_minutes != null ? 'odsay' : 'provided';
+    return { label: formatCommuteEstimate(explicitMinutes), minutes: explicitMinutes, source };
   }
 
   const homeAddress = firstNonBlank(profile?.detailAddress, profile?.address);
@@ -702,6 +706,8 @@ function VisibilityTriggeredScoreRing({ className, score, observeKey }) {
 const normalizeQuickJob = (item, index) => {
   const job = item?.job || item;
   const scoreDetail = item?.score_detail || item?.scoreDetail || {};
+  const transitTime = item?.transit_time || item?.transitTime || job?.transit_time || job?.transitTime || {};
+  const transitMinutes = transitTime?.duration_minutes ?? transitTime?.durationMinutes ?? null;
   const postingIdCandidate = job?.job_post_id ?? job?.jobPostId ?? job?.source_id ?? job?.sourceId ?? null;
   const postingId = Number.isFinite(Number(postingIdCandidate)) ? Number(postingIdCandidate) : null;
   const externalId = job?.external_id || job?.externalId || `${job?.company_name || job?.companyName}-${index}`;
@@ -741,7 +747,9 @@ const normalizeQuickJob = (item, index) => {
     recommendationReasons: normalizeQuickList(item?.reasons || item?.recommendationReasons),
     riskFactors: normalizeQuickList(item?.risk_factors || item?.riskFactors),
     evidenceItems: normalizeQuickEvidenceItems(item?.evidence_items || item?.evidenceItems || job?.evidence_items || job?.evidenceItems),
-    totalMinutes: item?.total_minutes ?? item?.totalMinutes ?? scoreDetail?.total_minutes ?? scoreDetail?.totalMinutes ?? job?.total_minutes ?? job?.totalMinutes ?? null,
+    transitTime,
+    totalMinutes: transitMinutes ?? item?.total_minutes ?? item?.totalMinutes ?? scoreDetail?.total_minutes ?? scoreDetail?.totalMinutes ?? job?.total_minutes ?? job?.totalMinutes ?? null,
+    commuteMinutes: transitMinutes ?? item?.commute_minutes ?? item?.commuteMinutes ?? job?.commute_minutes ?? job?.commuteMinutes ?? null,
     workLatitude: job?.work_lat ?? job?.workLat ?? job?.geoLatitude ?? job?.geo_latitude ?? null,
     workLongitude: job?.work_lng ?? job?.workLng ?? job?.geoLongitude ?? job?.geo_longitude ?? null,
     source: {
@@ -3097,7 +3105,8 @@ export function MainPage({ view = 'home' }) {
                             <dt>통근</dt>
                             <dd>
                               <span data-i18n-skip>{job.commuteEstimate?.label || '확인 필요'}</span>
-                              {job.commuteEstimate?.source === 'estimated' ? <span className="home-job-meta__hint">예상</span> : null}
+                              {job.commuteEstimate?.source === 'odsay' ? <span className="home-job-meta__hint">대중교통</span> : null}
+                              {job.commuteEstimate?.source === 'estimated' ? <span className="home-job-meta__hint">거리 기반</span> : null}
                             </dd>
                           </div>
                           <div><dt>급여</dt><dd data-i18n-skip>{job.salary}</dd></div>
