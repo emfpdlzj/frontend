@@ -240,11 +240,15 @@ const estimateCommuteMinutes = (profile, job) => {
     ?? job?.commute_minutes
   );
   if (explicitMinutes !== null) {
-    return { label: formatCommuteEstimate(explicitMinutes), source: 'provided' };
+    return { label: formatCommuteEstimate(explicitMinutes), minutes: explicitMinutes, source: 'provided' };
   }
 
   const homeAddress = firstNonBlank(profile?.detailAddress, profile?.address);
-  const homeCoordinate = resolveAddressCoordinate(homeAddress);
+  const homeLatitude = toNumberOrNull(firstNonBlank(profile?.homeLat, profile?.home_lat));
+  const homeLongitude = toNumberOrNull(firstNonBlank(profile?.homeLng, profile?.home_lng));
+  const homeCoordinate = homeLatitude !== null && homeLongitude !== null
+    ? { latitude: homeLatitude, longitude: homeLongitude }
+    : resolveAddressCoordinate(homeAddress);
   const workCoordinate = (
     toNumberOrNull(job?.workLatitude) !== null && toNumberOrNull(job?.workLongitude) !== null
       ? { latitude: toNumberOrNull(job.workLatitude), longitude: toNumberOrNull(job.workLongitude) }
@@ -253,16 +257,18 @@ const estimateCommuteMinutes = (profile, job) => {
   const distanceKm = getDistanceKm(homeCoordinate, workCoordinate);
 
   if (distanceKm === null) {
-    return { label: '확인 필요', source: 'missing' };
+    return { label: '확인 필요', minutes: null, source: 'missing' };
   }
 
   const homeDistrict = parseAddressDistrict(homeAddress);
   const workDistrict = parseAddressDistrict(job?.location);
   if (homeDistrict && workDistrict && homeDistrict === workDistrict) {
-    return { label: formatCommuteEstimate(20 + distanceKm * 4), source: 'estimated' };
+    const minutes = 20 + distanceKm * 4;
+    return { label: formatCommuteEstimate(minutes), minutes, source: 'estimated' };
   }
 
-  return { label: formatCommuteEstimate(18 + distanceKm * 5.2), source: 'estimated' };
+  const minutes = 18 + distanceKm * 5.2;
+  return { label: formatCommuteEstimate(minutes), minutes, source: 'estimated' };
 };
 
 const getDday = (value) => {
@@ -1339,6 +1345,7 @@ export function MainPage({ view = 'home' }) {
 
   const [profilesState, setProfilesState] = useState({ status: 'idle', error: '', profiles: [] });
   const [selectedProfileId, setSelectedProfileId] = useState('');
+  const [selectedProfileDetail, setSelectedProfileDetail] = useState(null);
 
   const [isAiEnabled, setIsAiEnabled] = useState(true);
   const [appliedAiEnabled, setAppliedAiEnabled] = useState(true);
@@ -1384,13 +1391,34 @@ export function MainPage({ view = 'home' }) {
     () => profilesState.profiles.find((profile) => getProfileId(profile) === String(selectedProfileId)) || null,
     [profilesState.profiles, selectedProfileId]
   );
+  const selectedProfileForScoring = useMemo(() => {
+    if (!selectedProfileDetail || getProfileId(selectedProfileDetail) !== String(selectedProfileId)) {
+      return selectedProfile;
+    }
+
+    return {
+      ...(selectedProfile || {}),
+      ...selectedProfileDetail
+    };
+  }, [selectedProfile, selectedProfileDetail, selectedProfileId]);
   const orderedProfiles = useMemo(() => {
     const profiles = [...profilesState.profiles];
     profiles.sort((left, right) => Number(Boolean(right?.isDefault)) - Number(Boolean(left?.isDefault)));
     return profiles;
   }, [profilesState.profiles]);
-  const visibleSelectedProfile = selectedProfile || orderedProfiles[0] || null;
+  const visibleSelectedProfile = selectedProfileForScoring || orderedProfiles[0] || null;
   const closedProfileLabel = getProfileDisplayName(visibleSelectedProfile);
+  const isQuickProfileDetailReady = !selectedProfileId || getProfileId(selectedProfileDetail) === String(selectedProfileId);
+  const getQuickProfileForScoring = useCallback((profileId) => {
+    const listProfile = profilesState.profiles.find((profile) => getProfileId(profile) === String(profileId)) || null;
+    if (selectedProfileDetail && getProfileId(selectedProfileDetail) === String(profileId)) {
+      return {
+        ...(listProfile || {}),
+        ...selectedProfileDetail
+      };
+    }
+    return listProfile;
+  }, [profilesState.profiles, selectedProfileDetail]);
 
   const baseFilterGroups = useMemo(() => [
     {
@@ -1426,6 +1454,14 @@ export function MainPage({ view = 'home' }) {
   const orderedFilterGroups = useMemo(() => baseFilterGroups, [baseFilterGroups]);
 
   const filteredQuickJobs = useMemo(() => {
+    const jobsWithCommute = quickState.rawJobs.map((job) => {
+      const commuteEstimate = estimateCommuteMinutes(visibleSelectedProfile, job);
+      return {
+        ...job,
+        commuteEstimate,
+        commuteMinutes: commuteEstimate.minutes
+      };
+    });
     const effectiveAppliedFilters = appliedAiEnabled
       ? appliedFilters
       : {
@@ -1433,15 +1469,12 @@ export function MainPage({ view = 'home' }) {
           [COMMUTABLE_FILTER_ID]: false
         };
     const filtered = filterAccessibilityMapJobs(
-      quickState.rawJobs,
+      jobsWithCommute,
       effectiveAppliedFilters,
       filterOptions.jobCategories,
       visibleSelectedProfile
     );
-    return sortQuickJobs(filtered, appliedAiEnabled).map((job) => ({
-      ...job,
-      commuteEstimate: estimateCommuteMinutes(visibleSelectedProfile, job)
-    }));
+    return sortQuickJobs(filtered, appliedAiEnabled);
   }, [quickState.rawJobs, appliedFilters, filterOptions.jobCategories, appliedAiEnabled, visibleSelectedProfile]);
   const filteredQuickJobSignature = useMemo(
     () => filteredQuickJobs.map((job) => String(job.id)).join('|'),
@@ -1736,6 +1769,35 @@ export function MainPage({ view = 'home' }) {
   }, [callWithAuth, isAuthenticated, isInitializing, isQuickPage]);
 
   useEffect(() => {
+    if (!isQuickPage || !isAuthenticated || !selectedProfileId) {
+      setSelectedProfileDetail(null);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+
+    const loadSelectedProfileDetail = async () => {
+      try {
+        const profileDetail = await callWithAuth((accessToken) =>
+          profileApi.getProfile(accessToken, selectedProfileId, controller.signal)
+        );
+        setSelectedProfileDetail(profileDetail || null);
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          return;
+        }
+        setSelectedProfileDetail(null);
+      }
+    };
+
+    loadSelectedProfileDetail();
+
+    return () => {
+      controller.abort();
+    };
+  }, [callWithAuth, isAuthenticated, isQuickPage, selectedProfileId]);
+
+  useEffect(() => {
     quickRenderedJobKeysRef.current = new Set(quickState.rawJobs.map(getQuickJobKey).filter(Boolean));
   }, [quickState.rawJobs]);
 
@@ -1850,7 +1912,7 @@ export function MainPage({ view = 'home' }) {
       return;
     }
 
-    const selectedProfileObject = profilesState.profiles.find((profile) => getProfileId(profile) === String(profileId)) || null;
+    const selectedProfileObject = getQuickProfileForScoring(profileId);
     const profileSignature = getProfileScoringSignature(selectedProfileObject);
     const cacheKey = getQuickPageCacheKey({
       profileId,
@@ -2034,7 +2096,7 @@ export function MainPage({ view = 'home' }) {
     );
     const taskResult = normalizeTaskPayload(taskPayload);
     await proceedTaskResult(taskResult);
-  }, [appendQuickJobsIncrementally, applyQuickJobsImmediately, callWithAuth, profilesState.profiles]);
+  }, [appendQuickJobsIncrementally, applyQuickJobsImmediately, callWithAuth, getQuickProfileForScoring]);
 
   const loadMoreQuickRecommendations = useCallback(async () => {
     if (
@@ -2068,7 +2130,7 @@ export function MainPage({ view = 'home' }) {
     setQuickState((prev) => ({ ...prev, isLoadingMore: true, error: '', loadingLoaded: 0, loadingTarget }));
 
     try {
-      const selectedProfileObject = profilesState.profiles.find((profile) => getProfileId(profile) === String(selectedProfileId)) || null;
+      const selectedProfileObject = getQuickProfileForScoring(selectedProfileId);
       const profileSignature = getProfileScoringSignature(selectedProfileObject);
       if (appliedAiEnabled) {
         setActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE, {
@@ -2199,8 +2261,8 @@ export function MainPage({ view = 'home' }) {
     appliedAiEnabled,
     applyQuickJobsImmediately,
     callWithAuth,
+    getQuickProfileForScoring,
     isQuickPage,
-    profilesState.profiles,
     quickState.hasMore,
     quickState.isLoadingMore,
     quickState.nextOffset,
@@ -2247,7 +2309,7 @@ export function MainPage({ view = 'home' }) {
       return;
     }
 
-    const selectedProfileObject = profilesState.profiles.find((profile) => getProfileId(profile) === String(selectedProfileId)) || null;
+    const selectedProfileObject = getQuickProfileForScoring(selectedProfileId);
     const profileSignature = getProfileScoringSignature(selectedProfileObject);
     if (
       String(activeTask.profileId || '') !== String(selectedProfileId || '') ||
@@ -2275,9 +2337,9 @@ export function MainPage({ view = 'home' }) {
     }
   }, [
     appliedAiEnabled,
+    getQuickProfileForScoring,
     isQuickPage,
     loadMoreQuickRecommendations,
-    profilesState.profiles,
     quickState.hasMore,
     quickState.isLoadingMore,
     quickState.nextOffset,
@@ -2401,7 +2463,7 @@ export function MainPage({ view = 'home' }) {
       return;
     }
 
-    const selectedProfileObject = profilesState.profiles.find((profile) => getProfileId(profile) === String(selectedProfileId)) || null;
+    const selectedProfileObject = getQuickProfileForScoring(selectedProfileId);
     setQuickDetailState({
       mode: 'quick',
       fitScore: typeof job.fitScore === 'number' ? job.fitScore : null,
@@ -2434,10 +2496,13 @@ export function MainPage({ view = 'home' }) {
       });
       loadQuickExplanation(job, selectedProfileObject, fallbackDetail);
     }
-  }, [callWithAuth, loadQuickExplanation, profilesState.profiles, selectedProfileId]);
+  }, [callWithAuth, getQuickProfileForScoring, loadQuickExplanation, selectedProfileId]);
 
   const handleApplyQuickFilters = useCallback(async () => {
     if (!selectedProfileId || quickState.status === 'loading' || quickState.status === 'refetching') {
+      return;
+    }
+    if (isAiEnabled && draftFilters[COMMUTABLE_FILTER_ID] && !isQuickProfileDetailReady) {
       return;
     }
 
@@ -2477,7 +2542,7 @@ export function MainPage({ view = 'home' }) {
         quickSearchInFlightKeyRef.current = '';
       }
     }
-  }, [draftFilters, isAiEnabled, quickState.status, runQuickRecommendation, selectedProfileId]);
+  }, [draftFilters, isAiEnabled, isQuickProfileDetailReady, quickState.status, runQuickRecommendation, selectedProfileId]);
 
   useEffect(() => {
     if (
@@ -2495,7 +2560,7 @@ export function MainPage({ view = 'home' }) {
       return undefined;
     }
 
-    const activeProfile = profilesState.profiles.find((profile) => getProfileId(profile) === String(activeTask.profileId));
+    const activeProfile = getQuickProfileForScoring(activeTask.profileId);
     if (!activeProfile) {
       clearActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
       return undefined;
@@ -2537,6 +2602,7 @@ export function MainPage({ view = 'home' }) {
   }, [
     isAuthenticated,
     isQuickPage,
+    getQuickProfileForScoring,
     profilesState.profiles,
     profilesState.status,
     quickState.status,
@@ -2614,6 +2680,7 @@ export function MainPage({ view = 'home' }) {
   const quickLoadingTarget = Math.max(1, Math.min(quickState.loadingTarget || QUICK_PAGE_SIZE, QUICK_PAGE_SIZE));
   const quickLoadingLoaded = Math.min(quickLoadingTarget, Math.max(0, quickState.loadingLoaded || 0));
   const isGuestUser = !isAuthenticated;
+  const isQuickCommutableToggleDisabled = !isAiEnabled || isQuickBatchLoading || !isQuickProfileDetailReady;
   const shouldShowQuickHeader = !isGuestUser && (filteredQuickJobs.length > 0 || isQuickBatchLoading);
   const shouldShowQuickResults = !isGuestUser && filteredQuickJobs.length > 0 && ['success', 'refetching', 'loading'].includes(quickState.status);
   const openLoginModal = useCallback(() => {
@@ -2625,7 +2692,7 @@ export function MainPage({ view = 'home' }) {
       return;
     }
 
-    if (!isAiEnabled || isQuickBatchLoading) {
+    if (isQuickCommutableToggleDisabled) {
       return;
     }
 
@@ -2637,7 +2704,7 @@ export function MainPage({ view = 'home' }) {
         region: nextEnabled ? FILTER_ALL_VALUE : current.region
       };
     });
-  }, [isAiEnabled, isGuestUser, isQuickBatchLoading, openLoginModal]);
+  }, [isGuestUser, isQuickCommutableToggleDisabled, openLoginModal]);
 
   const handleToggleQuickAi = useCallback(() => {
     if (isGuestUser) {
@@ -2887,10 +2954,10 @@ export function MainPage({ view = 'home' }) {
                     type="button"
                     role="switch"
                     aria-checked={Boolean(isAiEnabled && draftFilters[COMMUTABLE_FILTER_ID])}
-                    disabled={!isAiEnabled || isQuickBatchLoading}
+                    disabled={isQuickCommutableToggleDisabled}
                     className={[
                       isAiEnabled && draftFilters[COMMUTABLE_FILTER_ID] ? 'is-on' : '',
-                      !isAiEnabled || isQuickBatchLoading ? 'is-disabled' : ''
+                      isQuickCommutableToggleDisabled ? 'is-disabled' : ''
                     ].filter(Boolean).join(' ')}
                     onClick={handleToggleQuickCommutableOnly}
                   >
