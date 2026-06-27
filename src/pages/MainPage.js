@@ -792,6 +792,33 @@ const parseQuickJobsFromResult = (result) => {
   return rows.map((item, index) => normalizeQuickJob(item, index));
 };
 
+const getRecommendationTotalCount = (payload, fallback = 0) => {
+  const candidates = [
+    payload?.totalCount,
+    payload?.total_count,
+    payload?.result?.totalCount,
+    payload?.result?.total_count,
+    payload?.aiResponse?.totalCount,
+    payload?.aiResponse?.total_count,
+    payload?.aiResponse?.result?.totalCount,
+    payload?.aiResponse?.result?.total_count,
+    payload?.data?.totalCount,
+    payload?.data?.total_count
+  ];
+
+  for (const value of candidates) {
+    if (value == null || value === '') {
+      continue;
+    }
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return parsed;
+    }
+  }
+
+  return Math.max(0, Number(fallback) || 0);
+};
+
 const getQuickJobKey = (job) => String(job?.postingId || job?.externalId || job?.id || '');
 
 const mergeUniqueQuickJobs = (currentJobs, nextJobs) => {
@@ -834,6 +861,7 @@ const getQuickPageCacheKey = ({ profileId, aiEnabled, profileSignature, offset =
 
 const getCachedQuickPages = ({ profileId, aiEnabled, profileSignature }) => {
   const jobs = [];
+  let totalCount = 0;
 
   for (let offset = 0; offset < QUICK_MAX_RESULTS; offset += QUICK_PAGE_SIZE) {
     const cachedPayload = getCachedRecommendation(getQuickPageCacheKey({
@@ -847,6 +875,7 @@ const getCachedQuickPages = ({ profileId, aiEnabled, profileSignature }) => {
     }
 
     const pageJobs = parseQuickJobsFromResult(cachedPayload);
+    totalCount = Math.max(totalCount, getRecommendationTotalCount(cachedPayload, offset + pageJobs.length));
     if (!pageJobs.length) {
       break;
     }
@@ -857,7 +886,10 @@ const getCachedQuickPages = ({ profileId, aiEnabled, profileSignature }) => {
     }
   }
 
-  return jobs.slice(0, QUICK_MAX_RESULTS);
+  return {
+    jobs: jobs.slice(0, QUICK_MAX_RESULTS),
+    totalCount: Math.max(totalCount, jobs.length)
+  };
 };
 
 async function waitForRecommendTask(callWithAuth, requestId, signal, onProgress) {
@@ -1368,6 +1400,7 @@ export function MainPage({ view = 'home' }) {
     hasMore: false,
     isLoadingMore: false,
     nextOffset: 0,
+    totalJobCount: 0,
     loadingLoaded: 0,
     loadingTarget: QUICK_PAGE_SIZE
   });
@@ -1806,9 +1839,11 @@ export function MainPage({ view = 'home' }) {
     loadingMore = false,
     keepLoading = false,
     showLoadingDuringAppend = false,
-    loadingTarget = Math.min(QUICK_PAGE_SIZE, QUICK_MAX_RESULTS - offset)
+    loadingTarget = Math.min(QUICK_PAGE_SIZE, QUICK_MAX_RESULTS - offset),
+    totalCount = null
   }) => {
     const incomingJobs = Array.isArray(jobs) ? jobs.slice(0, QUICK_MAX_RESULTS - offset) : [];
+    const resolvedTotalCount = getRecommendationTotalCount({ totalCount }, offset + incomingJobs.length);
 
     if (!incomingJobs.length) {
       setQuickState((prev) => ({
@@ -1818,6 +1853,7 @@ export function MainPage({ view = 'home' }) {
         hasMore: false,
         isLoadingMore: false,
         nextOffset: Math.min(offset, QUICK_MAX_RESULTS),
+        totalJobCount: Math.max(replace ? 0 : prev.totalJobCount || 0, resolvedTotalCount),
         loadingLoaded: 0,
         loadingTarget
       }));
@@ -1853,6 +1889,7 @@ export function MainPage({ view = 'home' }) {
           hasMore: false,
           isLoadingMore: loadingMore,
           nextOffset: Math.min(mergedJobs.length, QUICK_MAX_RESULTS),
+          totalJobCount: Math.max(replace && !didReplace ? 0 : prev.totalJobCount || 0, resolvedTotalCount, mergedJobs.length),
           loadingLoaded: Math.min(Math.max(0, mergedJobs.length - offset), loadingTarget),
           loadingTarget
         };
@@ -1875,13 +1912,15 @@ export function MainPage({ view = 'home' }) {
       hasMore: keepLoading ? false : Boolean(hasMore) && prev.rawJobs.length < QUICK_MAX_RESULTS,
       isLoadingMore: keepLoading ? loadingMore : false,
       nextOffset: Math.min(prev.rawJobs.length, QUICK_MAX_RESULTS),
+      totalJobCount: Math.max(prev.totalJobCount || 0, resolvedTotalCount, prev.rawJobs.length),
       loadingLoaded: Math.min(Math.max(0, prev.rawJobs.length - offset), loadingTarget),
       loadingTarget
     }));
   }, []);
 
-  const applyQuickJobsImmediately = useCallback(({ jobs, replace = false, offset = 0, hasMore = false }) => {
+  const applyQuickJobsImmediately = useCallback(({ jobs, replace = false, offset = 0, hasMore = false, totalCount = null }) => {
     const incomingJobs = Array.isArray(jobs) ? jobs.slice(0, QUICK_MAX_RESULTS - offset) : [];
+    const resolvedTotalCount = getRecommendationTotalCount({ totalCount }, offset + incomingJobs.length);
 
     setQuickState((prev) => {
       const mergedJobs = replace
@@ -1896,6 +1935,7 @@ export function MainPage({ view = 'home' }) {
         hasMore: Boolean(hasMore) && mergedJobs.length < QUICK_MAX_RESULTS,
         isLoadingMore: false,
         nextOffset: Math.min(offset + incomingJobs.length, QUICK_MAX_RESULTS),
+        totalJobCount: Math.max(replace ? 0 : prev.totalJobCount || 0, resolvedTotalCount, mergedJobs.length),
         loadingLoaded: 0,
         loadingTarget: Math.min(QUICK_PAGE_SIZE, QUICK_MAX_RESULTS - offset)
       };
@@ -1904,7 +1944,7 @@ export function MainPage({ view = 'home' }) {
 
   const runQuickRecommendation = useCallback(async ({ profileId, aiEnabled, filters, signal }) => {
     if (!profileId) {
-      setQuickState({ status: 'empty', error: '', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
+      setQuickState({ status: 'empty', error: '', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, totalJobCount: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
       return;
     }
 
@@ -1925,15 +1965,16 @@ export function MainPage({ view = 'home' }) {
       );
     };
 
-    const cachedJobs = getCachedQuickPages({ profileId, aiEnabled, profileSignature });
-    if (cachedJobs.length) {
+    const cachedPages = getCachedQuickPages({ profileId, aiEnabled, profileSignature });
+    if (cachedPages.jobs.length) {
       setAppliedAiEnabled(aiEnabled);
       setAppliedFilters(filters);
       applyQuickJobsImmediately({
-        jobs: cachedJobs,
+        jobs: cachedPages.jobs,
         replace: true,
         offset: 0,
-        hasMore: cachedJobs.length < QUICK_MAX_RESULTS && cachedJobs.length % QUICK_PAGE_SIZE === 0
+        hasMore: cachedPages.jobs.length < QUICK_MAX_RESULTS && cachedPages.jobs.length % QUICK_PAGE_SIZE === 0,
+        totalCount: cachedPages.totalCount
       });
       return;
     }
@@ -1967,7 +2008,8 @@ export function MainPage({ view = 'home' }) {
             jobs: directJobs,
             replace: true,
             offset: 0,
-            hasMore: directJobs.length === QUICK_PAGE_SIZE && directJobs.length < QUICK_MAX_RESULTS
+            hasMore: directJobs.length === QUICK_PAGE_SIZE && directJobs.length < QUICK_MAX_RESULTS,
+            totalCount: getRecommendationTotalCount(taskResult, directJobs.length)
           });
           return;
         }
@@ -1977,7 +2019,8 @@ export function MainPage({ view = 'home' }) {
           offset: 0,
           hasMore: directJobs.length === QUICK_PAGE_SIZE && directJobs.length < QUICK_MAX_RESULTS,
           signal,
-          showLoadingDuringAppend: true
+          showLoadingDuringAppend: true,
+          totalCount: getRecommendationTotalCount(taskResult, directJobs.length)
         });
         return;
       }
@@ -1987,7 +2030,7 @@ export function MainPage({ view = 'home' }) {
 
       if (taskStatus === 'FAILED') {
         clearActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
-        setQuickState({ status: 'error', error: getTaskErrorMessage(taskResult) || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
+        setQuickState({ status: 'error', error: getTaskErrorMessage(taskResult) || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, totalJobCount: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
         return;
       }
 
@@ -2001,7 +2044,8 @@ export function MainPage({ view = 'home' }) {
             jobs,
             replace: true,
             offset: 0,
-            hasMore: jobs.length > 0 && jobs.length < QUICK_MAX_RESULTS && jobs.length % QUICK_PAGE_SIZE === 0
+            hasMore: jobs.length > 0 && jobs.length < QUICK_MAX_RESULTS && jobs.length % QUICK_PAGE_SIZE === 0,
+            totalCount: getRecommendationTotalCount(taskResult.result, jobs.length)
           });
           return;
         }
@@ -2010,7 +2054,8 @@ export function MainPage({ view = 'home' }) {
             jobs,
             replace: true,
             offset: 0,
-            hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS
+            hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
+            totalCount: getRecommendationTotalCount(taskResult.result, jobs.length)
           });
           return;
         }
@@ -2020,14 +2065,15 @@ export function MainPage({ view = 'home' }) {
           offset: 0,
           hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
           signal,
-          showLoadingDuringAppend: true
+          showLoadingDuringAppend: true,
+          totalCount: getRecommendationTotalCount(taskResult.result, jobs.length)
         });
         return;
       }
 
       if (!taskRequestId) {
         clearActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
-        setQuickState({ status: 'error', error: '퀵 추천 요청 상태를 확인할 수 없습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
+        setQuickState({ status: 'error', error: '퀵 추천 요청 상태를 확인할 수 없습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, totalJobCount: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
         return;
       }
 
@@ -2058,7 +2104,8 @@ export function MainPage({ view = 'home' }) {
           hasMore: false,
           signal,
           keepLoading: true,
-          loadingTarget: Math.min(QUICK_PAGE_SIZE, QUICK_MAX_RESULTS)
+          loadingTarget: Math.min(QUICK_PAGE_SIZE, QUICK_MAX_RESULTS),
+          totalCount: getRecommendationTotalCount(progressResult, progressJobs.length)
         });
         hasProgressResult = true;
       });
@@ -2066,7 +2113,7 @@ export function MainPage({ view = 'home' }) {
 
       if (!completed || completedStatus === 'FAILED') {
         clearActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
-        setQuickState({ status: 'error', error: getTaskErrorMessage(completed) || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
+        setQuickState({ status: 'error', error: getTaskErrorMessage(completed) || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, totalJobCount: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
         return;
       }
 
@@ -2079,14 +2126,16 @@ export function MainPage({ view = 'home' }) {
           jobs,
           replace: true,
           offset: 0,
-          hasMore: jobs.length > 0 && jobs.length < QUICK_MAX_RESULTS && jobs.length % QUICK_PAGE_SIZE === 0
+          hasMore: jobs.length > 0 && jobs.length < QUICK_MAX_RESULTS && jobs.length % QUICK_PAGE_SIZE === 0,
+          totalCount: getRecommendationTotalCount(completed.result, jobs.length)
         });
       } else if (!aiEnabled) {
         applyQuickJobsImmediately({
           jobs,
           replace: true,
           offset: 0,
-          hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS
+          hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
+          totalCount: getRecommendationTotalCount(completed.result, jobs.length)
         });
       } else if (hasProgressResult) {
         await appendQuickJobsIncrementally({
@@ -2095,7 +2144,8 @@ export function MainPage({ view = 'home' }) {
           offset: 0,
           hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
           signal,
-          showLoadingDuringAppend: true
+          showLoadingDuringAppend: true,
+          totalCount: getRecommendationTotalCount(completed.result, jobs.length)
         });
       } else {
         await appendQuickJobsIncrementally({
@@ -2104,7 +2154,8 @@ export function MainPage({ view = 'home' }) {
           offset: 0,
           hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
           signal,
-          showLoadingDuringAppend: true
+          showLoadingDuringAppend: true,
+          totalCount: getRecommendationTotalCount(completed.result, jobs.length)
         });
       }
     };
@@ -2189,7 +2240,8 @@ export function MainPage({ view = 'home' }) {
           jobs: cachedJobs,
           replace: false,
           offset,
-          hasMore: cachedJobs.length === QUICK_PAGE_SIZE && offset + cachedJobs.length < QUICK_MAX_RESULTS
+          hasMore: cachedJobs.length === QUICK_PAGE_SIZE && offset + cachedJobs.length < QUICK_MAX_RESULTS,
+          totalCount: getRecommendationTotalCount(cachedPayload, offset + cachedJobs.length)
         });
         return;
       }
@@ -2218,7 +2270,8 @@ export function MainPage({ view = 'home' }) {
                 signal: controller.signal,
                 loadingMore: true,
                 keepLoading: true,
-                loadingTarget
+                loadingTarget,
+                totalCount: getRecommendationTotalCount(progressResult, offset + progressJobs.length)
               });
               hasProgressResult = true;
             }
@@ -2247,7 +2300,8 @@ export function MainPage({ view = 'home' }) {
           jobs: nextJobs,
           replace: false,
           offset,
-          hasMore: nextJobs.length === QUICK_PAGE_SIZE && offset + nextJobs.length < QUICK_MAX_RESULTS
+          hasMore: nextJobs.length === QUICK_PAGE_SIZE && offset + nextJobs.length < QUICK_MAX_RESULTS,
+          totalCount: getRecommendationTotalCount(completedPayload, offset + nextJobs.length)
         });
       } else {
         await appendQuickJobsIncrementally({
@@ -2257,7 +2311,8 @@ export function MainPage({ view = 'home' }) {
           hasMore: nextJobs.length === QUICK_PAGE_SIZE && offset + nextJobs.length < QUICK_MAX_RESULTS,
           signal: controller.signal,
           showLoadingDuringAppend: true,
-          loadingTarget
+          loadingTarget,
+          totalCount: getRecommendationTotalCount(completedPayload, offset + nextJobs.length)
         });
       }
     } catch (error) {
@@ -2562,7 +2617,7 @@ export function MainPage({ view = 'home' }) {
       if (error.name === 'AbortError') {
         return;
       }
-      setQuickState({ status: 'error', error: error.message || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
+      setQuickState({ status: 'error', error: error.message || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, totalJobCount: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
     } finally {
       if (quickSearchInFlightKeyRef.current === requestKey) {
         quickSearchInFlightKeyRef.current = '';
@@ -2622,7 +2677,7 @@ export function MainPage({ view = 'home' }) {
     }).catch((error) => {
       if (error.name !== 'AbortError') {
         clearActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
-        setQuickState({ status: 'error', error: error.message || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
+        setQuickState({ status: 'error', error: error.message || '퀵 추천을 불러오지 못했습니다.', rawJobs: [], hasMore: false, isLoadingMore: false, nextOffset: 0, totalJobCount: 0, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE });
       }
     });
   }, [
@@ -2708,6 +2763,9 @@ export function MainPage({ view = 'home' }) {
   const isGuestUser = !isAuthenticated;
   const isQuickCommutableToggleDisabled = !isAiEnabled || isQuickBatchLoading || !canUseQuickCommutableFilter;
   const isQuickCommutableOnlyApplied = Boolean(appliedAiEnabled && appliedFilters[COMMUTABLE_FILTER_ID]);
+  const quickResultCount = appliedAiEnabled
+    ? filteredQuickJobs.length
+    : Math.max(filteredQuickJobs.length, Number(quickState.totalJobCount) || 0);
   const shouldShowQuickHeader = !isGuestUser && (filteredQuickJobs.length > 0 || isQuickBatchLoading);
   const shouldShowQuickResults = !isGuestUser && filteredQuickJobs.length > 0 && ['success', 'refetching', 'loading'].includes(quickState.status);
   const openLoginModal = useCallback(() => {
@@ -3088,7 +3146,7 @@ export function MainPage({ view = 'home' }) {
                   <div className="accessibility-map__results-title-row">
                     <div className="accessibility-map__results-title-stack">
                       <h3>
-                        <span>검색 결과 {filteredQuickJobs.length}개</span>
+                        <span>검색 결과 {quickResultCount}개</span>
                         {appliedAiEnabled && (quickState.hasMore || quickState.rawJobs.length > filteredQuickJobs.length) ? <span> / 최대 {QUICK_MAX_RESULTS}개</span> : null}
                       </h3>
                       {isQuickCommutableOnlyApplied ? (

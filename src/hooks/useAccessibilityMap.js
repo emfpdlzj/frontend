@@ -1424,6 +1424,33 @@ const getPayloadJobs = (payload, aiResults) => {
     .filter(Boolean);
 };
 
+const getRecommendationTotalCount = (payload, fallback = 0) => {
+  const candidates = [
+    payload?.totalCount,
+    payload?.total_count,
+    payload?.result?.totalCount,
+    payload?.result?.total_count,
+    payload?.aiResponse?.totalCount,
+    payload?.aiResponse?.total_count,
+    payload?.aiResponse?.result?.totalCount,
+    payload?.aiResponse?.result?.total_count,
+    payload?.data?.totalCount,
+    payload?.data?.total_count
+  ];
+
+  for (const value of candidates) {
+    if (value == null || value === '') {
+      continue;
+    }
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return parsed;
+    }
+  }
+
+  return Math.max(0, Number(fallback) || 0);
+};
+
 export const buildRecommendationStateFromPayload = (payload, aiEnabled = Boolean(payload?.aiEnabled ?? payload?.ai_enabled), profile = null) => {
   const aiResults = getPayloadAiResults(payload);
   const jobEntries = getPayloadJobs(payload, aiResults);
@@ -1433,6 +1460,7 @@ export const buildRecommendationStateFromPayload = (payload, aiEnabled = Boolean
     status: jobs.length ? 'success' : 'empty',
     error: '',
     payload,
+    totalJobCount: getRecommendationTotalCount(payload, jobs.length),
     jobs
   };
 };
@@ -1448,6 +1476,7 @@ const getMapPageCacheKey = ({ profileId, aiEnabled, profileSignature, offset = 0
 const getCachedMapPagesState = ({ profileId, aiEnabled, profileSignature, selectedProfile }) => {
   const jobs = [];
   let lastPayload = null;
+  let totalJobCount = 0;
 
   for (let offset = 0; offset < MAP_MAX_RESULTS; offset += MAP_PAGE_SIZE) {
     const cachedPayload = getCachedRecommendation(getMapPageCacheKey({
@@ -1467,6 +1496,7 @@ const getCachedMapPagesState = ({ profileId, aiEnabled, profileSignature, select
 
     jobs.push(...cachedState.jobs);
     lastPayload = cachedPayload;
+    totalJobCount = Math.max(totalJobCount, cachedState.totalJobCount || 0, jobs.length);
     if (cachedState.jobs.length < MAP_PAGE_SIZE) {
       break;
     }
@@ -1480,6 +1510,7 @@ const getCachedMapPagesState = ({ profileId, aiEnabled, profileSignature, select
     status: 'success',
     error: '',
     payload: lastPayload,
+    totalJobCount: Math.max(totalJobCount, jobs.length),
     jobs: jobs.slice(0, MAP_MAX_RESULTS)
   };
 };
@@ -1507,6 +1538,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     status: 'idle',
     error: '',
     payload: null,
+    totalJobCount: 0,
     jobs: []
   });
   const [profileOffPageState, setProfileOffPageState] = useState({
@@ -1591,6 +1623,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
         status: replace ? 'empty' : prev.jobs.length ? 'success' : 'empty',
         error: '',
         payload: nextState?.payload || prev.payload,
+        totalJobCount: Math.max(replace ? 0 : prev.totalJobCount || 0, nextState?.totalJobCount || 0, offset),
         jobs: replace ? [] : prev.jobs
       }));
       setProfileOffPageState({
@@ -1635,6 +1668,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
           status: keepLoading || loadingMore || showLoadingDuringAppend ? 'refetching' : 'success',
           error: '',
           payload: nextState.payload,
+          totalJobCount: Math.max(replace && !didReplace ? 0 : prev.totalJobCount || 0, nextState.totalJobCount || 0, mergedJobs.length),
           jobs: mergedJobs
         };
       });
@@ -1662,7 +1696,8 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
       ...prev,
       status: keepLoading ? (prev.jobs.length ? 'refetching' : 'loading') : prev.jobs.length ? 'success' : 'empty',
       error: '',
-      payload: nextState.payload
+      payload: nextState.payload,
+      totalJobCount: Math.max(prev.totalJobCount || 0, nextState.totalJobCount || 0, prev.jobs.length)
     }));
     setProfileOffPageState({
       hasMore: keepLoading ? false : Boolean(hasMore) && offset + incomingJobs.length < MAP_MAX_RESULTS,
@@ -1691,6 +1726,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
         status: mergedJobs.length ? 'success' : 'empty',
         error: '',
         payload: nextState?.payload || prev.payload,
+        totalJobCount: Math.max(replace ? 0 : prev.totalJobCount || 0, nextState?.totalJobCount || 0, mergedJobs.length),
         jobs: mergedJobs
       };
     });
@@ -1774,6 +1810,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
         status: 'disabled',
         error: '지역 접근성 지도 추천을 보려면 로그인이 필요합니다.',
         payload: null,
+        totalJobCount: 0,
         jobs: []
       });
       return undefined;
@@ -1792,6 +1829,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
         ...prev,
         status: prev.jobs.length ? 'calculating' : 'loading',
         error: '',
+        totalJobCount: 0,
         jobs: []
       }));
       return undefined;
@@ -1802,6 +1840,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
         status: 'error',
         error: profilesState.error || '프로필 목록을 불러오지 못했습니다.',
         payload: null,
+        totalJobCount: 0,
         jobs: []
       });
       return undefined;
@@ -1812,6 +1851,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
         status: 'noProfile',
         error: '',
         payload: null,
+        totalJobCount: 0,
         jobs: []
       });
       return undefined;
@@ -1961,6 +2001,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
           status: 'error',
           error: error.message || '지역 접근성 지도 추천을 불러오지 못했습니다.',
           payload: null,
+          totalJobCount: 0,
           jobs: []
         });
       }
@@ -2461,7 +2502,9 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
 
   return {
     jobs: filteredJobs,
-    totalJobCount: profileOffPageState.hasMore ? MAP_MAX_RESULTS : allJobs.length,
+    totalJobCount: appliedAiEnabled
+      ? (profileOffPageState.hasMore ? MAP_MAX_RESULTS : allJobs.length)
+      : Math.max(allJobs.length, Number(recommendationState.totalJobCount) || 0),
     hasMoreJobs: profileOffPageState.hasMore,
     isLoadingMoreJobs: profileOffPageState.isLoadingMore,
     recommendationProgress,

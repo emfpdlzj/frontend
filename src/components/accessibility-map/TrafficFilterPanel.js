@@ -111,7 +111,11 @@ export function TrafficFilterPanel({
   const isCommutableToggleDisabled = !isAiEnabled || isRecommendationBusy;
   const loadingTarget = Math.max(1, Number(recommendationProgress?.target) || 20);
   const loadingLoaded = Math.min(loadingTarget, Math.max(0, Number(recommendationProgress?.loaded) || 0));
-  const resultCount = viewState === 'empty' ? 0 : jobs.length;
+  const resultCount = viewState === 'empty'
+    ? 0
+    : appliedAiEnabled
+      ? jobs.length
+      : Math.max(jobs.length, Number(totalJobCount) || 0);
   const usesServerPaging = true;
   const visibleJobs = useMemo(
     () => (usesServerPaging ? jobs : jobs.slice(0, visibleJobCount)),
