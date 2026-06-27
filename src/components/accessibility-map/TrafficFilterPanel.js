@@ -92,7 +92,7 @@ export function TrafficFilterPanel({
   onApplyFilters
 }) {
   const [draftFilterValues, setDraftFilterValues] = useState(() => getFilterValueSnapshot(filterGroups));
-  const [isFilterCollapsed, setIsFilterCollapsed] = useState(false);
+  const [isFilterCollapsed, setIsFilterCollapsed] = useState(true);
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [visibleJobCount, setVisibleJobCount] = useState(INITIAL_VISIBLE_MAP_JOB_COUNT);
   const sortMenuRef = useRef(null);
@@ -305,38 +305,38 @@ export function TrafficFilterPanel({
           {isFilterCollapsed ? '필터 펼치기' : '필터 접기'}
         </button>
       </header>
+      <section className="accessibility-map__ai-toggle" aria-label="AI 스코어링 설정">
+        <div>
+          <strong>AI 스코어링</strong>
+          <span>{isAiEnabled ? '프로필 기반 종합 점수 계산' : '프로필 기반 종합 점수 계산 해제'}</span>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isAiEnabled}
+          className={isAiEnabled ? 'is-on' : ''}
+          onClick={() => {
+            if (isGuestUser) {
+              onRequireLogin?.();
+              return;
+            }
+            onToggleAiScoring?.();
+          }}
+        >
+          <span className="accessibility-map__ai-toggle-track" aria-hidden="true">
+            <span className="accessibility-map__ai-toggle-thumb" />
+          </span>
+          <span className="accessibility-map__ai-toggle-label">{isAiEnabled ? 'ON' : 'OFF'}</span>
+        </button>
+      </section>
+      {viewState === 'success' ? (
+        <p className="accessibility-map__ai-applied-note" role="status">
+          현재 결과: AI 스코어링 {appliedAiEnabled ? 'ON' : 'OFF'}
+        </p>
+      ) : null}
+
       {!isFilterCollapsed ? (
         <>
-          <section className="accessibility-map__ai-toggle" aria-label="AI 스코어링 설정">
-            <div>
-              <strong>AI 스코어링</strong>
-              <span>{isAiEnabled ? '프로필 기반 종합 점수 계산' : '프로필 기반 종합 점수 계산 해제'}</span>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isAiEnabled}
-              className={isAiEnabled ? 'is-on' : ''}
-              onClick={() => {
-                if (isGuestUser) {
-                  onRequireLogin?.();
-                  return;
-                }
-                onToggleAiScoring?.();
-              }}
-            >
-              <span className="accessibility-map__ai-toggle-track" aria-hidden="true">
-                <span className="accessibility-map__ai-toggle-thumb" />
-              </span>
-              <span className="accessibility-map__ai-toggle-label">{isAiEnabled ? 'ON' : 'OFF'}</span>
-            </button>
-          </section>
-          {viewState === 'success' ? (
-            <p className="accessibility-map__ai-applied-note" role="status">
-              현재 결과: AI 스코어링 {appliedAiEnabled ? 'ON' : 'OFF'}
-            </p>
-          ) : null}
-
           <div className="accessibility-map__filter-list">
             {filterOptionStatus === 'loading' ? (
               <div className="accessibility-map__filter-status" role="status">

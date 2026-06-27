@@ -1365,7 +1365,7 @@ export function MainPage({ view = 'home' }) {
     loadingTarget: QUICK_PAGE_SIZE
   });
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [isQuickFilterCollapsed, setIsQuickFilterCollapsed] = useState(false);
+  const [isQuickFilterCollapsed, setIsQuickFilterCollapsed] = useState(true);
 
   const quickProfileSelectRef = useRef(null);
   const quickLoadMoreSentinelRef = useRef(null);
@@ -2772,33 +2772,33 @@ export function MainPage({ view = 'home' }) {
                   </button>
                 </header>
 
+                <section className="accessibility-map__ai-toggle" aria-label="AI 직무 적합도 설정">
+                  <div>
+                    <strong>AI 직무 적합도</strong>
+                    <span>{isAiEnabled ? '프로필 기반 직무 적합도 계산' : '최신 공고만 조회'}</span>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isAiEnabled}
+                    className={isAiEnabled ? 'is-on' : ''}
+                    onClick={() => {
+                      if (isGuestUser) {
+                        openLoginModal();
+                        return;
+                      }
+                      setIsAiEnabled((prev) => !prev);
+                    }}
+                  >
+                    <span className="accessibility-map__ai-toggle-track" aria-hidden="true">
+                      <span className="accessibility-map__ai-toggle-thumb" />
+                    </span>
+                    <span className="accessibility-map__ai-toggle-label">{isAiEnabled ? 'ON' : 'OFF'}</span>
+                  </button>
+                </section>
+
                 {!isQuickFilterCollapsed ? (
                   <>
-                    <section className="accessibility-map__ai-toggle" aria-label="AI 스코어링 설정">
-                      <div>
-                        <strong>AI 직무 적합도</strong>
-                        <span>{isAiEnabled ? '프로필 기반 직무 적합도 계산' : '최신 공고만 조회'}</span>
-                      </div>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={isAiEnabled}
-                        className={isAiEnabled ? 'is-on' : ''}
-                        onClick={() => {
-                          if (isGuestUser) {
-                            openLoginModal();
-                            return;
-                          }
-                          setIsAiEnabled((prev) => !prev);
-                        }}
-                      >
-                        <span className="accessibility-map__ai-toggle-track" aria-hidden="true">
-                          <span className="accessibility-map__ai-toggle-thumb" />
-                        </span>
-                        <span className="accessibility-map__ai-toggle-label">{isAiEnabled ? 'ON' : 'OFF'}</span>
-                      </button>
-                    </section>
-
                     <div className="accessibility-map__filter-list">
                       {orderedFilterGroups.map((group, index) => (
                         <section key={group.id} className="accessibility-map__filter-group">
