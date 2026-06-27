@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { cloneElement, isValidElement, useEffect, useId, useMemo, useState } from 'react';
 import basicProfile from '../../assets/profile/basic_profile.png';
 import { BirthDateField } from '../common/BirthDateField';
 import { useSignupOptions } from '../../hooks/useSignupOptions';
@@ -668,13 +668,25 @@ function ExtraPanel({ profile, onChange }) {
 }
 
 function Field({ label, required = false, hint, error, children, width }) {
+  const generatedId = useId();
+  const fieldId = `profile-field-${generatedId}`;
+  const labelableChildNames = new Set(['Input', 'SelectBox', 'TextArea', 'ChipEditor']);
+  const childTypeName = isValidElement(children) && typeof children.type === 'function' ? children.type.name : '';
+  const isLabelable = labelableChildNames.has(childTypeName);
+  const labeledChildren = isLabelable
+    ? cloneElement(children, {
+      id: children.props.id || fieldId,
+      'aria-label': children.props['aria-label'] || label
+    })
+    : children;
+
   return (
     <div className={`profile-field${width ? ` profile-field--${width}` : ''}`}>
-      <label className="profile-label">
+      <label className="profile-label" htmlFor={isLabelable ? fieldId : undefined}>
         {label}
         {required ? <RequiredMark /> : null}
       </label>
-      {children}
+      {labeledChildren}
       {error ? (
         <span className="profile-field-error" role="alert">
           {error}
@@ -699,9 +711,9 @@ function Input({ icon, suffix, onChange, value, ...props }) {
   );
 }
 
-function SelectBox({ value, onChange, options, placeholder = '선택해주세요.' }) {
+function SelectBox({ value, onChange, options, placeholder = '선택해주세요.', ...props }) {
   return (
-    <select className="profile-select" value={value || ''} onChange={(event) => onChange(event.target.value)}>
+    <select className="profile-select" value={value || ''} onChange={(event) => onChange(event.target.value)} {...props}>
       <option value="">{placeholder}</option>
       {options.map((option) => (
         <option key={option.value} value={option.value}>
@@ -788,7 +800,7 @@ function PillGroup({ options, selected, onChange }) {
   );
 }
 
-function ChipEditor({ value = [], onChange, placeholder }) {
+function ChipEditor({ value = [], onChange, placeholder, id, 'aria-label': ariaLabel }) {
   const [inputValue, setInputValue] = useState('');
   const [isComposing, setIsComposing] = useState(false);
 
@@ -840,7 +852,9 @@ function ChipEditor({ value = [], onChange, placeholder }) {
       </div>
       <div className="profile-chip-input-row">
         <input
+          id={id}
           className="profile-input"
+          aria-label={ariaLabel}
           placeholder={placeholder}
           value={inputValue}
           onChange={(event) => setInputValue(event.target.value)}

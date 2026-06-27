@@ -1320,7 +1320,8 @@ html[data-bw-reduce-motion='off'] .score-ring--no-animate .score-ring__value {
   align-items: center;
   justify-content: center;
   min-width: 96px;
-  min-height: 40px;
+  height: 40px;
+  padding: 0 18px;
   line-height: 1;
   text-align: center;
   white-space: nowrap;
