@@ -6841,6 +6841,16 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   transform: scale(0.98);
 }
 
+.accessibility-map__ai-toggle button:disabled,
+.accessibility-map__ai-toggle button.is-disabled {
+  border-color: #d8e0ea;
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
 .accessibility-map__ai-toggle button:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(47, 125, 246, 0.22);

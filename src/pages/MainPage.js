@@ -1405,8 +1405,8 @@ export function MainPage({ view = 'home' }) {
       title: '근무지역',
       type: 'select',
       options: [FILTER_ALL_VALUE, ...uniqueOptions(filterOptions.regions).map((option) => option.label)],
-      selectedValue: draftFilters[COMMUTABLE_FILTER_ID] ? FILTER_ALL_VALUE : draftFilters.region,
-      disabled: Boolean(draftFilters[COMMUTABLE_FILTER_ID])
+      selectedValue: isAiEnabled && draftFilters[COMMUTABLE_FILTER_ID] ? FILTER_ALL_VALUE : draftFilters.region,
+      disabled: Boolean(isAiEnabled && draftFilters[COMMUTABLE_FILTER_ID])
     },
     {
       id: 'employmentType',
@@ -1422,13 +1422,19 @@ export function MainPage({ view = 'home' }) {
       chips: [FILTER_ALL_VALUE, ...uniqueOptions(filterOptions.salaryTypes).map((option) => option.label)],
       selectedValue: draftFilters.salaryType
     }
-  ], [draftFilters, filterOptions]);
+  ], [draftFilters, filterOptions, isAiEnabled]);
   const orderedFilterGroups = useMemo(() => baseFilterGroups, [baseFilterGroups]);
 
   const filteredQuickJobs = useMemo(() => {
+    const effectiveAppliedFilters = appliedAiEnabled
+      ? appliedFilters
+      : {
+          ...appliedFilters,
+          [COMMUTABLE_FILTER_ID]: false
+        };
     const filtered = filterAccessibilityMapJobs(
       quickState.rawJobs,
-      appliedFilters,
+      effectiveAppliedFilters,
       filterOptions.jobCategories,
       visibleSelectedProfile
     );
@@ -1448,6 +1454,29 @@ export function MainPage({ view = 'home' }) {
       quickPageActiveRef.current = false;
     };
   }, [isQuickPage]);
+
+  useEffect(() => {
+    if (isAiEnabled) {
+      return;
+    }
+
+    setDraftFilters((current) => (
+      current[COMMUTABLE_FILTER_ID]
+        ? {
+            ...current,
+            [COMMUTABLE_FILTER_ID]: false
+          }
+        : current
+    ));
+    setAppliedFilters((current) => (
+      current[COMMUTABLE_FILTER_ID]
+        ? {
+            ...current,
+            [COMMUTABLE_FILTER_ID]: false
+          }
+        : current
+    ));
+  }, [isAiEnabled]);
 
   useLayoutEffect(() => {
     const container = quickResultListRef.current;
@@ -2412,9 +2441,11 @@ export function MainPage({ view = 'home' }) {
       return;
     }
 
+    const commutableOnly = Boolean(isAiEnabled && draftFilters[COMMUTABLE_FILTER_ID]);
     const normalizedDraftFilters = {
       ...draftFilters,
-      region: draftFilters[COMMUTABLE_FILTER_ID] ? FILTER_ALL_VALUE : draftFilters.region
+      [COMMUTABLE_FILTER_ID]: commutableOnly,
+      region: commutableOnly ? FILTER_ALL_VALUE : draftFilters.region
     };
     const requestKey = JSON.stringify({
       profileId: selectedProfileId,
@@ -2476,6 +2507,7 @@ export function MainPage({ view = 'home' }) {
       return undefined;
     }
 
+    const activeTaskAiEnabled = Boolean(activeTask.aiEnabled ?? true);
     const filters = activeTask.filters || {
       jobCategory: FILTER_ALL_VALUE,
       region: FILTER_ALL_VALUE,
@@ -2483,15 +2515,19 @@ export function MainPage({ view = 'home' }) {
       salaryType: FILTER_ALL_VALUE,
       [COMMUTABLE_FILTER_ID]: false
     };
+    const normalizedFilters = {
+      ...filters,
+      [COMMUTABLE_FILTER_ID]: Boolean(activeTaskAiEnabled && filters[COMMUTABLE_FILTER_ID])
+    };
     setSelectedProfileId(String(activeTask.profileId));
-    setIsAiEnabled(Boolean(activeTask.aiEnabled ?? true));
-    setDraftFilters(filters);
-    setAppliedFilters(filters);
+    setIsAiEnabled(activeTaskAiEnabled);
+    setDraftFilters(normalizedFilters);
+    setAppliedFilters(normalizedFilters);
 
     runQuickRecommendation({
       profileId: activeTask.profileId,
-      aiEnabled: Boolean(activeTask.aiEnabled ?? true),
-      filters
+      aiEnabled: activeTaskAiEnabled,
+      filters: normalizedFilters
     }).catch((error) => {
       if (error.name !== 'AbortError') {
         clearActiveRecommendationTask(QUICK_ACTIVE_TASK_SCOPE);
@@ -2589,6 +2625,10 @@ export function MainPage({ view = 'home' }) {
       return;
     }
 
+    if (!isAiEnabled || isQuickBatchLoading) {
+      return;
+    }
+
     setDraftFilters((current) => {
       const nextEnabled = !Boolean(current[COMMUTABLE_FILTER_ID]);
       return {
@@ -2596,6 +2636,28 @@ export function MainPage({ view = 'home' }) {
         [COMMUTABLE_FILTER_ID]: nextEnabled,
         region: nextEnabled ? FILTER_ALL_VALUE : current.region
       };
+    });
+  }, [isAiEnabled, isGuestUser, isQuickBatchLoading, openLoginModal]);
+
+  const handleToggleQuickAi = useCallback(() => {
+    if (isGuestUser) {
+      openLoginModal();
+      return;
+    }
+
+    setIsAiEnabled((current) => {
+      const nextEnabled = !current;
+      if (!nextEnabled) {
+        setDraftFilters((filters) => ({
+          ...filters,
+          [COMMUTABLE_FILTER_ID]: false
+        }));
+        setAppliedFilters((filters) => ({
+          ...filters,
+          [COMMUTABLE_FILTER_ID]: false
+        }));
+      }
+      return nextEnabled;
     });
   }, [isGuestUser, openLoginModal]);
 
@@ -2808,13 +2870,7 @@ export function MainPage({ view = 'home' }) {
                     role="switch"
                     aria-checked={isAiEnabled}
                     className={isAiEnabled ? 'is-on' : ''}
-                    onClick={() => {
-                      if (isGuestUser) {
-                        openLoginModal();
-                        return;
-                      }
-                      setIsAiEnabled((prev) => !prev);
-                    }}
+                    onClick={handleToggleQuickAi}
                   >
                     <span className="accessibility-map__ai-toggle-track" aria-hidden="true">
                       <span className="accessibility-map__ai-toggle-thumb" />
@@ -2830,14 +2886,18 @@ export function MainPage({ view = 'home' }) {
                   <button
                     type="button"
                     role="switch"
-                    aria-checked={Boolean(draftFilters[COMMUTABLE_FILTER_ID])}
-                    className={draftFilters[COMMUTABLE_FILTER_ID] ? 'is-on' : ''}
+                    aria-checked={Boolean(isAiEnabled && draftFilters[COMMUTABLE_FILTER_ID])}
+                    disabled={!isAiEnabled || isQuickBatchLoading}
+                    className={[
+                      isAiEnabled && draftFilters[COMMUTABLE_FILTER_ID] ? 'is-on' : '',
+                      !isAiEnabled || isQuickBatchLoading ? 'is-disabled' : ''
+                    ].filter(Boolean).join(' ')}
                     onClick={handleToggleQuickCommutableOnly}
                   >
                     <span className="accessibility-map__ai-toggle-track" aria-hidden="true">
                       <span className="accessibility-map__ai-toggle-thumb" />
                     </span>
-                    <span className="accessibility-map__ai-toggle-label">{draftFilters[COMMUTABLE_FILTER_ID] ? 'ON' : 'OFF'}</span>
+                    <span className="accessibility-map__ai-toggle-label">{isAiEnabled && draftFilters[COMMUTABLE_FILTER_ID] ? 'ON' : 'OFF'}</span>
                   </button>
                 </section>
 

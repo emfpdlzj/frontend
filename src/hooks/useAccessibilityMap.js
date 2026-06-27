@@ -483,8 +483,8 @@ const isCommutableJob = (job, profile) => {
     return distanceKm <= parseMobilityRangeKm(profile);
   }
 
-  // 프로필 주소/좌표나 공고 좌표가 부족한 경우에는 프론트에서 통근 가능 여부를 단정하지 않는다.
-  return true;
+  // 통근 가능 필터는 선택 프로필의 거주지와 공고 근무지를 계산할 수 있을 때만 통과시킨다.
+  return false;
 };
 
 const parseDurationMinutes = (value) => {
@@ -2420,9 +2420,11 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
   }, []);
 
   const applyFilters = useCallback((filters) => {
+    const commutableOnly = Boolean(isAiEnabled && filters?.[COMMUTABLE_FILTER_ID]);
     const nextFilters = {
       ...(filters || {}),
-      region: filters?.[COMMUTABLE_FILTER_ID] ? FILTER_ALL_VALUE : filters?.region
+      [COMMUTABLE_FILTER_ID]: commutableOnly,
+      region: commutableOnly ? FILTER_ALL_VALUE : filters?.region
     };
     setSelectedFilters(nextFilters);
     setAppliedAiEnabled(isAiEnabled);
@@ -2431,7 +2433,16 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
   }, [isAiEnabled]);
 
   const toggleAiScoring = useCallback(() => {
-    setIsAiEnabled((current) => !current);
+    setIsAiEnabled((current) => {
+      const nextEnabled = !current;
+      if (!nextEnabled) {
+        setSelectedFilters((filters) => ({
+          ...filters,
+          [COMMUTABLE_FILTER_ID]: false
+        }));
+      }
+      return nextEnabled;
+    });
   }, []);
 
   const viewState =

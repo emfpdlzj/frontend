@@ -101,6 +101,7 @@ export function TrafficFilterPanel({
   const listItemRectsRef = useRef(new Map());
   const isRecommendationLoading = Boolean(recommendationProgress?.isLoading);
   const isRecommendationBusy = viewState === 'loading' || viewState === 'calculating' || isRecommendationLoading;
+  const isCommutableToggleDisabled = !isAiEnabled || isRecommendationBusy;
   const loadingTarget = Math.max(1, Number(recommendationProgress?.target) || 20);
   const loadingLoaded = Math.min(loadingTarget, Math.max(0, Number(recommendationProgress?.loaded) || 0));
   const resultCount = viewState === 'empty' ? 0 : jobs.length;
@@ -114,6 +115,21 @@ export function TrafficFilterPanel({
   useEffect(() => {
     setDraftFilterValues(getFilterValueSnapshot(filterGroups));
   }, [filterGroups]);
+
+  useEffect(() => {
+    if (isAiEnabled) {
+      return;
+    }
+
+    setDraftFilterValues((current) => (
+      current[COMMUTABLE_FILTER_ID]
+        ? {
+            ...current,
+            [COMMUTABLE_FILTER_ID]: false
+          }
+        : current
+    ));
+  }, [isAiEnabled]);
 
   useEffect(() => {
     setVisibleJobCount(INITIAL_VISIBLE_MAP_JOB_COUNT);
@@ -257,6 +273,10 @@ export function TrafficFilterPanel({
       return;
     }
 
+    if (isCommutableToggleDisabled) {
+      return;
+    }
+
     setDraftFilterValues((current) => {
       const nextEnabled = !Boolean(current[COMMUTABLE_FILTER_ID]);
       return {
@@ -356,14 +376,18 @@ export function TrafficFilterPanel({
         <button
           type="button"
           role="switch"
-          aria-checked={Boolean(draftFilterValues[COMMUTABLE_FILTER_ID])}
-          className={draftFilterValues[COMMUTABLE_FILTER_ID] ? 'is-on' : ''}
+          aria-checked={Boolean(isAiEnabled && draftFilterValues[COMMUTABLE_FILTER_ID])}
+          disabled={isCommutableToggleDisabled}
+          className={[
+            isAiEnabled && draftFilterValues[COMMUTABLE_FILTER_ID] ? 'is-on' : '',
+            isCommutableToggleDisabled ? 'is-disabled' : ''
+          ].filter(Boolean).join(' ')}
           onClick={handleToggleCommutableOnly}
         >
           <span className="accessibility-map__ai-toggle-track" aria-hidden="true">
             <span className="accessibility-map__ai-toggle-thumb" />
           </span>
-          <span className="accessibility-map__ai-toggle-label">{draftFilterValues[COMMUTABLE_FILTER_ID] ? 'ON' : 'OFF'}</span>
+          <span className="accessibility-map__ai-toggle-label">{isAiEnabled && draftFilterValues[COMMUTABLE_FILTER_ID] ? 'ON' : 'OFF'}</span>
         </button>
       </section>
       {viewState === 'success' ? (
