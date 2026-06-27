@@ -67,6 +67,7 @@ export function AccessibilityMapPage() {
     mapMarkers,
     hasAppliedConditions,
     mapViewport,
+    mapViewportResetKey,
     errorMessage,
     supportAgencyCount,
     explanation,
@@ -233,6 +234,7 @@ export function AccessibilityMapPage() {
           showSupportAgencies={showSupportAgencies}
           currentLocation={currentLocation}
           viewport={viewport}
+          viewportResetKey={mapViewportResetKey}
           viewState={viewState}
           onSelectProfile={setSelectedProfileId}
           onRequireLogin={openLoginModal}

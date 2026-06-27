@@ -1534,6 +1534,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     [COMMUTABLE_FILTER_ID]: true
   });
   const [reloadKey, setReloadKey] = useState(0);
+  const [mapViewportResetKey, setMapViewportResetKey] = useState(0);
   const [recommendationState, setRecommendationState] = useState({
     status: 'idle',
     error: '',
@@ -1789,6 +1790,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     setSortMode('score_desc');
     setHasAppliedConditions(true);
     setReloadKey((current) => current + 1);
+    setMapViewportResetKey((current) => current + 1);
   }, [
     hasAppliedConditions,
     isAuthenticated,
@@ -2447,6 +2449,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
   const reloadRecommendations = useCallback(() => {
     clearRecommendationCache();
     setReloadKey((current) => current + 1);
+    setMapViewportResetKey((current) => current + 1);
   }, []);
 
   const markJobScrapped = useCallback((jobId, scrapped = true) => {
@@ -2476,6 +2479,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     setAppliedAiEnabled(isAiEnabled);
     setSortMode(isAiEnabled ? 'score_desc' : 'latest_desc');
     setHasAppliedConditions(true);
+    setMapViewportResetKey((current) => current + 1);
   }, [isAiEnabled]);
 
   const toggleAiScoring = useCallback(() => {
@@ -2517,6 +2521,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     mapRadiusMeters: MAP_RADIUS_METERS,
     mapRoutes: [],
     mapMarkers,
+    mapViewportResetKey,
     hasAppliedConditions,
     supportAgencyStatus: supportAgencyState.status,
     supportAgencyErrorMessage: supportAgencyState.error,

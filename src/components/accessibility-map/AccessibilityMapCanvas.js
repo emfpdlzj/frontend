@@ -203,6 +203,7 @@ function AccessibilityMapCanvasComponent({
   showSupportAgencies = false,
   currentLocation,
   viewport,
+  viewportResetKey = 0,
   viewState,
   onSelectProfile,
   onRequireLogin,
@@ -334,7 +335,15 @@ function AccessibilityMapCanvasComponent({
     mapInstanceRef.current.setCenter(new window.naver.maps.LatLng(viewport.center.lat, viewport.center.lng));
     mapInstanceRef.current.setZoom(viewport.zoom, false);
     setMapZoom(viewport.zoom);
-  }, [mapScriptStatus, viewport, viewState]);
+  }, [mapScriptStatus, viewportResetKey, viewState]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current || mapScriptStatus !== 'ready' || !canRenderMap(viewState)) {
+      return;
+    }
+
+    mapInstanceRef.current.setCenter(new window.naver.maps.LatLng(viewport.center.lat, viewport.center.lng));
+  }, [mapScriptStatus, viewport.center.lat, viewport.center.lng, viewState]);
 
   useEffect(() => {
     if (!mapInstanceRef.current || mapScriptStatus !== 'ready' || !canRenderMap(viewState)) {
