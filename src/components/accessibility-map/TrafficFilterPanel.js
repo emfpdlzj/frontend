@@ -52,10 +52,11 @@ const getFilterValueSnapshot = (filterGroups) =>
   Object.fromEntries(
     filterGroups
       .filter((group) => !group.readonly)
-      .map((group) => [group.id, group.selectedValue])
+      .map((group) => [group.id, group.selectedValue ?? group.defaultValue ?? FILTER_ALL_VALUE])
   );
 
 const FILTER_ALL_VALUE = '전체';
+const COMMUTABLE_FILTER_ID = 'commutableOnly';
 const INITIAL_VISIBLE_MAP_JOB_COUNT = 20;
 const VISIBLE_MAP_JOB_INCREMENT = 20;
 
@@ -225,14 +226,16 @@ export function TrafficFilterPanel({
         id: group.id,
         title: group.title,
         type: group.type || 'chips',
+        hidden: Boolean(group.hidden),
         chips: group.chips,
         options: group.options || [],
         jobCategories: group.jobCategories || [],
         selectedValue: group.readonly ? group.selectedValue : draftFilterValues[group.id],
         readonly: group.readonly,
+        disabled: Boolean(group.disabled) || (group.id === 'region' && Boolean(draftFilterValues[COMMUTABLE_FILTER_ID])),
         dashed: false
       }))
-    ],
+    ].filter((group) => !group.hidden),
     [draftFilterValues, filterGroups]
   );
   const orderedFilterItems = useMemo(() => filterItems, [filterItems]);
@@ -246,6 +249,22 @@ export function TrafficFilterPanel({
       ...current,
       [filterId]: value
     }));
+  };
+
+  const handleToggleCommutableOnly = () => {
+    if (isGuestUser) {
+      onRequireLogin?.();
+      return;
+    }
+
+    setDraftFilterValues((current) => {
+      const nextEnabled = !Boolean(current[COMMUTABLE_FILTER_ID]);
+      return {
+        ...current,
+        [COMMUTABLE_FILTER_ID]: nextEnabled,
+        region: nextEnabled ? FILTER_ALL_VALUE : current.region
+      };
+    });
   };
 
   const handleApplyFilters = () => {
@@ -275,7 +294,7 @@ export function TrafficFilterPanel({
     const resetValues = Object.fromEntries(
       filterGroups
         .filter((group) => !group.readonly)
-        .map((group) => [group.id, FILTER_ALL_VALUE])
+        .map((group) => [group.id, group.defaultValue ?? FILTER_ALL_VALUE])
     );
 
     setDraftFilterValues(resetValues);
@@ -329,6 +348,24 @@ export function TrafficFilterPanel({
           <span className="accessibility-map__ai-toggle-label">{isAiEnabled ? 'ON' : 'OFF'}</span>
         </button>
       </section>
+      <section className="accessibility-map__ai-toggle" aria-label="통근 가능 기업 필터 설정">
+        <div>
+          <strong>통근 가능한 기업만 보기</strong>
+          <span>대중교통 75분 또는 직선거리 25km 이내를 기본으로 봅니다.</span>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={Boolean(draftFilterValues[COMMUTABLE_FILTER_ID])}
+          className={draftFilterValues[COMMUTABLE_FILTER_ID] ? 'is-on' : ''}
+          onClick={handleToggleCommutableOnly}
+        >
+          <span className="accessibility-map__ai-toggle-track" aria-hidden="true">
+            <span className="accessibility-map__ai-toggle-thumb" />
+          </span>
+          <span className="accessibility-map__ai-toggle-label">{draftFilterValues[COMMUTABLE_FILTER_ID] ? 'ON' : 'OFF'}</span>
+        </button>
+      </section>
       {viewState === 'success' ? (
         <p className="accessibility-map__ai-applied-note" role="status">
           현재 결과: AI 스코어링 {appliedAiEnabled ? 'ON' : 'OFF'}
@@ -364,6 +401,7 @@ export function TrafficFilterPanel({
                         label={filterItem.title}
                         options={filterItem.options}
                         value={filterItem.selectedValue}
+                        disabled={filterItem.disabled}
                         onChange={(value) => handleSelectDraftFilter(filterItem.id, value)}
                       />
                     ) : (
@@ -383,7 +421,7 @@ export function TrafficFilterPanel({
                             }${
                               filterItem.dashed ? ' accessibility-map__chip-dashed' : ''
                             }`}
-                            disabled={filterItem.readonly}
+                            disabled={filterItem.readonly || filterItem.disabled}
                             aria-pressed={filterItem.selectedValue === chip}
                             onClick={() => handleSelectDraftFilter(filterItem.id, chip)}
                           >
@@ -560,11 +598,11 @@ export function TrafficFilterPanel({
   );
 }
 
-function SelectFilter({ label, options, value, onChange }) {
+function SelectFilter({ label, options, value, onChange, disabled = false }) {
   return (
     <label className="accessibility-map__select-field">
       <span className="sr-only">{label}</span>
-      <select value={value || FILTER_ALL_VALUE} onChange={(event) => onChange(event.target.value)}>
+      <select value={value || FILTER_ALL_VALUE} onChange={(event) => onChange(event.target.value)} disabled={disabled}>
         {options.map((option) => (
           <option key={option} value={option}>
             {option}

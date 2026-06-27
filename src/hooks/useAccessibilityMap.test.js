@@ -81,6 +81,40 @@ describe('filterAccessibilityMapJobs', () => {
 
     expect(filteredJobs.map((job) => job.id)).toEqual(['job-1']);
   });
+
+  it('filters commutable jobs by profile distance and ignores region when commute-only is enabled', () => {
+    const jobsWithCoordinates = [
+      {
+        ...jobs[0],
+        source: {
+          ...jobs[0].source,
+          workLat: 37.5665,
+          workLng: 126.978
+        }
+      },
+      {
+        ...jobs[1],
+        source: {
+          ...jobs[1].source,
+          workLat: 35.1796,
+          workLng: 129.0756
+        }
+      }
+    ];
+    const profile = {
+      detailAddress: '서울특별시 중구 세종대로 110',
+      commuteRange: '대중교통 75분 이내'
+    };
+
+    expect(
+      filterAccessibilityMapJobs(
+        jobsWithCoordinates,
+        { region: '경기', commutableOnly: true },
+        jobCategories,
+        profile
+      ).map((job) => job.id)
+    ).toEqual(['job-1']);
+  });
 });
 
 describe('buildRecommendationStateFromPayload', () => {

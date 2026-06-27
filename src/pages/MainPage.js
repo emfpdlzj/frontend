@@ -29,6 +29,7 @@ import { AccessibilityScoreHelpButton } from '../components/accessibility-map/Ac
 import { LlmExplanationProgress } from '../components/common/LlmExplanationProgress';
 
 const FILTER_ALL_VALUE = '전체';
+const COMMUTABLE_FILTER_ID = 'commutableOnly';
 const RECOMMEND_TASK_POLL_INTERVAL_MS = 500;
 const RECOMMEND_REQUEST_TIMEOUT_MS = 3 * 60 * 1000;
 const POPULAR_AUTOPLAY_INTERVAL_MS = 3600;
@@ -1294,11 +1295,11 @@ function JobPickerColumn({ title, description, children }) {
   );
 }
 
-function SelectFilter({ label, options, value, onChange }) {
+function SelectFilter({ label, options, value, onChange, disabled = false }) {
   return (
     <label className="accessibility-map__select-field">
       <span className="sr-only">{label}</span>
-      <select value={value || FILTER_ALL_VALUE} onChange={(event) => onChange(event.target.value)}>
+      <select value={value || FILTER_ALL_VALUE} onChange={(event) => onChange(event.target.value)} disabled={disabled}>
         {options.map((option) => (
           <option key={option} value={option}>
             {option}
@@ -1345,13 +1346,15 @@ export function MainPage({ view = 'home' }) {
     jobCategory: FILTER_ALL_VALUE,
     region: FILTER_ALL_VALUE,
     employmentType: FILTER_ALL_VALUE,
-    salaryType: FILTER_ALL_VALUE
+    salaryType: FILTER_ALL_VALUE,
+    [COMMUTABLE_FILTER_ID]: false
   });
   const [appliedFilters, setAppliedFilters] = useState({
     jobCategory: FILTER_ALL_VALUE,
     region: FILTER_ALL_VALUE,
     employmentType: FILTER_ALL_VALUE,
-    salaryType: FILTER_ALL_VALUE
+    salaryType: FILTER_ALL_VALUE,
+    [COMMUTABLE_FILTER_ID]: false
   });
 
   const [quickState, setQuickState] = useState({
@@ -1402,7 +1405,8 @@ export function MainPage({ view = 'home' }) {
       title: '근무지역',
       type: 'select',
       options: [FILTER_ALL_VALUE, ...uniqueOptions(filterOptions.regions).map((option) => option.label)],
-      selectedValue: draftFilters.region
+      selectedValue: draftFilters[COMMUTABLE_FILTER_ID] ? FILTER_ALL_VALUE : draftFilters.region,
+      disabled: Boolean(draftFilters[COMMUTABLE_FILTER_ID])
     },
     {
       id: 'employmentType',
@@ -1425,7 +1429,8 @@ export function MainPage({ view = 'home' }) {
     const filtered = filterAccessibilityMapJobs(
       quickState.rawJobs,
       appliedFilters,
-      filterOptions.jobCategories
+      filterOptions.jobCategories,
+      visibleSelectedProfile
     );
     return sortQuickJobs(filtered, appliedAiEnabled).map((job) => ({
       ...job,
@@ -2407,10 +2412,14 @@ export function MainPage({ view = 'home' }) {
       return;
     }
 
+    const normalizedDraftFilters = {
+      ...draftFilters,
+      region: draftFilters[COMMUTABLE_FILTER_ID] ? FILTER_ALL_VALUE : draftFilters.region
+    };
     const requestKey = JSON.stringify({
       profileId: selectedProfileId,
       aiEnabled: isAiEnabled,
-      filters: draftFilters
+      filters: normalizedDraftFilters
     });
     if (quickSearchInFlightKeyRef.current === requestKey) {
       return;
@@ -2423,7 +2432,7 @@ export function MainPage({ view = 'home' }) {
       await runQuickRecommendation({
         profileId: selectedProfileId,
         aiEnabled: isAiEnabled,
-        filters: draftFilters,
+        filters: normalizedDraftFilters,
         signal: controller.signal
       });
       setIsQuickFilterCollapsed(true);
@@ -2471,7 +2480,8 @@ export function MainPage({ view = 'home' }) {
       jobCategory: FILTER_ALL_VALUE,
       region: FILTER_ALL_VALUE,
       employmentType: FILTER_ALL_VALUE,
-      salaryType: FILTER_ALL_VALUE
+      salaryType: FILTER_ALL_VALUE,
+      [COMMUTABLE_FILTER_ID]: false
     };
     setSelectedProfileId(String(activeTask.profileId));
     setIsAiEnabled(Boolean(activeTask.aiEnabled ?? true));
@@ -2502,7 +2512,8 @@ export function MainPage({ view = 'home' }) {
       jobCategory: FILTER_ALL_VALUE,
       region: FILTER_ALL_VALUE,
       employmentType: FILTER_ALL_VALUE,
-      salaryType: FILTER_ALL_VALUE
+      salaryType: FILTER_ALL_VALUE,
+      [COMMUTABLE_FILTER_ID]: false
     });
   }, []);
 
@@ -2572,6 +2583,21 @@ export function MainPage({ view = 'home' }) {
   const openLoginModal = useCallback(() => {
     setIsLoginModalOpen(true);
   }, []);
+  const handleToggleQuickCommutableOnly = useCallback(() => {
+    if (isGuestUser) {
+      openLoginModal();
+      return;
+    }
+
+    setDraftFilters((current) => {
+      const nextEnabled = !Boolean(current[COMMUTABLE_FILTER_ID]);
+      return {
+        ...current,
+        [COMMUTABLE_FILTER_ID]: nextEnabled,
+        region: nextEnabled ? FILTER_ALL_VALUE : current.region
+      };
+    });
+  }, [isGuestUser, openLoginModal]);
 
   return (
     <main className="main-page" aria-labelledby={isQuickPage ? 'quick-recommend-title' : 'main-page-title'}>
@@ -2796,6 +2822,24 @@ export function MainPage({ view = 'home' }) {
                     <span className="accessibility-map__ai-toggle-label">{isAiEnabled ? 'ON' : 'OFF'}</span>
                   </button>
                 </section>
+                <section className="accessibility-map__ai-toggle" aria-label="통근 가능 기업 필터 설정">
+                  <div>
+                    <strong>통근 가능한 기업만 보기</strong>
+                    <span>대중교통 75분 또는 직선거리 25km 이내를 기본으로 봅니다.</span>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={Boolean(draftFilters[COMMUTABLE_FILTER_ID])}
+                    className={draftFilters[COMMUTABLE_FILTER_ID] ? 'is-on' : ''}
+                    onClick={handleToggleQuickCommutableOnly}
+                  >
+                    <span className="accessibility-map__ai-toggle-track" aria-hidden="true">
+                      <span className="accessibility-map__ai-toggle-thumb" />
+                    </span>
+                    <span className="accessibility-map__ai-toggle-label">{draftFilters[COMMUTABLE_FILTER_ID] ? 'ON' : 'OFF'}</span>
+                  </button>
+                </section>
 
                 {!isQuickFilterCollapsed ? (
                   <>
@@ -2822,6 +2866,7 @@ export function MainPage({ view = 'home' }) {
                                   label={group.title}
                                   options={group.options}
                                   value={group.selectedValue}
+                                  disabled={group.disabled}
                                   onChange={(value) => {
                                     if (isGuestUser) {
                                       openLoginModal();

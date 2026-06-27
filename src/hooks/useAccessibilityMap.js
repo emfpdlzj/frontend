@@ -45,6 +45,9 @@ const MAP_DEFAULT_VIEWPORT = {
   zoom: 16
 };
 const MAP_RADIUS_METERS = 850;
+const COMMUTABLE_FILTER_ID = 'commutableOnly';
+const DEFAULT_COMMUTABLE_DISTANCE_KM = 25;
+const DEFAULT_COMMUTABLE_MINUTES = 75;
 const REGION_ALIASES = {
   서울: ['서울', '서울특별시'],
   부산: ['부산', '부산광역시'],
@@ -428,6 +431,60 @@ const getDistanceKm = (from, to) => {
 
 const formatCommuteMinutes = (minutes) =>
   Number.isFinite(minutes) ? Math.max(10, Math.round(minutes / 5) * 5) : '-';
+
+const parseCommuteLimitMinutes = (profile) => {
+  const raw = String(profile?.commuteRange ?? profile?.commute_range ?? '').trim();
+  if (!raw) {
+    return DEFAULT_COMMUTABLE_MINUTES;
+  }
+
+  const hourMatch = raw.match(/(\d+(?:\.\d+)?)\s*시간/);
+  const minuteMatch = raw.match(/(\d+(?:\.\d+)?)\s*분/);
+  const hours = hourMatch ? Number(hourMatch[1]) : 0;
+  const minutes = minuteMatch ? Number(minuteMatch[1]) : 0;
+  const totalMinutes = hours * 60 + minutes;
+
+  return Number.isFinite(totalMinutes) && totalMinutes > 0 ? totalMinutes : DEFAULT_COMMUTABLE_MINUTES;
+};
+
+const parseMobilityRangeKm = (profile) => {
+  const raw = String(profile?.commuteRange ?? profile?.commute_range ?? '').trim();
+  const kmMatch = raw.match(/(\d+(?:\.\d+)?)\s*(?:km|㎞|킬로|키로)/i);
+  const km = kmMatch ? Number(kmMatch[1]) : NaN;
+
+  return Number.isFinite(km) && km > 0 ? km : DEFAULT_COMMUTABLE_DISTANCE_KM;
+};
+
+const getHomeWorkDistanceKm = (profile, job) => {
+  const source = job?.source || job || {};
+  const homeAddress = getFirstPresentValue(profile?.detailAddress, profile?.address);
+  const homeLatitude = toNumberOrNull(getFirstPresentValue(profile?.homeLat, profile?.home_lat));
+  const homeLongitude = toNumberOrNull(getFirstPresentValue(profile?.homeLng, profile?.home_lng));
+  const homeCoordinate = homeLatitude !== null && homeLongitude !== null
+    ? { latitude: homeLatitude, longitude: homeLongitude }
+    : getAddressCoordinate(homeAddress);
+  const workLatitude = toNumberOrNull(getFirstPresentValue(getGeoLatitude(source), job?.workLatitude, job?.work_lat));
+  const workLongitude = toNumberOrNull(getFirstPresentValue(getGeoLongitude(source), job?.workLongitude, job?.work_lng));
+  const workCoordinate = workLatitude !== null && workLongitude !== null
+    ? { latitude: workLatitude, longitude: workLongitude }
+    : getAddressCoordinate(getWorkAddress(source) || job?.location);
+
+  return getDistanceKm(homeCoordinate, workCoordinate);
+};
+
+const isCommutableJob = (job, profile) => {
+  const commuteMinutes = parseDurationMinutes(job?.commuteMinutes);
+  if (commuteMinutes !== null) {
+    return commuteMinutes <= parseCommuteLimitMinutes(profile);
+  }
+
+  const distanceKm = getHomeWorkDistanceKm(profile, job);
+  if (distanceKm !== null) {
+    return distanceKm <= parseMobilityRangeKm(profile);
+  }
+
+  return false;
+};
 
 const parseDurationMinutes = (value) => {
   if (typeof value === 'number') {
@@ -1067,6 +1124,12 @@ const uniqueOptions = (options) => {
 
 const buildFilterGroups = (selectedFilters, optionState) => [
   {
+    id: COMMUTABLE_FILTER_ID,
+    hidden: true,
+    defaultValue: false,
+    selectedValue: Boolean(selectedFilters[COMMUTABLE_FILTER_ID])
+  },
+  {
     id: 'jobCategory',
     title: '희망 직무',
     type: 'jobCategoryCascade',
@@ -1078,7 +1141,8 @@ const buildFilterGroups = (selectedFilters, optionState) => [
     title: '근무지역',
     type: 'select',
     options: [FILTER_ALL_VALUE, ...uniqueOptions(optionState.regions).map((option) => option.label).filter(Boolean)],
-    selectedValue: selectedFilters.region || FILTER_ALL_VALUE
+    selectedValue: selectedFilters[COMMUTABLE_FILTER_ID] ? FILTER_ALL_VALUE : selectedFilters.region || FILTER_ALL_VALUE,
+    disabled: Boolean(selectedFilters[COMMUTABLE_FILTER_ID])
   },
   createFilterGroup('employmentType', '고용형태', uniqueOptions(optionState.employmentTypes), selectedFilters.employmentType),
   createFilterGroup('salaryType', '급여 방식', uniqueOptions(optionState.salaryTypes), selectedFilters.salaryType)
@@ -1148,7 +1212,7 @@ const filterJobsByMapSearchQuery = (jobs, searchQuery) => {
   });
 };
 
-export const filterAccessibilityMapJobs = (jobs, selectedFilters, jobCategories = []) =>
+export const filterAccessibilityMapJobs = (jobs, selectedFilters, jobCategories = [], selectedProfile = null) =>
   jobs.filter((job) => {
     const source = job.source || {};
     const jobCategoryTerms = getJobCategoryTerms(jobCategories, selectedFilters.jobCategory);
@@ -1172,7 +1236,8 @@ export const filterAccessibilityMapJobs = (jobs, selectedFilters, jobCategories 
     return (
       (!normalizedJobCategoryTerms.length || includesAnyTerm(jobText, normalizedJobCategoryTerms)) &&
       (!employmentTerms.length || selectedFilters.employmentType === FILTER_ALL_VALUE || includesAnyTerm(job.employmentType || getFirstPresentValue(source.empType, source.emp_type), employmentTerms)) &&
-      (!regionTerms.length || includesAnyTerm(regionText, regionTerms)) &&
+      (selectedFilters[COMMUTABLE_FILTER_ID] || !regionTerms.length || includesAnyTerm(regionText, regionTerms)) &&
+      (!selectedFilters[COMMUTABLE_FILTER_ID] || isCommutableJob(job, selectedProfile)) &&
       (!salaryTerms.length || selectedFilters.salaryType === FILTER_ALL_VALUE || includesAnyTerm(job.salaryType || getFirstPresentValue(source.salaryType, source.salary_type), salaryTerms))
     );
   });
@@ -1496,13 +1561,13 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
   const selectedPersona = selectedProfileSummary?.personaKey || 'wheelchair';
   const allJobs = recommendationState.jobs;
   const filteredJobs = useMemo(() => {
-    const filterMatchedJobs = filterAccessibilityMapJobs(allJobs, selectedFilters, filterOptions.jobCategories);
+    const filterMatchedJobs = filterAccessibilityMapJobs(allJobs, selectedFilters, filterOptions.jobCategories, selectedProfile);
     const searchMatchedJobs = filterJobsByMapSearchQuery(
       filterMatchedJobs,
       hasAppliedConditions ? searchQuery : ''
     );
     return sortMapJobs(searchMatchedJobs, sortMode);
-  }, [allJobs, filterOptions.jobCategories, hasAppliedConditions, searchQuery, selectedFilters, sortMode]);
+  }, [allJobs, filterOptions.jobCategories, hasAppliedConditions, searchQuery, selectedFilters, selectedProfile, sortMode]);
   const filterGroups = useMemo(
     () => buildFilterGroups(selectedFilters, filterOptions),
     [filterOptions, selectedFilters]
@@ -2354,7 +2419,11 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
   }, []);
 
   const applyFilters = useCallback((filters) => {
-    setSelectedFilters(filters || {});
+    const nextFilters = {
+      ...(filters || {}),
+      region: filters?.[COMMUTABLE_FILTER_ID] ? FILTER_ALL_VALUE : filters?.region
+    };
+    setSelectedFilters(nextFilters);
     setAppliedAiEnabled(isAiEnabled);
     setSortMode(isAiEnabled ? 'score_desc' : 'latest_desc');
     setHasAppliedConditions(true);
