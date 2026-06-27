@@ -437,7 +437,7 @@ export function TrafficFilterPanel({
               onClick={onLoadMoreJobs}
               disabled={isLoadingMoreJobs}
             >
-              20개 더 불러오기
+              100개 더 불러오기
             </button>
           ) : null}
         </div>

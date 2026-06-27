@@ -18,8 +18,8 @@ import { useProfiles } from './useProfiles';
 
 const MAP_RECOMMEND_REQUEST_TIMEOUT_MS = 3 * 60 * 1000;
 const MAP_RECOMMEND_POLL_INTERVAL_MS = 500;
-const MAP_PAGE_SIZE = 20;
-const MAP_MAX_RESULTS = 100;
+const MAP_PAGE_SIZE = 100;
+const MAP_MAX_RESULTS = 1000;
 const MAP_INCREMENTAL_APPEND_DELAY_MS = 220;
 const MAP_ACTIVE_TASK_SCOPE = 'accessibility-map';
 const FILTER_ALL_VALUE = '전체';

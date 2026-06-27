@@ -32,8 +32,8 @@ const FILTER_ALL_VALUE = '전체';
 const RECOMMEND_TASK_POLL_INTERVAL_MS = 500;
 const RECOMMEND_REQUEST_TIMEOUT_MS = 3 * 60 * 1000;
 const POPULAR_AUTOPLAY_INTERVAL_MS = 3600;
-const QUICK_PAGE_SIZE = 20;
-const QUICK_MAX_RESULTS = 100;
+const QUICK_PAGE_SIZE = 100;
+const QUICK_MAX_RESULTS = 1000;
 const QUICK_INCREMENTAL_APPEND_DELAY_MS = 220;
 const QUICK_EXPLAIN_CACHE_STORAGE_KEY = 'bridgework.quick.explain.cache.v2';
 const QUICK_ACTIVE_TASK_SCOPE = 'quick';
@@ -2896,7 +2896,7 @@ export function MainPage({ view = 'home' }) {
                         onClick={loadMoreQuickRecommendations}
                         disabled={quickState.isLoadingMore || isQuickLoading}
                       >
-                        20개 더 불러오기
+                        100개 더 불러오기
                       </button>
                     ) : null}
                   </div>
