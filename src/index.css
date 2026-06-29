@@ -8243,11 +8243,45 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 .accessibility-map__job-map-marker.is-selected:not(.is-cluster) {
   background: var(--job-marker-color);
   color: #ffffff;
-  min-width: 220px;
-  width: 220px;
-  max-width: 220px;
+  min-width: 280px;
+  width: 280px;
+  max-width: 280px;
   transform: none;
   z-index: 30;
+}
+
+.accessibility-map__job-map-marker.is-pin:not(.is-cluster) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  width: 20px;
+  max-width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 999px;
+  border-width: 2px;
+  border-color: #ffffff;
+  background: var(--job-marker-color);
+  box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.12), 0 3px 8px rgba(17, 24, 39, 0.18);
+  transform: none;
+  z-index: 20;
+}
+
+.accessibility-map__job-map-marker.is-popup:not(.is-cluster) {
+  display: inline-grid;
+  grid-template-columns: 12px minmax(0, 1fr) 1px auto;
+  align-items: center;
+  gap: 9px;
+  min-width: 280px;
+  width: 280px;
+  max-width: 280px;
+  height: 44px;
+  padding: 0 12px;
+  border-color: var(--job-marker-color);
+  border-radius: 10px;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.2), 0 1px 2px rgba(15, 23, 42, 0.1);
+  transform: none;
 }
 
 .accessibility-map__job-map-marker.is-zoom-compact.is-selected::after {
@@ -8263,21 +8297,6 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   height: 16px;
   background: var(--job-marker-color);
   z-index: -1;
-}
-
-.accessibility-map__job-map-marker.is-selected:not(.is-cluster)::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: -16px;
-  width: 12px;
-  height: 12px;
-  border: 2px solid #ffffff;
-  border-radius: 999px;
-  background: var(--job-marker-color);
-  box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.12), 0 3px 8px rgba(17, 24, 39, 0.18);
-  transform: translateX(-50%);
-  z-index: 2;
 }
 
 .accessibility-map__job-map-marker.is-cluster.is-selected::after {
@@ -8342,6 +8361,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):hover > .accessibility-map__job-map-marker-dot,
+.accessibility-map__job-map-marker.is-popup:not(.is-cluster) > .accessibility-map__job-map-marker-dot,
 .accessibility-map__job-map-marker.is-selected:not(.is-cluster) > .accessibility-map__job-map-marker-dot {
   display: block;
 }

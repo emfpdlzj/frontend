@@ -27,6 +27,24 @@ test('지도 확대 상태에서는 같은 위치의 공고 마커를 개수 클
   expect(cluster.members.map((member) => member.id)).toEqual(['job-1', 'job-2']);
 });
 
+test('같은 좌표의 여러 공고는 최대 확대 상태에서도 숫자 마커로 유지한다', () => {
+  const markers = [
+    officeMarker('job-1', 37.501234, 127.001234, { score: 82, isSelected: true }),
+    officeMarker('job-2', 37.501234, 127.001234, { score: 75, tone: 'warning' })
+  ];
+
+  const [cluster] = toRenderableMarkers(markers, 20);
+
+  expect(cluster).toMatchObject({
+    type: 'office-cluster',
+    count: 2,
+    isSelected: true
+  });
+  expect(cluster.members.find((member) => member.id === 'job-1')).toMatchObject({
+    isSelected: true
+  });
+});
+
 test('지도 축소 상태에서는 같은 위치 공고만 숫자로 묶고 가까운 공고는 각각 점으로 보여준다', () => {
   const markers = [
     officeMarker('job-1', 37.50121, 127.00121, { score: 72, tone: 'warning' }),

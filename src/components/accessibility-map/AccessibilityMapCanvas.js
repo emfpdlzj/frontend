@@ -29,6 +29,11 @@ const MARKER_ZOOM_MODE = {
   COMPACT: 'compact',
   DOT: 'dot'
 };
+const MARKER_DISPLAY_MODE = {
+  DEFAULT: 'default',
+  PIN: 'pin',
+  POPUP: 'popup'
+};
 const OFFICE_LABEL_CLUSTER_DECIMALS_BY_ZOOM = [
   [20, 6],
   [19, 5],
@@ -73,8 +78,12 @@ function getOfficeMarkerAnchor(marker, zoomMode) {
     return new window.naver.maps.Point(14, 14);
   }
 
-  if (marker.isSelected) {
-    return new window.naver.maps.Point(110, 54);
+  if (marker.displayMode === MARKER_DISPLAY_MODE.PIN) {
+    return new window.naver.maps.Point(10, 10);
+  }
+
+  if (marker.displayMode === MARKER_DISPLAY_MODE.POPUP || marker.isSelected) {
+    return new window.naver.maps.Point(140, 62);
   }
 
   if (zoomMode === MARKER_ZOOM_MODE.DOT) {
@@ -153,6 +162,8 @@ function createMarkerElement(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) {
   wrapper.className = [
     'accessibility-map__job-map-marker',
     markerType === 'office-cluster' ? 'is-cluster' : '',
+    marker.displayMode === MARKER_DISPLAY_MODE.PIN ? 'is-pin' : '',
+    marker.displayMode === MARKER_DISPLAY_MODE.POPUP ? 'is-popup' : '',
     `is-${tone}`,
     `is-zoom-${zoomMode}`,
     marker.isSelected ? 'is-selected' : '',
@@ -381,6 +392,7 @@ function AccessibilityMapCanvasComponent({
   const currentLocationMarkerRef = useRef(null);
   const markerRefs = useRef([]);
   const profileSelectRef = useRef(null);
+  const hoverCloseTimerRef = useRef(null);
   const [mapScriptStatus, setMapScriptStatus] = useState(() =>
     NAVER_MAP_CONFIG.clientId ? 'loading' : 'missing-client-id'
   );
@@ -412,6 +424,22 @@ function AccessibilityMapCanvasComponent({
     () => profiles.find((profile) => profile.id === String(selectedProfileId)) || null,
     [profiles, selectedProfileId]
   );
+  const openMarkerHover = useCallback((markerId) => {
+    if (hoverCloseTimerRef.current) {
+      window.clearTimeout(hoverCloseTimerRef.current);
+      hoverCloseTimerRef.current = null;
+    }
+    setHoveredMarkerId(markerId);
+  }, []);
+  const closeMarkerHover = useCallback((markerId) => {
+    if (hoverCloseTimerRef.current) {
+      window.clearTimeout(hoverCloseTimerRef.current);
+    }
+    hoverCloseTimerRef.current = window.setTimeout(() => {
+      setHoveredMarkerId((current) => (current === markerId ? '' : current));
+      hoverCloseTimerRef.current = null;
+    }, 80);
+  }, []);
 
   useEffect(() => {
     if (!showProfileSelect) {
@@ -638,87 +666,144 @@ function AccessibilityMapCanvasComponent({
     markerRefs.current.forEach((marker) => marker.setMap(null));
     markerRefs.current = renderableMarkers
       .map((marker) => {
-        const isHoverPreview =
+        const isPinnedOfficeMarker =
           marker.type === 'office' &&
-          !marker.isSelected &&
-          markerZoomMode === MARKER_ZOOM_MODE.DOT &&
-          hoveredMarkerId === marker.id;
-        const renderedMarker = isHoverPreview ? { ...marker, isHovered: true } : marker;
-        const renderedZoomMode = isHoverPreview ? MARKER_ZOOM_MODE.DETAIL : markerZoomMode;
-        const icon = createMarkerIcon(renderedMarker, renderedZoomMode);
+          (marker.isSelected || markerZoomMode === MARKER_ZOOM_MODE.DOT);
+        const shouldRenderPopup =
+          marker.type === 'office' &&
+          (marker.isSelected || (markerZoomMode === MARKER_ZOOM_MODE.DOT && hoveredMarkerId === marker.id));
+        const selectedClusterMember = marker.type === 'office-cluster'
+          ? marker.members?.find((member) => member.isSelected)
+          : null;
+        const markerDescriptors = [
+          {
+            source: marker,
+            rendered: isPinnedOfficeMarker
+              ? { ...marker, displayMode: MARKER_DISPLAY_MODE.PIN, isSelected: false, isHovered: false }
+              : marker,
+            zoomMode: isPinnedOfficeMarker ? MARKER_ZOOM_MODE.DOT : markerZoomMode,
+            kind: 'base'
+          },
+          shouldRenderPopup
+            ? {
+                source: marker,
+                rendered: {
+                  ...marker,
+                  displayMode: MARKER_DISPLAY_MODE.POPUP,
+                  isHovered: !marker.isSelected && hoveredMarkerId === marker.id
+                },
+                zoomMode: MARKER_ZOOM_MODE.DETAIL,
+                kind: 'popup'
+              }
+            : null,
+          selectedClusterMember
+            ? {
+                source: {
+                  ...selectedClusterMember,
+                  lat: marker.lat,
+                  lng: marker.lng
+                },
+                rendered: {
+                  ...selectedClusterMember,
+                  lat: marker.lat,
+                  lng: marker.lng,
+                  displayMode: MARKER_DISPLAY_MODE.POPUP,
+                  isSelected: true,
+                  isHovered: false
+                },
+                zoomMode: MARKER_ZOOM_MODE.DETAIL,
+                kind: 'popup'
+              }
+            : null
+        ].filter(Boolean);
 
-        if (marker.type === 'office-cluster' && icon.content instanceof HTMLElement) {
-          const handleClusterOpen = () => {
-            setExpandedClusterKey(marker.clusterKey);
-          };
-          icon.content.dataset.clusterKey = marker.clusterKey;
-          icon.content.addEventListener('click', (event) => {
-            const memberButton = event.target.closest?.('[data-marker-member-id]');
-            if (memberButton) {
-              event.preventDefault();
-              event.stopPropagation();
-              setExpandedClusterKey('');
-              onSelectMarker?.(memberButton.dataset.markerMemberId);
-              return;
-            }
+        return markerDescriptors.map(({ source, rendered, zoomMode, kind }) => {
+          const icon = createMarkerIcon(rendered, zoomMode);
 
-            handleClusterOpen();
-          });
-          icon.content.addEventListener('keydown', (event) => {
-            const memberButton = event.target.closest?.('[data-marker-member-id]');
-            if (memberButton && (event.key === 'Enter' || event.key === ' ')) {
-              event.preventDefault();
-              event.stopPropagation();
-              setExpandedClusterKey('');
-              onSelectMarker?.(memberButton.dataset.markerMemberId);
-              return;
-            }
+          if (source.type === 'office-cluster' && icon.content instanceof HTMLElement) {
+            const handleClusterOpen = () => {
+              setExpandedClusterKey(source.clusterKey);
+            };
+            icon.content.dataset.clusterKey = source.clusterKey;
+            icon.content.addEventListener('click', (event) => {
+              const memberButton = event.target.closest?.('[data-marker-member-id]');
+              if (memberButton) {
+                event.preventDefault();
+                event.stopPropagation();
+                setExpandedClusterKey('');
+                onSelectMarker?.(memberButton.dataset.markerMemberId);
+                return;
+              }
 
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
               handleClusterOpen();
-            }
-          });
-        }
+            });
+            icon.content.addEventListener('keydown', (event) => {
+              const memberButton = event.target.closest?.('[data-marker-member-id]');
+              if (memberButton && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault();
+                event.stopPropagation();
+                setExpandedClusterKey('');
+                onSelectMarker?.(memberButton.dataset.markerMemberId);
+                return;
+              }
 
-        if (marker.type === 'office' && icon.content instanceof HTMLElement) {
-          icon.content.addEventListener('mouseenter', () => {
-            if (marker.isSelected) {
-              return;
-            }
-            setHoveredMarkerId(marker.id);
-          });
-          icon.content.addEventListener('mouseleave', () => {
-            setHoveredMarkerId((current) => (current === marker.id ? '' : current));
-          });
-        }
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handleClusterOpen();
+              }
+            });
+          }
 
-        const mapMarker = new window.naver.maps.Marker({
-          position: new window.naver.maps.LatLng(Number(marker.lat), Number(marker.lng)),
-          map: mapInstanceRef.current,
-          title: marker.label,
-          icon
+          if (source.type === 'office' && icon.content instanceof HTMLElement) {
+            icon.content.addEventListener('mouseenter', () => {
+              if (source.isSelected) {
+                return;
+              }
+              openMarkerHover(source.id);
+            });
+            icon.content.addEventListener('mouseleave', () => {
+              closeMarkerHover(source.id);
+            });
+          }
+
+          const mapMarker = new window.naver.maps.Marker({
+            position: new window.naver.maps.LatLng(Number(source.lat), Number(source.lng)),
+            map: mapInstanceRef.current,
+            title: source.label,
+            icon,
+            zIndex: kind === 'popup' ? 30 : source.type === 'office-cluster' ? 20 : 10
+          });
+
+          if (source.type === 'office') {
+            window.naver.maps.Event.addListener(mapMarker, 'mouseover', () => {
+              if (source.isSelected) {
+                return;
+              }
+              openMarkerHover(source.id);
+            });
+            window.naver.maps.Event.addListener(mapMarker, 'mouseout', () => {
+              closeMarkerHover(source.id);
+            });
+            window.naver.maps.Event.addListener(mapMarker, 'click', () => {
+              setExpandedClusterKey('');
+              onSelectMarker?.(source.id);
+            });
+          }
+
+          return mapMarker;
         });
-
-        if (marker.type === 'office') {
-          window.naver.maps.Event.addListener(mapMarker, 'mouseover', () => {
-            if (marker.isSelected) {
-              return;
-            }
-            setHoveredMarkerId(marker.id);
-          });
-          window.naver.maps.Event.addListener(mapMarker, 'mouseout', () => {
-            setHoveredMarkerId((current) => (current === marker.id ? '' : current));
-          });
-          window.naver.maps.Event.addListener(mapMarker, 'click', () => {
-            setExpandedClusterKey('');
-            onSelectMarker?.(marker.id);
-          });
-        }
-
-        return mapMarker;
-      });
-  }, [hoveredMarkerId, mapScriptStatus, markerZoomMode, onSelectMarker, renderableMarkers, viewState]);
+      })
+      .flat();
+  }, [
+    closeMarkerHover,
+    hoveredMarkerId,
+    mapScriptStatus,
+    markerZoomMode,
+    onSelectMarker,
+    openMarkerHover,
+    renderableMarkers,
+    viewState
+  ]);
 
   useEffect(() => {
     if (!expandedClusterKey) {
@@ -749,6 +834,9 @@ function AccessibilityMapCanvasComponent({
       markerRefs.current.forEach((marker) => marker.setMap(null));
       if (mapElementRef.current) {
         mapElementRef.current.innerHTML = '';
+      }
+      if (hoverCloseTimerRef.current) {
+        window.clearTimeout(hoverCloseTimerRef.current);
       }
       currentLocationMarkerRef.current = null;
       markerRefs.current = [];
