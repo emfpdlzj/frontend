@@ -358,11 +358,11 @@ export function AccessibilityMapDetailPanel({
                   {explanationViewState === 'success' ? (
                     <>
                       <span className="jobs-detail__eyebrow">추천 요약</span>
-                      <strong>{normalizedShortSummary || '추천 설명을 확인했습니다.'}</strong>
+                      <p>{normalizedShortSummary || '추천 설명을 확인했습니다.'}</p>
                     </>
                   ) : null}
                   {explanationViewState !== 'loading' && explanationViewState !== 'error' && explanationViewState !== 'success' ? (
-                    <strong>추천 요약을 불러오면 이곳에 표시됩니다.</strong>
+                    <p>추천 요약을 불러오면 이곳에 표시됩니다.</p>
                   ) : null}
                 </div>
               </div>

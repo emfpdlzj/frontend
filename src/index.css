@@ -8898,14 +8898,6 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   color: #cf3542;
 }
 
-.accessibility-map__score-summary strong {
-  display: block;
-  margin-top: 6px;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.5;
-}
-
 .accessibility-map__score-summary p {
   margin: 8px 0 0;
   color: #293241;
