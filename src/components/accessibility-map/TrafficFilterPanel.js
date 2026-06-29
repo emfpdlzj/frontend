@@ -508,7 +508,7 @@ export function TrafficFilterPanel({
               <span>검색 결과 {resultCount}개</span>
               {appliedAiEnabled && totalJobCount > resultCount ? <span> / 최대 {totalJobCount}개</span> : null}
             </h3>
-            {isCommutableOnlyApplied ? (
+            {appliedAiEnabled && isCommutableOnlyApplied ? (
               <p className="accessibility-map__results-subtext">통근 가능한 기업 공고 {resultCount}개</p>
             ) : null}
           </div>

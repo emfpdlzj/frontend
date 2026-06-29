@@ -29,6 +29,11 @@ const MARKER_ZOOM_MODE = {
   COMPACT: 'compact',
   DOT: 'dot'
 };
+const OFFICE_LABEL_CLUSTER_DECIMALS_BY_ZOOM = [
+  [20, 6],
+  [19, 5],
+  [18, 4]
+];
 
 function createNaverLatLng(location) {
   if (!location) {
@@ -48,7 +53,7 @@ function escapeHtml(value) {
 }
 
 function getSafeMarkerType(type) {
-  return ['office', 'support-agency'].includes(type) ? type : 'support-agency';
+  return ['office', 'office-cluster', 'support-agency'].includes(type) ? type : 'support-agency';
 }
 
 function getSafeOfficeMarkerTone(tone) {
@@ -57,16 +62,21 @@ function getSafeOfficeMarkerTone(tone) {
 
 function getMarkerZoomMode(zoom) {
   const normalizedZoom = Number(zoom);
-  if (!Number.isFinite(normalizedZoom) || normalizedZoom >= 15) {
+  if (!Number.isFinite(normalizedZoom) || normalizedZoom >= 18) {
     return MARKER_ZOOM_MODE.DETAIL;
-  }
-  if (normalizedZoom >= 13) {
-    return MARKER_ZOOM_MODE.COMPACT;
   }
   return MARKER_ZOOM_MODE.DOT;
 }
 
 function getOfficeMarkerAnchor(marker, zoomMode) {
+  if (marker.type === 'office-cluster') {
+    return new window.naver.maps.Point(14, 14);
+  }
+
+  if (marker.isSelected) {
+    return new window.naver.maps.Point(110, 54);
+  }
+
   if (zoomMode === MARKER_ZOOM_MODE.DOT) {
     return new window.naver.maps.Point(10, 10);
   }
@@ -79,6 +89,44 @@ function getOfficeMarkerAnchor(marker, zoomMode) {
   return marker.isSelected
     ? new window.naver.maps.Point(76, 54)
     : new window.naver.maps.Point(76, 22);
+}
+
+function getStableMarkerId(marker) {
+  return String(marker.id || `${marker.lat}:${marker.lng}:${marker.label || ''}`);
+}
+
+function getClusterKey(markers) {
+  return markers.map(getStableMarkerId).sort().join('|');
+}
+
+function getLabelClusterDecimals(zoom) {
+  const normalizedZoom = Number(zoom);
+  const [, decimals] = OFFICE_LABEL_CLUSTER_DECIMALS_BY_ZOOM.find(([minZoom]) => normalizedZoom >= minZoom) ||
+    OFFICE_LABEL_CLUSTER_DECIMALS_BY_ZOOM[OFFICE_LABEL_CLUSTER_DECIMALS_BY_ZOOM.length - 1];
+  return decimals;
+}
+
+function groupOfficeMarkers(markers, zoom) {
+  const zoomMode = getMarkerZoomMode(zoom);
+  const decimals = zoomMode === MARKER_ZOOM_MODE.DETAIL ? getLabelClusterDecimals(zoom) : 6;
+  const groups = new Map();
+
+  markers.forEach((marker) => {
+    const key = `${Number(marker.lat).toFixed(decimals)}:${Number(marker.lng).toFixed(decimals)}`;
+    const group = groups.get(key) || {
+      lat: 0,
+      lng: 0,
+      members: []
+    };
+    group.members.push(marker);
+    groups.set(key, group);
+  });
+
+  return Array.from(groups.values()).map((group) => ({
+    ...group,
+    lat: group.members.reduce((sum, marker) => sum + Number(marker.lat), 0) / group.members.length,
+    lng: group.members.reduce((sum, marker) => sum + Number(marker.lng), 0) / group.members.length
+  }));
 }
 
 function createMarkerElement(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) {
@@ -104,18 +152,33 @@ function createMarkerElement(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) {
   const hasScore = typeof marker.score === 'number' && Number.isFinite(marker.score);
   wrapper.className = [
     'accessibility-map__job-map-marker',
+    markerType === 'office-cluster' ? 'is-cluster' : '',
     `is-${tone}`,
     `is-zoom-${zoomMode}`,
     marker.isSelected ? 'is-selected' : '',
+    marker.isHovered ? 'is-hovered' : '',
+    marker.isExpanded ? 'is-expanded' : '',
     hasScore ? '' : 'is-no-score'
   ].filter(Boolean).join(' ');
-  wrapper.setAttribute('aria-hidden', 'true');
+
+  if (markerType === 'office-cluster') {
+    wrapper.setAttribute('role', 'button');
+    wrapper.setAttribute('tabindex', '0');
+    wrapper.setAttribute('aria-expanded', marker.isExpanded ? 'true' : 'false');
+    wrapper.setAttribute('aria-label', `${marker.count}개 공고가 같은 위치에 있습니다. 선택 목록 ${marker.isExpanded ? '접기' : '펼치기'}`);
+  } else {
+    wrapper.setAttribute('aria-hidden', 'true');
+  }
 
   const dot = document.createElement('span');
   dot.className = 'accessibility-map__job-map-marker-dot';
 
   const label = document.createElement('strong');
-  label.textContent = marker.displayLabel || marker.label || '회사';
+  if (markerType === 'office-cluster') {
+    label.textContent = String(marker.count);
+  } else {
+    label.textContent = marker.displayLabel || marker.label || '회사';
+  }
 
   const divider = document.createElement('span');
   divider.className = 'accessibility-map__job-map-marker-divider';
@@ -126,6 +189,69 @@ function createMarkerElement(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) {
     score.textContent = String(marker.score);
     wrapper.append(divider, score);
   }
+
+  if (markerType === 'office-cluster' && Array.isArray(marker.members)) {
+    const menu = document.createElement('div');
+    menu.className = 'accessibility-map__marker-cluster-menu';
+    menu.setAttribute('role', 'listbox');
+    menu.setAttribute('aria-label', '같은 위치 공고 선택');
+
+    marker.members.slice(0, 8).forEach((member) => {
+      const button = document.createElement('button');
+      const memberTone = getSafeOfficeMarkerTone(member.tone);
+      button.type = 'button';
+      button.className = [
+        'accessibility-map__marker-cluster-option',
+        `is-${memberTone}`,
+        member.isSelected ? 'is-selected' : ''
+      ].filter(Boolean).join(' ');
+      button.dataset.markerMemberId = member.id;
+      button.setAttribute('role', 'option');
+      button.setAttribute('aria-selected', member.isSelected ? 'true' : 'false');
+
+      const dot = document.createElement('span');
+      dot.className = 'accessibility-map__marker-cluster-dot';
+      dot.setAttribute('aria-hidden', 'true');
+
+      const textWrap = document.createElement('span');
+      textWrap.className = 'accessibility-map__marker-cluster-text';
+
+      const main = document.createElement('span');
+      main.className = 'accessibility-map__marker-cluster-main';
+      const name = document.createElement('strong');
+      name.textContent = member.label || '회사명 확인 필요';
+      const divider = document.createElement('span');
+      divider.className = 'accessibility-map__marker-cluster-divider';
+      divider.setAttribute('aria-hidden', 'true');
+      const score = document.createElement('em');
+      score.className = 'accessibility-map__marker-cluster-score';
+      score.textContent = typeof member.score === 'number' && Number.isFinite(member.score)
+        ? `${member.score}점`
+        : '';
+      main.append(name, divider, score);
+
+      const meta = document.createElement('span');
+      meta.className = 'accessibility-map__marker-cluster-meta';
+      const title = document.createElement('span');
+      title.className = 'accessibility-map__marker-cluster-title';
+      title.textContent = member.title || '';
+
+      meta.append(title);
+      textWrap.append(main, meta);
+      button.append(dot, textWrap);
+      menu.append(button);
+    });
+
+    if (marker.members.length > 8) {
+      const more = document.createElement('span');
+      more.className = 'accessibility-map__marker-cluster-more';
+      more.textContent = `외 ${marker.members.length - 8}개`;
+      menu.append(more);
+    }
+
+    wrapper.append(menu);
+  }
+
   return wrapper;
 }
 
@@ -137,7 +263,7 @@ function createMarkerIcon(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) {
     };
   }
 
-  if (marker.type === 'office') {
+  if (marker.type === 'office' || marker.type === 'office-cluster') {
     return {
       content: createMarkerElement(marker, zoomMode),
       anchor: getOfficeMarkerAnchor(marker, zoomMode)
@@ -145,8 +271,8 @@ function createMarkerIcon(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) {
   }
 
   return {
-    content: `<div class="accessibility-map__marker is-sdk is-${escapeHtml(marker.type || 'support-agency')}" aria-hidden="true">기관</div>`,
-    anchor: new window.naver.maps.Point(24, 24)
+    content: `<div class="accessibility-map__marker is-sdk is-${escapeHtml(marker.type || 'unknown')}" aria-hidden="true"></div>`,
+    anchor: new window.naver.maps.Point(8, 8)
   };
 }
 
@@ -169,17 +295,54 @@ function getMarkerGridDecimals(zoom) {
   return decimals;
 }
 
-function toRenderableMarkers(markers, zoom) {
+export function toRenderableMarkers(markers, zoom, expandedClusterKey = '') {
   const validMarkers = markers.filter((marker) => Number.isFinite(Number(marker.lat)) && Number.isFinite(Number(marker.lng)));
+  const supportMarkers = validMarkers.filter((marker) => marker.type !== 'office');
+  const officeMarkers = validMarkers.filter((marker) => marker.type === 'office');
+  const visualGroups = groupOfficeMarkers(officeMarkers, zoom);
 
-  if (validMarkers.length <= MAX_RENDERED_MARKERS) {
-    return validMarkers;
+  const groupedOfficeMarkers = visualGroups.map((group) => {
+    const members = group.members;
+    if (members.length === 1) {
+      return {
+        ...members[0],
+        clusterKey: getClusterKey(members)
+      };
+    }
+
+    const clusterKey = getClusterKey(members);
+    const selectedMember = members.find((marker) => marker.isSelected);
+    const scoredMembers = members.filter((marker) => typeof marker.score === 'number' && Number.isFinite(marker.score));
+    const bestScore = scoredMembers.length ? Math.max(...scoredMembers.map((marker) => marker.score)) : null;
+    const toneSource = selectedMember || scoredMembers.find((marker) => marker.score === bestScore) || members[0];
+
+    return {
+      id: `cluster:${clusterKey}`,
+      clusterKey,
+      label: `${members.length}개 공고`,
+      displayLabel: `${members.length}개`,
+      count: members.length,
+      score: bestScore,
+      tone: toneSource.tone,
+      isSelected: Boolean(selectedMember),
+      isExpanded: expandedClusterKey === clusterKey,
+      lat: group.lat,
+      lng: group.lng,
+      type: 'office-cluster',
+      members
+    };
+  });
+
+  const groupedMarkers = [...groupedOfficeMarkers, ...supportMarkers];
+
+  if (groupedMarkers.length <= MAX_RENDERED_MARKERS) {
+    return groupedMarkers;
   }
 
   const decimals = getMarkerGridDecimals(zoom);
   const cells = new Map();
 
-  validMarkers.forEach((marker) => {
+  groupedMarkers.forEach((marker) => {
     const lat = Number(marker.lat).toFixed(decimals);
     const lng = Number(marker.lng).toFixed(decimals);
     const key = `${lat}:${lng}:${getSafeMarkerType(marker.type)}`;
@@ -224,8 +387,19 @@ function AccessibilityMapCanvasComponent({
   const [mapInitError, setMapInitError] = useState('');
   const [mapZoom, setMapZoom] = useState(viewport.zoom);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [expandedClusterKey, setExpandedClusterKey] = useState('');
+  const [hoveredMarkerId, setHoveredMarkerId] = useState('');
   const markerZoomMode = useMemo(() => getMarkerZoomMode(mapZoom), [mapZoom]);
-  const renderableMarkers = useMemo(() => toRenderableMarkers(markers, mapZoom), [markers, mapZoom]);
+  const renderableMarkers = useMemo(
+    () => toRenderableMarkers(markers, mapZoom, expandedClusterKey),
+    [expandedClusterKey, markers, mapZoom]
+  );
+  const selectedClusterKey = useMemo(() => {
+    const selectedCluster = renderableMarkers.find(
+      (marker) => marker.type === 'office-cluster' && marker.members?.some((member) => member.isSelected)
+    );
+    return selectedCluster?.clusterKey || '';
+  }, [renderableMarkers]);
   const officeMarkerCount = useMemo(
     () => markers.filter((marker) => marker.type === 'office').length,
     [markers]
@@ -244,6 +418,36 @@ function AccessibilityMapCanvasComponent({
       setIsProfileMenuOpen(false);
     }
   }, [showProfileSelect]);
+
+  useEffect(() => {
+    if (!expandedClusterKey) {
+      return;
+    }
+
+    const hasExpandedCluster = renderableMarkers.some(
+      (marker) => marker.type === 'office-cluster' && marker.clusterKey === expandedClusterKey
+    );
+    if (!hasExpandedCluster) {
+      setExpandedClusterKey('');
+    }
+  }, [expandedClusterKey, renderableMarkers]);
+
+  useEffect(() => {
+    if (selectedClusterKey) {
+      setExpandedClusterKey(selectedClusterKey);
+    }
+  }, [selectedClusterKey]);
+
+  useEffect(() => {
+    if (!hoveredMarkerId) {
+      return;
+    }
+
+    const hasHoveredMarker = renderableMarkers.some((marker) => marker.id === hoveredMarkerId);
+    if (!hasHoveredMarker) {
+      setHoveredMarkerId('');
+    }
+  }, [hoveredMarkerId, renderableMarkers]);
 
   useEffect(() => {
     let isMounted = true;
@@ -434,22 +638,108 @@ function AccessibilityMapCanvasComponent({
     markerRefs.current.forEach((marker) => marker.setMap(null));
     markerRefs.current = renderableMarkers
       .map((marker) => {
+        const isHoverPreview =
+          marker.type === 'office' &&
+          !marker.isSelected &&
+          markerZoomMode === MARKER_ZOOM_MODE.DOT &&
+          hoveredMarkerId === marker.id;
+        const renderedMarker = isHoverPreview ? { ...marker, isHovered: true } : marker;
+        const renderedZoomMode = isHoverPreview ? MARKER_ZOOM_MODE.DETAIL : markerZoomMode;
+        const icon = createMarkerIcon(renderedMarker, renderedZoomMode);
+
+        if (marker.type === 'office-cluster' && icon.content instanceof HTMLElement) {
+          const handleClusterOpen = () => {
+            setExpandedClusterKey(marker.clusterKey);
+          };
+          icon.content.dataset.clusterKey = marker.clusterKey;
+          icon.content.addEventListener('click', (event) => {
+            const memberButton = event.target.closest?.('[data-marker-member-id]');
+            if (memberButton) {
+              event.preventDefault();
+              event.stopPropagation();
+              setExpandedClusterKey('');
+              onSelectMarker?.(memberButton.dataset.markerMemberId);
+              return;
+            }
+
+            handleClusterOpen();
+          });
+          icon.content.addEventListener('keydown', (event) => {
+            const memberButton = event.target.closest?.('[data-marker-member-id]');
+            if (memberButton && (event.key === 'Enter' || event.key === ' ')) {
+              event.preventDefault();
+              event.stopPropagation();
+              setExpandedClusterKey('');
+              onSelectMarker?.(memberButton.dataset.markerMemberId);
+              return;
+            }
+
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              handleClusterOpen();
+            }
+          });
+        }
+
+        if (marker.type === 'office' && icon.content instanceof HTMLElement) {
+          icon.content.addEventListener('mouseenter', () => {
+            if (marker.isSelected) {
+              return;
+            }
+            setHoveredMarkerId(marker.id);
+          });
+          icon.content.addEventListener('mouseleave', () => {
+            setHoveredMarkerId((current) => (current === marker.id ? '' : current));
+          });
+        }
+
         const mapMarker = new window.naver.maps.Marker({
           position: new window.naver.maps.LatLng(Number(marker.lat), Number(marker.lng)),
           map: mapInstanceRef.current,
           title: marker.label,
-          icon: createMarkerIcon(marker, markerZoomMode)
+          icon
         });
 
         if (marker.type === 'office') {
+          window.naver.maps.Event.addListener(mapMarker, 'mouseover', () => {
+            if (marker.isSelected) {
+              return;
+            }
+            setHoveredMarkerId(marker.id);
+          });
+          window.naver.maps.Event.addListener(mapMarker, 'mouseout', () => {
+            setHoveredMarkerId((current) => (current === marker.id ? '' : current));
+          });
           window.naver.maps.Event.addListener(mapMarker, 'click', () => {
+            setExpandedClusterKey('');
             onSelectMarker?.(marker.id);
           });
         }
 
         return mapMarker;
       });
-  }, [mapScriptStatus, markerZoomMode, onSelectMarker, renderableMarkers, viewState]);
+  }, [hoveredMarkerId, mapScriptStatus, markerZoomMode, onSelectMarker, renderableMarkers, viewState]);
+
+  useEffect(() => {
+    if (!expandedClusterKey) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event) => {
+      const clusterElement = event.target.closest?.('[data-cluster-key]');
+      if (clusterElement?.dataset?.clusterKey === expandedClusterKey) {
+        return;
+      }
+
+      setExpandedClusterKey('');
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [expandedClusterKey]);
 
   useEffect(
     () => () => {

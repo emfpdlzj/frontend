@@ -36,7 +36,7 @@ function ScrapDeleteConfirmModal({ pending, onConfirm, onClose }) {
             </button>
             <button
               type="button"
-              className="logout-confirm-modal__button logout-confirm-modal__button--confirm"
+              className="logout-confirm-modal__button logout-confirm-modal__button--confirm logout-confirm-modal__button--danger"
               onClick={onConfirm}
               disabled={pending}
             >
@@ -312,7 +312,7 @@ function ScrapDetailPanel({ detail, detailViewState, detailErrorMessage, onDelet
           <div className="jobs-detail__actions">
             <button
               type="button"
-              className="secondary-button"
+              className="secondary-button is-danger"
               onClick={onDelete}
               disabled={isDeleting}
             >

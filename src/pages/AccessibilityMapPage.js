@@ -18,6 +18,9 @@ function MapScrapConfirmModal({ pending, mode = 'scrap', onConfirm, onClose }) {
   const title = isDeleteMode ? '스크랩 취소 확인' : '스크랩 확인';
   const message = isDeleteMode ? '이 공고의 스크랩을 취소하시겠습니까?' : '이 공고를 스크랩하시겠습니까?';
   const confirmLabel = isDeleteMode ? '스크랩 취소' : '스크랩';
+  const confirmClassName = isDeleteMode
+    ? 'primary-button logout-confirm-modal__button--danger'
+    : 'primary-button';
 
   return (
     <div className="login-modal-backdrop" onMouseDown={(event) => {
@@ -38,7 +41,7 @@ function MapScrapConfirmModal({ pending, mode = 'scrap', onConfirm, onClose }) {
             <button type="button" className="secondary-button" onClick={onClose} disabled={pending}>
               취소
             </button>
-            <button type="button" className="primary-button" onClick={onConfirm} disabled={pending}>
+            <button type="button" className={confirmClassName} onClick={onConfirm} disabled={pending}>
               {pending ? '처리 중' : confirmLabel}
             </button>
           </div>

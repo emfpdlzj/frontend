@@ -2624,6 +2624,18 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   color: #4b5563;
 }
 
+.logout-confirm-modal__button--danger {
+  border-color: #fca5a5;
+  background: #dc2626;
+  color: #fff;
+}
+
+.logout-confirm-modal__button--danger:hover:not(:disabled) {
+  border-color: #ef4444;
+  background: #b91c1c;
+  color: #fff;
+}
+
 .page-shell {
   width: min(980px, 100% - 24px);
   margin: 28px auto 24px;
@@ -6764,9 +6776,10 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .accessibility-map__collapse-button {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  align-self: flex-start;
+  justify-content: center;
+  width: 100%;
   min-height: 34px;
   margin-top: 6px;
   margin-bottom: 8px;
@@ -7333,8 +7346,8 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 
 .accessibility-map__job-card.is-selected {
   border-color: #2f6efb;
-  background: #edf4ff;
-  box-shadow: 0 10px 22px rgba(47, 111, 235, 0.18);
+  background: #ffffff;
+  box-shadow: inset 0 0 0 2px #2f6efb, 0 10px 22px rgba(47, 111, 235, 0.18);
 }
 
 .accessibility-map__job-card.is-selected .accessibility-map__job-company::before {
@@ -8069,6 +8082,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 .accessibility-map__job-map-marker {
   --job-marker-color: #ffb114;
   position: relative;
+  box-sizing: border-box;
   display: inline-grid;
   grid-template-columns: 12px minmax(72px, 1fr) 1px auto;
   align-items: center;
@@ -8104,6 +8118,25 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   --job-marker-color: #de3412;
 }
 
+.accessibility-map__job-map-marker.is-cluster {
+  grid-template-columns: 12px minmax(76px, 1fr);
+  min-width: 132px;
+  max-width: 168px;
+  border-color: var(--job-marker-color);
+  background: #fff;
+  z-index: 2;
+}
+
+.accessibility-map__job-map-marker.is-cluster.is-expanded {
+  z-index: 30;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.24), 0 1px 2px rgba(15, 23, 42, 0.1);
+}
+
+.accessibility-map__job-map-marker.is-hovered {
+  z-index: 24;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.2), 0 1px 2px rgba(15, 23, 42, 0.1);
+}
+
 .accessibility-map__job-map-marker.is-selected::after {
   content: '';
   position: absolute;
@@ -8121,15 +8154,15 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .accessibility-map__job-map-marker.is-good.is-selected {
-  background: #e7f0e7;
+  background: var(--job-marker-color);
 }
 
 .accessibility-map__job-map-marker.is-warning.is-selected {
-  background: #fff7e7;
+  background: var(--job-marker-color);
 }
 
 .accessibility-map__job-map-marker.is-danger.is-selected {
-  background: #fcebe7;
+  background: var(--job-marker-color);
 }
 
 .accessibility-map__job-map-marker.is-zoom-compact {
@@ -8144,6 +8177,11 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   box-shadow: 0 6px 12px rgba(17, 24, 39, 0.12), 0 1px 2px rgba(17, 24, 39, 0.08);
 }
 
+.accessibility-map__job-map-marker.is-cluster.is-zoom-compact {
+  min-width: 112px;
+  max-width: 132px;
+}
+
 .accessibility-map__job-map-marker.is-zoom-dot {
   display: inline-flex;
   align-items: center;
@@ -8155,13 +8193,61 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   padding: 0;
   border-radius: 999px;
   border-width: 2px;
-  background: #ffffff;
-  box-shadow: 0 3px 8px rgba(17, 24, 39, 0.18);
+  border-color: #ffffff;
+  background: var(--job-marker-color);
+  box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.12), 0 3px 8px rgba(17, 24, 39, 0.18);
+}
+
+.accessibility-map__job-map-marker.is-cluster.is-zoom-dot,
+.accessibility-map__job-map-marker.is-cluster.is-zoom-detail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  width: 28px;
+  max-width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: #ffffff;
+  border-radius: 999px;
+  background: var(--job-marker-color);
+  color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.12), 0 3px 8px rgba(17, 24, 39, 0.18);
 }
 
 .accessibility-map__job-map-marker.is-zoom-dot.is-selected {
-  transform: scale(1.2);
+  background: var(--job-marker-color);
+  transform: none;
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18), 0 4px 10px rgba(17, 24, 39, 0.18);
+}
+
+.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):hover,
+.accessibility-map__job-map-marker.is-selected:not(.is-cluster) {
+  display: inline-grid;
+  grid-template-columns: 12px minmax(72px, 1fr) 1px auto;
+  align-items: center;
+  gap: 9px;
+  min-width: 160px;
+  width: auto;
+  max-width: 220px;
+  height: 44px;
+  padding: 0 12px;
+  border-color: var(--job-marker-color);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.2), 0 1px 2px rgba(15, 23, 42, 0.1);
+  transform: translateY(-10px);
+  z-index: 24;
+}
+
+.accessibility-map__job-map-marker.is-selected:not(.is-cluster) {
+  background: var(--job-marker-color);
+  color: #ffffff;
+  min-width: 220px;
+  width: 220px;
+  max-width: 220px;
+  transform: none;
+  z-index: 30;
 }
 
 .accessibility-map__job-map-marker.is-zoom-compact.is-selected::after {
@@ -8170,7 +8256,31 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   height: 14px;
 }
 
-.accessibility-map__job-map-marker.is-zoom-dot.is-selected::after {
+.accessibility-map__job-map-marker.is-selected:not(.is-cluster)::after {
+  content: '';
+  bottom: -9px;
+  width: 16px;
+  height: 16px;
+  background: var(--job-marker-color);
+  z-index: -1;
+}
+
+.accessibility-map__job-map-marker.is-selected:not(.is-cluster)::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -16px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: var(--job-marker-color);
+  box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.12), 0 3px 8px rgba(17, 24, 39, 0.18);
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.accessibility-map__job-map-marker.is-cluster.is-selected::after {
   content: none;
 }
 
@@ -8188,8 +8298,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .accessibility-map__job-map-marker.is-zoom-dot .accessibility-map__job-map-marker-dot {
-  width: 10px;
-  height: 10px;
+  display: none;
 }
 
 .accessibility-map__job-map-marker strong {
@@ -8209,11 +8318,47 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   font-weight: 800;
 }
 
-.accessibility-map__job-map-marker.is-zoom-dot strong,
-.accessibility-map__job-map-marker.is-zoom-dot .accessibility-map__job-map-marker-divider,
-.accessibility-map__job-map-marker.is-zoom-dot em,
-.accessibility-map__job-map-marker.is-zoom-compact .accessibility-map__job-map-marker-divider,
-.accessibility-map__job-map-marker.is-zoom-compact em {
+.accessibility-map__job-map-marker.is-zoom-dot > strong,
+.accessibility-map__job-map-marker.is-zoom-dot > .accessibility-map__job-map-marker-divider,
+.accessibility-map__job-map-marker.is-zoom-dot > em,
+.accessibility-map__job-map-marker.is-zoom-compact > .accessibility-map__job-map-marker-divider,
+.accessibility-map__job-map-marker.is-zoom-compact > em {
+  display: none;
+}
+
+.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):hover > strong,
+.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):hover > .accessibility-map__job-map-marker-divider,
+.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):hover > em,
+.accessibility-map__job-map-marker.is-selected:not(.is-cluster) > strong,
+.accessibility-map__job-map-marker.is-selected:not(.is-cluster) > .accessibility-map__job-map-marker-divider,
+.accessibility-map__job-map-marker.is-selected:not(.is-cluster) > em {
+  display: block;
+}
+
+.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):hover > strong {
+  color: #131416;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):hover > .accessibility-map__job-map-marker-dot,
+.accessibility-map__job-map-marker.is-selected:not(.is-cluster) > .accessibility-map__job-map-marker-dot {
+  display: block;
+}
+
+.accessibility-map__job-map-marker.is-cluster.is-zoom-dot > strong,
+.accessibility-map__job-map-marker.is-cluster.is-zoom-detail > strong {
+  display: block;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.accessibility-map__job-map-marker.is-cluster.is-zoom-dot > .accessibility-map__job-map-marker-dot,
+.accessibility-map__job-map-marker.is-cluster.is-zoom-detail > .accessibility-map__job-map-marker-dot,
+.accessibility-map__job-map-marker.is-cluster.is-zoom-detail > .accessibility-map__job-map-marker-divider,
+.accessibility-map__job-map-marker.is-cluster.is-zoom-detail > em {
   display: none;
 }
 
@@ -8233,6 +8378,199 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   z-index: 1;
 }
 
+.accessibility-map__job-map-marker.is-selected:not(.is-cluster) > strong,
+.accessibility-map__job-map-marker.is-selected:not(.is-cluster) > em {
+  color: #ffffff;
+}
+
+.accessibility-map__job-map-marker.is-selected:not(.is-cluster) > .accessibility-map__job-map-marker-divider {
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.accessibility-map__job-map-marker.is-selected:not(.is-cluster) > .accessibility-map__job-map-marker-dot {
+  background: #ffffff;
+}
+
+.accessibility-map__marker-cluster-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  width: min(360px, 72vw);
+  box-sizing: border-box;
+  display: grid;
+  gap: 5px;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  padding: 8px;
+  border: 1px solid #c8d0da;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.22);
+  transform: translateX(-50%) translateY(-4px);
+  transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
+  z-index: 40;
+}
+
+.accessibility-map__job-map-marker.is-cluster:hover .accessibility-map__marker-cluster-menu,
+.accessibility-map__job-map-marker.is-cluster:focus-within .accessibility-map__marker-cluster-menu,
+.accessibility-map__job-map-marker.is-cluster.is-expanded .accessibility-map__marker-cluster-menu {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.accessibility-map__marker-cluster-menu::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border-top: 1px solid #c8d0da;
+  border-left: 1px solid #c8d0da;
+  background: #fff;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.accessibility-map__marker-cluster-option {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 54px;
+  border: 1px solid #d9e2ec;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+  padding: 8px 10px;
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.accessibility-map__marker-cluster-option:hover {
+  border-color: #2f6efb;
+  background: #edf4ff;
+}
+
+.accessibility-map__marker-cluster-option.is-good {
+  --job-marker-color: #228738;
+}
+
+.accessibility-map__marker-cluster-option.is-warning {
+  --job-marker-color: #ffb114;
+}
+
+.accessibility-map__marker-cluster-option.is-danger {
+  --job-marker-color: #de3412;
+}
+
+.accessibility-map__marker-cluster-option.is-selected,
+.accessibility-map__marker-cluster-option.is-selected:hover {
+  border-color: var(--job-marker-color);
+  background: var(--job-marker-color);
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.16);
+}
+
+.accessibility-map__marker-cluster-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--job-marker-color);
+}
+
+.accessibility-map__marker-cluster-text {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.accessibility-map__marker-cluster-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px max-content;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.accessibility-map__marker-cluster-main strong {
+  display: block;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.accessibility-map__marker-cluster-divider {
+  width: 1px;
+  height: 18px;
+  background: #d9d9d9;
+}
+
+.accessibility-map__marker-cluster-meta {
+  display: block;
+  align-items: center;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.accessibility-map__marker-cluster-title {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.accessibility-map__marker-cluster-score {
+  justify-self: end;
+  color: var(--job-marker-color);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.accessibility-map__marker-cluster-option.is-selected .accessibility-map__marker-cluster-dot {
+  background: #ffffff;
+}
+
+.accessibility-map__marker-cluster-option.is-selected .accessibility-map__marker-cluster-main strong,
+.accessibility-map__marker-cluster-option.is-selected .accessibility-map__marker-cluster-meta,
+.accessibility-map__marker-cluster-option.is-selected .accessibility-map__marker-cluster-score {
+  color: #ffffff;
+}
+
+.accessibility-map__marker-cluster-option.is-selected .accessibility-map__marker-cluster-divider {
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.accessibility-map__marker-cluster-more {
+  position: relative;
+  z-index: 1;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
 .accessibility-map__map-pill {
   position: absolute;
   left: 50%;
@@ -8242,7 +8580,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   border: 1px solid #3b82f6;
   border-radius: 999px;
   padding: 7px 13px;
-  background: rgba(255, 255, 255, 0.88);
+  background: #ffffff;
   color: #2563eb;
   font-size: 16px;
   font-weight: 500;
@@ -8745,7 +9083,8 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .accessibility-map__scrap-button {
-  flex: 0 0 124px;
+  flex: 1 1 100%;
+  width: 100%;
   min-height: 46px;
 }
 

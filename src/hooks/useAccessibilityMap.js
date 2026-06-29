@@ -1058,6 +1058,7 @@ const buildMapMarkers = (jobs, selectedJobId) =>
     .map((job) => ({
       id: job.id,
       label: job.company,
+      title: job.title,
       displayLabel: getMapMarkerDisplayLabel(job.company),
       score: getScoreNumber(job.score),
       tone: getMapMarkerTone(job.score),
