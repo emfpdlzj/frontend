@@ -2998,20 +2998,6 @@ export function MainPage({ view = 'home' }) {
               <aside className="accessibility-map__filter-panel home-quick__filter-panel" aria-label="퀵 추천 필터">
                 <header className="home-quick__filter-header">
                   <h3>퀵 추천 필터</h3>
-                  <button
-                    type="button"
-                    className="accessibility-map__collapse-button"
-                    onClick={() => {
-                      if (isGuestUser) {
-                        openLoginModal();
-                        return;
-                      }
-                      setIsQuickFilterCollapsed((prev) => !prev);
-                    }}
-                    aria-expanded={!isQuickFilterCollapsed}
-                  >
-                    {isQuickFilterCollapsed ? '필터 펼치기' : '필터 접기'}
-                  </button>
                 </header>
 
                 <section className="accessibility-map__ai-toggle" aria-label="AI 직무 적합도 설정">
@@ -3117,6 +3103,23 @@ export function MainPage({ view = 'home' }) {
                     </div>
                   </>
                 ) : null}
+
+                <div className="home-quick__filter-collapse-row">
+                  <button
+                    type="button"
+                    className="accessibility-map__collapse-button"
+                    onClick={() => {
+                      if (isGuestUser) {
+                        openLoginModal();
+                        return;
+                      }
+                      setIsQuickFilterCollapsed((prev) => !prev);
+                    }}
+                    aria-expanded={!isQuickFilterCollapsed}
+                  >
+                    {isQuickFilterCollapsed ? '필터 펼치기' : '필터 접기'}
+                  </button>
+                </div>
               </aside>
             </div>
 

@@ -249,6 +249,12 @@ export function AccessibilityMapDetailPanel({
   const nextStepSummary = explanation?.nextStepSummary || explanation?.aiResponse?.result?.next_step_summary || '';
   const recommendedPrograms = explanation?.recommendedPrograms || explanation?.aiResponse?.result?.recommended_programs || [];
   const normalizedShortSummary = formatRecommendationExplanationText(shortSummary, job.score);
+  const scrapButtonLabel = !job.postingId ? '스크랩 불가' : job.scrappedByMe ? '스크랩 취소' : '공고 스크랩';
+  const scrapButtonClassName = [
+    'primary-button',
+    'accessibility-map__scrap-button',
+    job.scrappedByMe ? 'is-danger' : ''
+  ].filter(Boolean).join(' ');
 
   useEffect(() => {
     if (effectiveSelectedTab !== 'accessibility') {
@@ -436,12 +442,12 @@ export function AccessibilityMapDetailPanel({
         ) : null}
         <button
           type="button"
-          className="primary-button accessibility-map__scrap-button"
+          className={scrapButtonClassName}
           aria-label={job.scrappedByMe ? '스크랩 취소 확인 열기' : '공고 스크랩'}
           disabled={!job.postingId}
           onClick={onScrap}
         >
-          {!job.postingId ? '스크랩 불가' : job.scrappedByMe ? '스크랩 완료' : '공고 스크랩'}
+          {scrapButtonLabel}
         </button>
       </footer>
     </aside>
