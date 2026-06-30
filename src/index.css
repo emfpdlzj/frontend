@@ -8221,7 +8221,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18), 0 4px 10px rgba(17, 24, 39, 0.18);
 }
 
-.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):hover,
+.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):not(.is-pin):hover,
 .accessibility-map__job-map-marker.is-selected:not(.is-cluster) {
   display: inline-grid;
   grid-template-columns: 12px minmax(72px, 1fr) 1px auto;
@@ -8270,14 +8270,15 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 
 .accessibility-map__job-map-marker.is-popup:not(.is-cluster) {
   display: inline-grid;
-  grid-template-columns: 12px minmax(0, 1fr) 1px auto;
+  grid-template-columns: 12px minmax(0, 1fr);
   align-items: center;
   gap: 9px;
-  min-width: 280px;
-  width: 280px;
-  max-width: 280px;
-  height: 44px;
-  padding: 0 12px;
+  min-width: 320px;
+  width: 320px;
+  max-width: 320px;
+  min-height: 64px;
+  height: auto;
+  padding: 8px 10px;
   border-color: var(--job-marker-color);
   border-radius: 10px;
   box-shadow: 0 16px 30px rgba(15, 23, 42, 0.2), 0 1px 2px rgba(15, 23, 42, 0.1);
@@ -8345,22 +8346,22 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   display: none;
 }
 
-.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):hover > strong,
-.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):hover > .accessibility-map__job-map-marker-divider,
-.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):hover > em,
+.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):not(.is-pin):hover > strong,
+.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):not(.is-pin):hover > .accessibility-map__job-map-marker-divider,
+.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):not(.is-pin):hover > em,
 .accessibility-map__job-map-marker.is-selected:not(.is-cluster) > strong,
 .accessibility-map__job-map-marker.is-selected:not(.is-cluster) > .accessibility-map__job-map-marker-divider,
 .accessibility-map__job-map-marker.is-selected:not(.is-cluster) > em {
   display: block;
 }
 
-.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):hover > strong {
+.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):not(.is-pin):hover > strong {
   color: #131416;
   font-size: 17px;
   font-weight: 900;
 }
 
-.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):hover > .accessibility-map__job-map-marker-dot,
+.accessibility-map__job-map-marker.is-zoom-dot:not(.is-cluster):not(.is-pin):hover > .accessibility-map__job-map-marker-dot,
 .accessibility-map__job-map-marker.is-popup:not(.is-cluster) > .accessibility-map__job-map-marker-dot,
 .accessibility-map__job-map-marker.is-selected:not(.is-cluster) > .accessibility-map__job-map-marker-dot {
   display: block;
@@ -8409,6 +8410,21 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 
 .accessibility-map__job-map-marker.is-selected:not(.is-cluster) > .accessibility-map__job-map-marker-dot {
   background: #ffffff;
+}
+
+.accessibility-map__job-map-marker.is-popup.is-selected:not(.is-cluster) .accessibility-map__marker-cluster-dot,
+.accessibility-map__job-map-marker.is-popup.is-selected:not(.is-cluster) > .accessibility-map__job-map-marker-dot {
+  background: #ffffff;
+}
+
+.accessibility-map__job-map-marker.is-popup.is-selected:not(.is-cluster) .accessibility-map__marker-cluster-main strong,
+.accessibility-map__job-map-marker.is-popup.is-selected:not(.is-cluster) .accessibility-map__marker-cluster-meta,
+.accessibility-map__job-map-marker.is-popup.is-selected:not(.is-cluster) .accessibility-map__marker-cluster-score {
+  color: #ffffff;
+}
+
+.accessibility-map__job-map-marker.is-popup.is-selected:not(.is-cluster) .accessibility-map__marker-cluster-divider {
+  background: rgba(255, 255, 255, 0.48);
 }
 
 .accessibility-map__marker-cluster-menu {

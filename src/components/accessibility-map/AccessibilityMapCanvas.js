@@ -83,7 +83,7 @@ function getOfficeMarkerAnchor(marker, zoomMode) {
   }
 
   if (marker.displayMode === MARKER_DISPLAY_MODE.POPUP || marker.isSelected) {
-    return new window.naver.maps.Point(140, 62);
+    return new window.naver.maps.Point(160, 82);
   }
 
   if (zoomMode === MARKER_ZOOM_MODE.DOT) {
@@ -98,6 +98,37 @@ function getOfficeMarkerAnchor(marker, zoomMode) {
   return marker.isSelected
     ? new window.naver.maps.Point(76, 54)
     : new window.naver.maps.Point(76, 22);
+}
+
+function createOfficeMarkerSummary(marker) {
+  const textWrap = document.createElement('span');
+  textWrap.className = 'accessibility-map__marker-cluster-text';
+
+  const main = document.createElement('span');
+  main.className = 'accessibility-map__marker-cluster-main';
+  const name = document.createElement('strong');
+  name.textContent = marker.displayLabel || marker.label || '회사명 확인 필요';
+  main.append(name);
+
+  if (typeof marker.score === 'number' && Number.isFinite(marker.score)) {
+    const divider = document.createElement('span');
+    divider.className = 'accessibility-map__marker-cluster-divider';
+    divider.setAttribute('aria-hidden', 'true');
+    const score = document.createElement('em');
+    score.className = 'accessibility-map__marker-cluster-score';
+    score.textContent = `${marker.score}점`;
+    main.append(divider, score);
+  }
+
+  const meta = document.createElement('span');
+  meta.className = 'accessibility-map__marker-cluster-meta';
+  const title = document.createElement('span');
+  title.className = 'accessibility-map__marker-cluster-title';
+  title.textContent = marker.title || marker.jobTitle || '';
+  meta.append(title);
+
+  textWrap.append(main, meta);
+  return textWrap;
 }
 
 function getStableMarkerId(marker) {
@@ -184,6 +215,11 @@ function createMarkerElement(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) {
   const dot = document.createElement('span');
   dot.className = 'accessibility-map__job-map-marker-dot';
 
+  if (markerType === 'office' && marker.displayMode === MARKER_DISPLAY_MODE.POPUP) {
+    wrapper.append(dot, createOfficeMarkerSummary(marker));
+    return wrapper;
+  }
+
   const label = document.createElement('strong');
   if (markerType === 'office-cluster') {
     label.textContent = String(marker.count);
@@ -224,32 +260,7 @@ function createMarkerElement(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) {
       dot.className = 'accessibility-map__marker-cluster-dot';
       dot.setAttribute('aria-hidden', 'true');
 
-      const textWrap = document.createElement('span');
-      textWrap.className = 'accessibility-map__marker-cluster-text';
-
-      const main = document.createElement('span');
-      main.className = 'accessibility-map__marker-cluster-main';
-      const name = document.createElement('strong');
-      name.textContent = member.label || '회사명 확인 필요';
-      const divider = document.createElement('span');
-      divider.className = 'accessibility-map__marker-cluster-divider';
-      divider.setAttribute('aria-hidden', 'true');
-      const score = document.createElement('em');
-      score.className = 'accessibility-map__marker-cluster-score';
-      score.textContent = typeof member.score === 'number' && Number.isFinite(member.score)
-        ? `${member.score}점`
-        : '';
-      main.append(name, divider, score);
-
-      const meta = document.createElement('span');
-      meta.className = 'accessibility-map__marker-cluster-meta';
-      const title = document.createElement('span');
-      title.className = 'accessibility-map__marker-cluster-title';
-      title.textContent = member.title || '';
-
-      meta.append(title);
-      textWrap.append(main, meta);
-      button.append(dot, textWrap);
+      button.append(dot, createOfficeMarkerSummary(member));
       menu.append(button);
     });
 
