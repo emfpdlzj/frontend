@@ -2636,12 +2636,14 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   color: #4b5563;
 }
 
+.primary-button.logout-confirm-modal__button--danger,
 .logout-confirm-modal__button--danger {
   border-color: #fca5a5;
   background: #dc2626;
   color: #fff;
 }
 
+.primary-button.logout-confirm-modal__button--danger:hover:not(:disabled),
 .logout-confirm-modal__button--danger:hover:not(:disabled) {
   border-color: #ef4444;
   background: #b91c1c;
