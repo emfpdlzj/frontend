@@ -506,22 +506,11 @@ export function TrafficFilterPanel({
           <div className="accessibility-map__results-title-stack">
             <h3>
               <span>검색 결과 {resultCount}개</span>
-              {appliedAiEnabled && totalJobCount > resultCount ? <span> / 최대 {totalJobCount}개</span> : null}
             </h3>
             {appliedAiEnabled && isCommutableOnlyApplied ? (
               <p className="accessibility-map__results-subtext">통근 가능한 기업 공고 {resultCount}개</p>
             ) : null}
           </div>
-          {hasMoreVisibleJobs && appliedAiEnabled ? (
-            <button
-              type="button"
-              className="secondary-button accessibility-map__load-more-button"
-              onClick={onLoadMoreJobs}
-              disabled={isLoadingMoreJobs}
-            >
-              100개 더 불러오기
-            </button>
-          ) : null}
         </div>
         <div ref={sortMenuRef} className={`accessibility-map__sort${isSortMenuOpen ? ' is-open' : ''}`}>
           <button
