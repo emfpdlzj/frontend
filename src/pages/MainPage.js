@@ -28,7 +28,11 @@ import moelLogo from '../assets/home-support/moel-logo.png';
 import socialenterpriseLogo from '../assets/home-support/socialenterprise-logo.png';
 import { ROUTE_PATHS } from '../config/routes';
 import { useLocale } from '../i18n/LocaleContext';
-import { formatRecommendationExplanationList, formatRecommendationExplanationText } from '../utils/recommendationExplanationText';
+import {
+  formatRecommendationExplanationList,
+  formatRecommendationExplanationText,
+  formatRecommendationNextStepSummary
+} from '../utils/recommendationExplanationText';
 import { getProfileScoringSignature } from '../utils/profileScoringSignature';
 import { filterAccessibilityMapJobs } from '../hooks/useAccessibilityMap';
 import { LoginModal } from '../components/auth/LoginModal';
@@ -1307,7 +1311,7 @@ function PopularPostingDetailModal({
   ] : [];
   const mapPreview = detail ? getPostingMapPreview(detail) : null;
   const formattedQuickSummary = formatRecommendationExplanationText(quickExplainState.data?.shortSummary, quickFitScore);
-  const formattedQuickNextStepSummary = formatRecommendationExplanationText(quickExplainState.data?.nextStepSummary, quickFitScore);
+  const formattedQuickNextStepSummary = formatRecommendationNextStepSummary(quickExplainState.data?.nextStepSummary, quickFitScore);
   const formattedQuickChecklist = formatRecommendationExplanationList(quickExplainState.data?.checklist, quickFitScore);
   const formattedQuickCautionPoints = formatRecommendationExplanationList(quickExplainState.data?.cautionPoints, quickFitScore);
 

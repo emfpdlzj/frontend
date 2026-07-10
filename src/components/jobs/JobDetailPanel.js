@@ -1,5 +1,9 @@
 import { LlmExplanationProgress } from '../common/LlmExplanationProgress';
-import { formatRecommendationExplanationList, formatRecommendationExplanationText } from '../../utils/recommendationExplanationText';
+import {
+  formatRecommendationExplanationList,
+  formatRecommendationExplanationText,
+  formatRecommendationNextStepSummary
+} from '../../utils/recommendationExplanationText';
 
 const tabItems = [
   ['job', '공고 정보'],
@@ -42,7 +46,7 @@ function normalizeExplanation(explanation, score) {
     recommendationReasons: formatRecommendationExplanationList(explanation?.recommendationReasons || result.recommendation_reasons || [], score),
     cautionPoints: formatRecommendationExplanationList(explanation?.cautionPoints || result.caution_points || [], score),
     checklist: formatRecommendationExplanationList(explanation?.checklist || result.checklist || [], score),
-    nextStepSummary: formatRecommendationExplanationText(explanation?.nextStepSummary || result.next_step_summary || '', score),
+    nextStepSummary: formatRecommendationNextStepSummary(explanation?.nextStepSummary || result.next_step_summary || '', score),
     recommendedPrograms: explanation?.recommendedPrograms || result.recommended_programs || []
   };
 }

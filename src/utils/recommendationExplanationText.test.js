@@ -1,5 +1,6 @@
 import {
   formatRecommendationExplanationList,
+  formatRecommendationNextStepSummary,
   formatRecommendationExplanationText,
   getRecommendationGradeFromScore
 } from './recommendationExplanationText';
@@ -29,6 +30,15 @@ describe('recommendationExplanationText', () => {
         '다만 근무지 주변 이동·대중교통 통근 정보는 근거 데이터가 부족해서, 지원 전 확인이 필요해요.'
       ], 71)
     ).toEqual([]);
+  });
+
+  it('removes duplicated next-step heading from summary', () => {
+    expect(
+      formatRecommendationNextStepSummary(
+        '이런 준비가 도움이 될 수 있어요: 지원 준비와 구직 역량을 정리하는 데 도움이 될 수 있어요.',
+        71
+      )
+    ).toBe('지원 준비와 구직 역량을 정리하는 데 도움이 될 수 있어요.');
   });
 
   it('returns grade from score', () => {

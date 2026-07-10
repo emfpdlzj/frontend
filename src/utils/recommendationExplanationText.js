@@ -1,5 +1,6 @@
 const UNSUPPORTED_COMMUTE_DATA_SENTENCE =
   '다만 근무지 주변 이동·대중교통 통근 정보는 근거 데이터가 부족해서, 지원 전 확인이 필요해요.';
+const PREPARATION_HEADING_PATTERN = /^\s*이런 준비가 도움이 될 수 있어요[:：]?\s*/;
 
 export function getRecommendationGradeFromScore(score) {
   if (typeof score !== 'number' || !Number.isFinite(score)) {
@@ -39,6 +40,16 @@ export function formatRecommendationExplanationText(text, fallbackScore) {
     })
     .replace(/\s{2,}/g, ' ')
     .trim();
+}
+
+export function formatRecommendationNextStepSummary(text, fallbackScore) {
+  const formatted = formatRecommendationExplanationText(text, fallbackScore);
+
+  if (!formatted) {
+    return '';
+  }
+
+  return formatted.replace(PREPARATION_HEADING_PATTERN, '').trim();
 }
 
 export function formatRecommendationExplanationList(items, fallbackScore) {

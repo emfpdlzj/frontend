@@ -18,7 +18,10 @@ import warningWalkerIcon from '../../assets/accessibility-map/info_icon/warning_
 import timeIcon from '../../assets/accessibility-map/time-icon.png';
 import transferIcon from '../../assets/accessibility-map/transfer-icon.svg';
 import walkIcon from '../../assets/accessibility-map/walk-icon.png';
-import { formatRecommendationExplanationText } from '../../utils/recommendationExplanationText';
+import {
+  formatRecommendationExplanationText,
+  formatRecommendationNextStepSummary
+} from '../../utils/recommendationExplanationText';
 import { LlmExplanationProgress } from '../common/LlmExplanationProgress';
 
 const DETAIL_STATUS_TONE = {
@@ -356,6 +359,7 @@ export function AccessibilityMapDetailPanel({
   const nextStepSummary = explanation?.nextStepSummary || explanation?.aiResponse?.result?.next_step_summary || '';
   const recommendedPrograms = explanation?.recommendedPrograms || explanation?.aiResponse?.result?.recommended_programs || [];
   const normalizedShortSummary = formatRecommendationExplanationText(shortSummary, job.score);
+  const normalizedNextStepSummary = formatRecommendationNextStepSummary(nextStepSummary, job.score);
   const trimmedFeedbackComment = feedbackComment.trim();
   const isSendIconActive = Boolean(trimmedFeedbackComment);
   const canSubmitFeedback = Boolean(job.postingId && selectedFeedbackReaction && trimmedFeedbackComment && !feedbackPending);
@@ -534,7 +538,7 @@ export function AccessibilityMapDetailPanel({
                 <div className="jobs-detail__explanation-card">
                   <section className="jobs-detail__explanation-section">
                     <h4>이런 준비가 도움이 될 수 있어요</h4>
-                    {nextStepSummary ? <p>{nextStepSummary}</p> : null}
+                    {normalizedNextStepSummary ? <p>{normalizedNextStepSummary}</p> : null}
                     <strong className="jobs-detail__subheading">추천 프로그램</strong>
                     <ul className="jobs-detail__program-list">
                       {recommendedPrograms.map((program, index) => (
