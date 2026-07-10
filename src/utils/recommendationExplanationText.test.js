@@ -41,6 +41,14 @@ describe('recommendationExplanationText', () => {
     ).toBe('지원 준비와 구직 역량을 정리하는 데 도움이 될 수 있어요.');
   });
 
+  it('keeps a heading-only next-step summary instead of blanking it out', () => {
+    expect(
+      formatRecommendationNextStepSummary(
+        '이런 준비가 도움이 될 수 있어요.',
+        71
+      )
+    ).toBe('이런 준비가 도움이 될 수 있어요.');
+  });
   it('returns grade from score', () => {
     expect(getRecommendationGradeFromScore(71)).toBe('B등급');
   });
