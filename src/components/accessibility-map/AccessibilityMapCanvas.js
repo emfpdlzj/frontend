@@ -81,29 +81,29 @@ function getMarkerZoomMode(zoom) {
 
 function getOfficeMarkerAnchor(marker, zoomMode) {
   if (marker.type === 'office-cluster') {
-    return new window.naver.maps.Point(14, 14);
+    return new window.naver.maps.Point(10, 10);
   }
 
   if (marker.displayMode === MARKER_DISPLAY_MODE.PIN) {
-    return new window.naver.maps.Point(10, 10);
+    return new window.naver.maps.Point(7, 7);
   }
 
   if (marker.displayMode === MARKER_DISPLAY_MODE.POPUP || marker.isSelected) {
-    return new window.naver.maps.Point(160, 82);
+    return new window.naver.maps.Point(112, 57);
   }
 
   if (zoomMode === MARKER_ZOOM_MODE.DOT) {
-    return new window.naver.maps.Point(10, 10);
+    return new window.naver.maps.Point(7, 7);
   }
   if (zoomMode === MARKER_ZOOM_MODE.COMPACT) {
     return marker.isSelected
-      ? new window.naver.maps.Point(48, 38)
-      : new window.naver.maps.Point(48, 18);
+      ? new window.naver.maps.Point(34, 27)
+      : new window.naver.maps.Point(34, 13);
   }
 
   return marker.isSelected
-    ? new window.naver.maps.Point(76, 54)
-    : new window.naver.maps.Point(76, 22);
+    ? new window.naver.maps.Point(53, 38)
+    : new window.naver.maps.Point(53, 15);
 }
 
 function createOfficeMarkerSummary(marker) {
@@ -247,14 +247,14 @@ function groupSupportAgencyMarkers(markers, zoom) {
 
 function getSupportAgencyMarkerAnchor(zoomMode) {
   if (zoomMode === MARKER_ZOOM_MODE.DOT) {
-    return new window.naver.maps.Point(11, 11);
+    return new window.naver.maps.Point(8, 8);
   }
 
   if (zoomMode === MARKER_ZOOM_MODE.COMPACT) {
-    return new window.naver.maps.Point(48, 20);
+    return new window.naver.maps.Point(34, 14);
   }
 
-  return new window.naver.maps.Point(90, 25);
+  return new window.naver.maps.Point(63, 18);
 }
 
 export function createMarkerElement(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) {
@@ -403,7 +403,7 @@ function createMarkerIcon(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) {
   if (marker.type === 'support-agency-cluster') {
     return {
       content: createMarkerElement(marker, zoomMode),
-      anchor: new window.naver.maps.Point(14, 14)
+      anchor: new window.naver.maps.Point(10, 10)
     };
   }
 
