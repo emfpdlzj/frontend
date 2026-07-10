@@ -16206,6 +16206,724 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   min-height: 38px;
 }
 
+@media (min-width: 901px) {
+  .profile-layout {
+    grid-template-columns: clamp(228px, 16.5vw, 292px) minmax(0, 1fr);
+    min-height: calc(100vh - var(--app-header-height));
+  }
+
+  .profile-list-panel {
+    padding: 12px 14px;
+  }
+
+  .profile-list-panel__head {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .profile-list-panel__head h2 {
+    font-size: 17px;
+  }
+
+  .profile-add-button,
+  .profile-panel-header button,
+  .profile-skill-input button,
+  .profile-sns-add {
+    height: 42px;
+    font-size: 15px;
+  }
+
+  .profile-add-button {
+    padding: 0 12px;
+  }
+
+  .profile-card {
+    min-height: 84px;
+    margin-bottom: 8px;
+    padding: 48px 30px 14px 12px;
+  }
+
+  .profile-card--draft {
+    padding-top: 42px;
+  }
+
+  .profile-card--draft .profile-card__badge {
+    top: 14px;
+  }
+
+  .profile-card__badge {
+    top: 12px;
+    left: 12px;
+    padding: 4px 9px;
+    font-size: 13px;
+  }
+
+  .profile-card__draft-label {
+    top: 13px;
+    right: 12px;
+    font-size: 13px;
+  }
+
+  .profile-card__draft-dot {
+    right: 16px;
+    bottom: 20px;
+    width: 8px;
+    height: 8px;
+    box-shadow: 0 0 0 4px rgba(47, 125, 246, 0.14);
+  }
+
+  .profile-card h3 {
+    margin-bottom: 4px;
+    font-size: 15px;
+  }
+
+  .profile-card p,
+  .profile-list-note {
+    font-size: 14px;
+  }
+
+  .profile-list-note {
+    margin-top: 16px;
+    padding-left: 14px;
+    line-height: 1.5;
+  }
+
+  .profile-workspace {
+    --profile-content-max-width: 1180px;
+    padding: 32px 28px 56px;
+  }
+
+  .profile-top-actions {
+    top: 28px;
+    right: 28px;
+    gap: 8px;
+  }
+
+  .profile-top-portfolio-group {
+    gap: 4px;
+  }
+
+  .profile-delete-button,
+  .profile-top-edit-button,
+  .profile-top-portfolio-button {
+    height: 42px;
+    font-size: 15px;
+  }
+
+  .profile-delete-button,
+  .profile-top-edit-button {
+    min-width: 104px;
+    padding: 0 14px;
+  }
+
+  .profile-top-portfolio-button {
+    min-width: 188px;
+  }
+
+  .profile-top-portfolio-note {
+    font-size: 12px;
+  }
+
+  .profile-heading {
+    padding-right: clamp(300px, 27vw, 408px);
+  }
+
+  .profile-heading h1 {
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 28px;
+  }
+
+  .profile-title-name-field,
+  .profile-export-placeholder {
+    margin-bottom: 10px;
+  }
+
+  .profile-title-name-field__label,
+  .profile-default-toggle,
+  .profile-inline-action {
+    font-size: 14px;
+  }
+
+  .profile-inline-action {
+    min-height: 34px;
+    padding: 0 10px;
+  }
+
+  .profile-form-actions,
+  .profile-form-meta,
+  .profile-status-block {
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .profile-form-meta__left {
+    gap: 4px;
+  }
+
+  .profile-required-note,
+  .profile-autosave-note {
+    font-size: 13px;
+  }
+
+  .profile-primary-action,
+  .profile-secondary-action,
+  .profile-chip-input-row button {
+    min-height: 38px;
+    padding: 0 14px;
+    font-size: 15px;
+  }
+
+  .profile-form-area {
+    margin-top: 46px;
+  }
+
+  .profile-tabs--compact {
+    margin-top: 16px;
+  }
+
+  .profile-tabs__button {
+    height: 48px;
+    padding: 0 16px;
+    font-size: 15px;
+  }
+
+  .profile-tabs__chevron {
+    width: 14px;
+    height: 14px;
+  }
+
+  .profile-section-panel {
+    padding: 22px 24px;
+  }
+
+  .profile-section-panel h2 {
+    margin-bottom: 20px;
+    font-size: 21px;
+  }
+
+  .profile-repeat-section__header {
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .profile-repeat-section__header h2 {
+    margin-bottom: 6px;
+  }
+
+  .profile-repeat-section__header p,
+  .profile-repeat-empty {
+    font-size: 14px;
+  }
+
+  .profile-repeat-section__add-button {
+    min-height: 38px;
+    padding: 0 14px;
+    font-size: 14px;
+  }
+
+  .profile-repeat-list {
+    gap: 14px;
+  }
+
+  .profile-repeat-card {
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  .profile-repeat-card__head {
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .profile-repeat-card__head h3 {
+    margin-bottom: 4px;
+    font-size: 16px;
+  }
+
+  .profile-repeat-card__head p {
+    font-size: 13px;
+  }
+
+  .profile-repeat-card__remove-button {
+    min-height: 34px;
+    padding: 0 12px;
+    font-size: 14px;
+  }
+
+  .profile-repeat-card__body,
+  .profile-repeat-grid {
+    gap: 18px 16px;
+  }
+
+  .profile-repeat-empty {
+    padding: 14px 16px;
+  }
+
+  .profile-readonly-summary {
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .profile-readonly-summary div {
+    padding: 12px;
+  }
+
+  .profile-readonly-summary dt {
+    margin-bottom: 4px;
+    font-size: 14px;
+  }
+
+  .profile-readonly-summary dd,
+  .profile-section-caption {
+    font-size: 14px;
+  }
+
+  .profile-form-grid + .profile-field,
+  .profile-disability-detail + .profile-field {
+    margin-top: 24px;
+  }
+
+  .profile-basic-grid {
+    grid-template-columns: minmax(164px, 208px) minmax(0, 1fr);
+    gap: clamp(20px, 2.4vw, 40px);
+  }
+
+  .profile-photo-field h2 {
+    font-size: 15px;
+    margin-bottom: 10px;
+  }
+
+  .profile-photo-button,
+  .profile-photo-preview {
+    width: 128px;
+    height: 128px;
+  }
+
+  .profile-photo-field p {
+    margin: 10px 0 0 36px;
+    font-size: 14px;
+  }
+
+  .profile-two-column,
+  .profile-form-grid {
+    gap: 20px clamp(20px, 3vw, 44px);
+  }
+
+  .profile-form-grid--career,
+  .profile-form-grid--license,
+  .profile-form-grid--disability,
+  .profile-form-grid--intro,
+  .profile-form-grid--intro-optional,
+  .profile-form-grid--job-extra,
+  .profile-form-grid--extra-top,
+  .profile-form-grid--work-top,
+  .profile-form-grid--work {
+    gap: 18px 20px;
+  }
+
+  .profile-job-picker-area {
+    margin-bottom: 22px;
+  }
+
+  .profile-field {
+    gap: 8px;
+  }
+
+  .profile-label,
+  .profile-input-suffix,
+  .profile-help,
+  .profile-field-error,
+  .profile-unit-input__unit {
+    font-size: 14px;
+  }
+
+  .profile-input,
+  .profile-textarea,
+  .profile-select,
+  .profile-skill-input {
+    font-size: 15px;
+  }
+
+  .profile-input,
+  .profile-select {
+    height: 48px;
+    padding: 0 14px;
+  }
+
+  .profile-input-wrap img {
+    right: 14px;
+    width: 20px;
+    height: 20px;
+  }
+
+  .profile-unit-input,
+  .profile-inline-input {
+    gap: 10px;
+  }
+
+  .profile-inline-input {
+    grid-template-columns: 1fr 80px;
+  }
+
+  .profile-inline-input button {
+    font-size: 16px;
+  }
+
+  .profile-textarea {
+    min-height: 124px;
+    padding: 12px 14px 32px;
+  }
+
+  .profile-textarea-count {
+    right: 12px;
+    bottom: 10px;
+    font-size: 14px;
+  }
+
+  .profile-pill-row,
+  .profile-radio-row,
+  .profile-checkbox-row {
+    gap: 10px;
+    min-height: 32px;
+  }
+
+  .profile-pill {
+    height: 42px;
+    padding: 0 16px;
+    font-size: 15px;
+  }
+
+  .profile-radio,
+  .profile-checkbox {
+    gap: 7px;
+    font-size: 15px;
+  }
+
+  .profile-radio span,
+  .profile-checkbox span {
+    width: 18px;
+    height: 18px;
+  }
+
+  .profile-checkbox input:checked + span::after {
+    left: 4px;
+    top: 1px;
+  }
+
+  .profile-divider {
+    margin: 22px 0 18px;
+  }
+
+  .profile-panel-header {
+    margin-bottom: 20px;
+  }
+
+  .profile-row-delete {
+    width: 54px;
+    height: 48px;
+  }
+
+  .profile-optional-strip {
+    width: min(840px, 100%);
+  }
+
+  .profile-optional-strip button {
+    height: 48px;
+    padding: 0 18px;
+    font-size: 15px;
+  }
+
+  .profile-optional-strip strong {
+    font-size: 26px;
+  }
+
+  .profile-skill-input {
+    height: 48px;
+    padding: 0 14px;
+  }
+
+  .jobs-page {
+    gap: 10px;
+    padding: 18px 18px 20px;
+  }
+
+  .jobs-page__header--scrap {
+    gap: 18px;
+    padding: 16px 18px;
+  }
+
+  .jobs-page__header--scrap h1 {
+    font-size: 24px;
+  }
+
+  .jobs-page__eyebrow,
+  .jobs-page__header--scrap p,
+  .jobs-page__updated,
+  .scrap-sort-field span,
+  .scrap-card__summary {
+    font-size: 14px;
+  }
+
+  .scrap-summary-chips {
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .scrap-summary-chips span {
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: 14px;
+  }
+
+  .scrap-header-actions {
+    flex-basis: 220px;
+    gap: 10px;
+  }
+
+  .scrap-sort-field {
+    gap: 6px;
+  }
+
+  .scrap-sort-field select {
+    min-height: 40px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  .jobs-workspace--scrap {
+    grid-template-columns: clamp(296px, 28vw, 388px) minmax(0, 1fr);
+  }
+
+  .jobs-list-panel--scrap .jobs-list-panel__header {
+    padding: 13px 14px;
+  }
+
+  .jobs-list-panel--scrap .jobs-list-panel__header h2 {
+    font-size: 18px;
+  }
+
+  .jobs-list-panel--scrap .jobs-list-panel__header p {
+    font-size: 14px;
+  }
+
+  .jobs-list-panel--scrap .jobs-list-panel__list {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .jobs-list-panel--scrap .jobs-card {
+    gap: 8px;
+    padding: 13px 13px 12px 15px;
+    border-radius: 9px;
+  }
+
+  .jobs-list-panel--scrap .jobs-card.is-selected::before {
+    top: 12px;
+    bottom: 12px;
+    width: 2px;
+  }
+
+  .jobs-list-panel--scrap .jobs-card__title {
+    font-size: 18px;
+  }
+
+  .jobs-list-panel--scrap .jobs-card__badges {
+    gap: 6px;
+  }
+
+  .jobs-list-panel--scrap .jobs-card__badges span {
+    min-height: 24px;
+    font-size: 13px;
+  }
+
+  .jobs-list-panel--scrap .jobs-card__quick-meta {
+    gap: 8px;
+    padding-top: 8px;
+  }
+
+  .jobs-list-panel--scrap .jobs-card__quick-meta dt {
+    font-size: 13px;
+  }
+
+  .jobs-list-panel--scrap .jobs-card__quick-meta dd {
+    font-size: 14px;
+  }
+
+  .scrap-card__summary {
+    padding: 10px 11px;
+  }
+
+  .scrap-detail .jobs-detail__header {
+    padding: 16px 16px 14px;
+  }
+
+  .scrap-detail .jobs-detail__header h2 {
+    margin-top: 10px;
+    font-size: 22px;
+  }
+
+  .scrap-detail .jobs-detail__header p {
+    font-size: 14px;
+  }
+
+  .scrap-detail__badge-row {
+    gap: 6px;
+  }
+
+  .scrap-detail__status,
+  .scrap-detail .jobs-detail__badges span {
+    min-height: 24px;
+    padding: 0 8px;
+    font-size: 13px;
+  }
+
+  .scrap-detail .jobs-detail__summary {
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .scrap-detail .jobs-detail__summary div {
+    padding: 10px 11px;
+  }
+
+  .scrap-detail .jobs-detail__summary span,
+  .scrap-detail .jobs-detail__summary strong {
+    font-size: 14px;
+  }
+
+  .scrap-detail .jobs-detail__body {
+    gap: 12px;
+  }
+
+  .scrap-detail .jobs-detail__definition-grid div {
+    padding: 10px 12px;
+  }
+
+  .scrap-detail .jobs-detail__definition-grid dt {
+    font-size: 13px;
+  }
+
+  .scrap-detail .jobs-detail__definition-grid dd {
+    margin-top: 4px;
+    font-size: 14px;
+  }
+
+  .scrap-detail .jobs-detail__footer {
+    padding: 12px 16px;
+  }
+
+  .scrap-detail .jobs-detail__actions .secondary-button,
+  .scrap-detail .jobs-detail__actions .primary-button {
+    min-height: 38px;
+    padding: 0 12px;
+    font-size: 14px;
+  }
+
+  .scrap-accessibility-card,
+  .scrap-detail-card {
+    border-radius: 12px;
+  }
+
+  .scrap-detail-card {
+    padding: 14px;
+  }
+
+  .scrap-detail-card h3 {
+    margin-bottom: 10px;
+    font-size: 17px;
+  }
+
+  .scrap-detail-card__header {
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .scrap-score-ring {
+    width: 94px;
+    height: 94px;
+  }
+
+  .scrap-score-ring svg {
+    width: 94px;
+    height: 94px;
+  }
+
+  .scrap-score-ring strong {
+    font-size: 30px;
+  }
+
+  .scrap-score-ring span {
+    font-size: 12px;
+  }
+
+  .scrap-accessibility-list {
+    gap: 8px;
+  }
+
+  .scrap-accessibility-list li {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 11px;
+    border-radius: 10px;
+  }
+
+  .scrap-accessibility-list strong {
+    font-size: 16px;
+  }
+
+  .scrap-accessibility-list p,
+  .scrap-ai-card p {
+    margin-top: 4px;
+    font-size: 14px;
+  }
+
+  .scrap-map-preview {
+    gap: 6px;
+    padding: 14px;
+    background-size: 24px 24px;
+  }
+
+  .scrap-map-preview > div {
+    min-height: 80px;
+  }
+
+  .scrap-map-preview span {
+    width: 28px;
+    height: 28px;
+    border-width: 7px;
+  }
+
+  .scrap-map-preview strong,
+  .scrap-naver-map-preview__caption strong {
+    font-size: 15px;
+  }
+
+  .scrap-map-preview p,
+  .scrap-naver-map-preview__caption p {
+    font-size: 14px;
+  }
+
+  .scrap-naver-map-preview {
+    border-radius: 10px;
+  }
+
+  .scrap-naver-map-preview__canvas {
+    min-height: 208px;
+  }
+
+  .scrap-naver-map-preview__overlay {
+    padding: 16px;
+    font-size: 14px;
+  }
+
+  .scrap-naver-map-preview__caption {
+    gap: 4px;
+    padding: 12px 14px;
+  }
+}
+
 @media (max-width: 1440px) {
   .home-layout {
     grid-template-columns: minmax(0, 1fr) clamp(248px, 22vw, 274px);
