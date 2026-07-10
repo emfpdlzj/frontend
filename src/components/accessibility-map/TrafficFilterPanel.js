@@ -318,7 +318,7 @@ export function TrafficFilterPanel({
         <h2>교통 필터</h2>
         <p>
           <img className="accessibility-map__info-icon" src={infoIcon} alt="안내 아이콘" />
-          프로필 기준으로 필터 조건을 적용해 공고를 조회합니다.
+          프로필 기준 필터 적용으로 공고 조회
         </p>
         <button
           type="button"
@@ -338,7 +338,7 @@ export function TrafficFilterPanel({
       <section className="accessibility-map__ai-toggle" aria-label="AI 스코어링 설정">
         <div>
           <strong>AI 스코어링</strong>
-          <span>프로필 기반 종합 점수 계산</span>
+          <span>프로필 기반 종합 점수</span>
         </div>
         <button
           type="button"
@@ -362,7 +362,7 @@ export function TrafficFilterPanel({
       <section className="accessibility-map__ai-toggle" aria-label="통근 가능 기업 필터 설정">
         <div>
           <strong>통근 가능한 기업만 보기</strong>
-          <span>대중교통 75분 또는 직선거리 25km 이내를 기본으로 봅니다.</span>
+          <span>직선거리 25km 이내</span>
         </div>
         <button
           type="button"
@@ -483,9 +483,6 @@ export function TrafficFilterPanel({
             <h3>
               <span>검색 결과 {resultCount}개</span>
             </h3>
-            {appliedAiEnabled && isCommutableOnlyApplied ? (
-              <p className="accessibility-map__results-subtext">통근 가능한 기업 공고 {resultCount}개</p>
-            ) : null}
           </div>
         </div>
         <div ref={sortMenuRef} className={`accessibility-map__sort${isSortMenuOpen ? ' is-open' : ''}`}>

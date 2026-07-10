@@ -899,13 +899,13 @@ const UI_TEXT_TRANSLATIONS = {
   '나이는 숫자만 입력할 수 있습니다.': { zh: '年龄只能输入数字。', en: 'Age can only contain numbers.', ja: '年齢は数字のみ入力できます。' },
   '필수 항목을 정확히 입력해 주세요.': { zh: '请正确填写必填项目。', en: 'Enter all required fields correctly.', ja: '必須項目を正しく入力してください。' },
   '회원가입 완료에 실패했습니다.': { zh: '注册完成失败。', en: 'Failed to complete sign-up.', ja: '登録完了に失敗しました。' },
-  '프로필 기준으로 필터 조건을 적용해 공고를 조회합니다.': {
-    zh: '根据个人资料应用筛选条件并查询职位。',
-    en: 'Apply filters from your profile to search jobs.',
-    ja: 'プロフィール基準でフィルター条件を適用し、求人を検索します。'
+  '프로필 기준 필터 적용으로 공고 조회': {
+    zh: '按资料筛选后查询职位。',
+    en: 'Search jobs with profile-based filters.',
+    ja: 'プロフィール基準フィルター適用で求人検索'
   },
   'AI 스코어링 설정': { zh: 'AI 评分设置', en: 'AI scoring settings', ja: 'AIスコアリング設定' },
-  '프로필 기반 종합 점수 계산': { zh: '计算基于资料的综合评分', en: 'Calculate profile-based overall score', ja: 'プロフィール基準の総合スコアを計算' },
+  '프로필 기반 종합 점수': { zh: '基于资料的综合评分', en: 'Profile-based overall score', ja: 'プロフィール基準の総合スコア' },
   '프로필 기반 종합 점수 계산 해제': { zh: '关闭基于资料的综合评分', en: 'Turn off profile-based overall score', ja: 'プロフィール基準の総合スコア計算を解除' },
   '현재 결과: AI 스코어링': { zh: '当前结果：AI 评分', en: 'Current results: AI scoring', ja: '現在の結果：AIスコアリング' },
   '필터 펼치기': { zh: '展开筛选', en: 'Expand filters', ja: 'フィルターを開く' },
