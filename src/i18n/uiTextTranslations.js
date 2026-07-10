@@ -905,7 +905,7 @@ const UI_TEXT_TRANSLATIONS = {
     ja: 'プロフィール基準でフィルター条件を適用し、求人を検索します。'
   },
   'AI 스코어링 설정': { zh: 'AI 评分设置', en: 'AI scoring settings', ja: 'AIスコアリング設定' },
-  '프로필 기반 종합 점수 계산': { zh: '计算基于资料的综合评分', en: 'Calculate profile-based overall score', ja: 'プロフィール基準の総合スコアを計算' },
+  '프로필 기반 종합 점수': { zh: '基于资料的综合评分', en: 'Profile-based overall score', ja: 'プロフィール基準の総合スコア' },
   '프로필 기반 종합 점수 계산 해제': { zh: '关闭基于资料的综合评分', en: 'Turn off profile-based overall score', ja: 'プロフィール基準の総合スコア計算を解除' },
   '현재 결과: AI 스코어링': { zh: '当前结果：AI 评分', en: 'Current results: AI scoring', ja: '現在の結果：AIスコアリング' },
   '필터 펼치기': { zh: '展开筛选', en: 'Expand filters', ja: 'フィルターを開く' },

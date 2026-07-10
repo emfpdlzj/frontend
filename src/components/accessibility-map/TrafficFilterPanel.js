@@ -338,7 +338,7 @@ export function TrafficFilterPanel({
       <section className="accessibility-map__ai-toggle" aria-label="AI 스코어링 설정">
         <div>
           <strong>AI 스코어링</strong>
-          <span>프로필 기반 종합 점수 계산</span>
+          <span>프로필 기반 종합 점수</span>
         </div>
         <button
           type="button"
