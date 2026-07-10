@@ -137,6 +137,24 @@ function createOfficeMarkerSummary(marker) {
   return textWrap;
 }
 
+function createSupportAgencyMarkerSummary(marker) {
+  const textWrap = document.createElement('span');
+  textWrap.className = 'accessibility-map__marker-cluster-text';
+
+  const main = document.createElement('span');
+  main.className = 'accessibility-map__marker-cluster-main';
+  const name = document.createElement('strong');
+  name.textContent = marker.displayLabel || marker.label || '수행기관명 확인 필요';
+  main.append(name);
+
+  const meta = document.createElement('span');
+  meta.className = 'accessibility-map__marker-cluster-meta';
+  meta.textContent = marker.address || marker.telephone || '상세 정보 확인 필요';
+
+  textWrap.append(main, meta);
+  return textWrap;
+}
+
 function getStableMarkerId(marker) {
   return String(marker.id || `${marker.lat}:${marker.lng}:${marker.label || ''}`);
 }
@@ -290,7 +308,10 @@ export function createMarkerElement(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) 
       'is-support-cluster',
       `is-zoom-${zoomMode}`
     ].join(' ');
-    wrapper.setAttribute('aria-hidden', 'true');
+    wrapper.setAttribute('role', 'button');
+    wrapper.setAttribute('tabindex', '0');
+    wrapper.setAttribute('aria-expanded', marker.isExpanded ? 'true' : 'false');
+    wrapper.setAttribute('aria-label', `${marker.count}개 수행기관이 가까운 위치에 있습니다. 선택 목록 ${marker.isExpanded ? '접기' : '펼치기'}`);
 
     const dot = document.createElement('span');
     dot.className = 'accessibility-map__job-map-marker-dot';
@@ -299,6 +320,35 @@ export function createMarkerElement(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) 
     label.textContent = String(marker.count);
 
     wrapper.append(dot, label);
+    if (Array.isArray(marker.members)) {
+      const menu = document.createElement('div');
+      menu.className = 'accessibility-map__marker-cluster-menu';
+      menu.setAttribute('role', 'list');
+      menu.setAttribute('aria-label', '가까운 수행기관 목록');
+
+      marker.members.slice(0, 8).forEach((member) => {
+        const item = document.createElement('div');
+        item.className = [
+          'accessibility-map__marker-cluster-option',
+          'is-support-cluster'
+        ].join(' ');
+        item.setAttribute('role', 'listitem');
+        const dot = document.createElement('span');
+        dot.className = 'accessibility-map__marker-cluster-dot';
+        dot.setAttribute('aria-hidden', 'true');
+        item.append(dot, createSupportAgencyMarkerSummary(member));
+        menu.append(item);
+      });
+
+      if (marker.members.length > 8) {
+        const more = document.createElement('span');
+        more.className = 'accessibility-map__marker-cluster-more';
+        more.textContent = `외 ${marker.members.length - 8}개`;
+        menu.append(more);
+      }
+
+      wrapper.append(menu);
+    }
     return wrapper;
   }
 
@@ -495,6 +545,7 @@ export function toRenderableMarkers(markers, zoom, expandedClusterKey = '') {
       label: `${members.length}개 수행기관`,
       displayLabel: String(members.length),
       count: members.length,
+      isExpanded: expandedClusterKey === clusterKey,
       lat: group.lat,
       lng: group.lng,
       type: 'support-agency-cluster',
@@ -611,7 +662,7 @@ function AccessibilityMapCanvasComponent({
     }
 
     const hasExpandedCluster = renderableMarkers.some(
-      (marker) => marker.type === 'office-cluster' && marker.clusterKey === expandedClusterKey
+      (marker) => ['office-cluster', 'support-agency-cluster'].includes(marker.type) && marker.clusterKey === expandedClusterKey
     );
     if (!hasExpandedCluster) {
       setExpandedClusterKey('');
@@ -878,14 +929,14 @@ function AccessibilityMapCanvasComponent({
         return markerDescriptors.map(({ source, rendered, zoomMode, kind }) => {
           const icon = createMarkerIcon(rendered, zoomMode);
 
-          if (source.type === 'office-cluster' && icon.content instanceof HTMLElement) {
+          if (['office-cluster', 'support-agency-cluster'].includes(source.type) && icon.content instanceof HTMLElement) {
             const handleClusterOpen = () => {
               setExpandedClusterKey(source.clusterKey);
             };
             icon.content.dataset.clusterKey = source.clusterKey;
             icon.content.addEventListener('click', (event) => {
               const memberButton = event.target.closest?.('[data-marker-member-id]');
-              if (memberButton) {
+              if (memberButton && source.type === 'office-cluster') {
                 event.preventDefault();
                 event.stopPropagation();
                 setExpandedClusterKey('');
@@ -897,7 +948,7 @@ function AccessibilityMapCanvasComponent({
             });
             icon.content.addEventListener('keydown', (event) => {
               const memberButton = event.target.closest?.('[data-marker-member-id]');
-              if (memberButton && (event.key === 'Enter' || event.key === ' ')) {
+              if (memberButton && source.type === 'office-cluster' && (event.key === 'Enter' || event.key === ' ')) {
                 event.preventDefault();
                 event.stopPropagation();
                 setExpandedClusterKey('');

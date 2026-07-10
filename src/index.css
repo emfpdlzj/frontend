@@ -9237,6 +9237,11 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   --job-marker-color: #de3412;
 }
 
+.accessibility-map__marker-cluster-option.is-support-cluster {
+  --job-marker-color: #214481;
+  cursor: default;
+}
+
 .accessibility-map__marker-cluster-option.is-selected,
 .accessibility-map__marker-cluster-option.is-selected:hover {
   border-color: var(--job-marker-color);

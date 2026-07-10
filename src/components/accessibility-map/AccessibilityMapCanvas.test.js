@@ -139,3 +139,22 @@ test('수행기관 일반 마커는 축소 상태에서 라벨을 숨기고 작�
   expect(dotMarker.className).toContain('is-zoom-dot');
   expect(dotMarker.querySelector('span')).toBeNull();
 });
+
+test('수행기관 숫자 클러스터도 hover/click용 목록 DOM을 가진다', () => {
+  const clusterMarker = createMarkerElement({
+    id: 'support-cluster:test',
+    type: 'support-agency-cluster',
+    count: 2,
+    isExpanded: true,
+    members: [
+      supportAgencyMarker('agency-1', 37.5, 127.0, { address: '서울시 중구 1', telephone: '02-0000-0001' }),
+      supportAgencyMarker('agency-2', 37.5001, 127.0001, { address: '서울시 중구 2', telephone: '02-0000-0002' })
+    ]
+  }, 'detail');
+
+  expect(clusterMarker.getAttribute('role')).toBe('button');
+  expect(clusterMarker.getAttribute('aria-expanded')).toBe('true');
+  expect(clusterMarker.querySelectorAll('.accessibility-map__marker-cluster-option')).toHaveLength(2);
+  expect(clusterMarker.textContent).toContain('수행기관 agency-1');
+  expect(clusterMarker.textContent).toContain('서울시 중구 1');
+});
