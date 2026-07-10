@@ -16106,7 +16106,9 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 
 .accessibility-map .accessibility-map__filter-reset-button,
 .accessibility-map .accessibility-map__filter-apply-button {
-  min-height: 34px;
+  min-height: 31px;
+  padding-top: calc(7px * var(--ui-density-scale));
+  padding-bottom: calc(7px * var(--ui-density-scale));
 }
 
 .accessibility-map .accessibility-map__results-header {
