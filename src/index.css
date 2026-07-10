@@ -1660,14 +1660,15 @@ html[data-bw-reduce-motion='off'] .score-ring--no-animate .score-ring__value {
   width: 100%;
   height: auto;
   min-height: 0;
-  padding: 14px 16px;
-  border: 1px solid #dbe5f3;
-  border-radius: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   overflow: visible;
 }
 
 .home-quick__profile-panel .home-quick__filter-header {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .home-quick__filter-header {
@@ -8260,7 +8261,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   display: block;
   height: auto;
   min-height: 0;
-  padding-bottom: 14px;
+  padding-bottom: 0;
   overflow-y: visible;
   overscroll-behavior: auto;
   border-right: 0;
