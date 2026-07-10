@@ -8298,6 +8298,14 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   align-self: start;
 }
 
+.home-quick .home-quick__filter-panel .accessibility-map__ai-toggle {
+  margin: 0;
+}
+
+.home-quick .home-quick__filter-panel .accessibility-map__ai-toggle + .accessibility-map__ai-toggle {
+  margin-top: 10px;
+}
+
 .home-quick .home-quick__filter-panel .accessibility-map__ai-toggle:last-of-type {
   margin-bottom: 0;
 }
