@@ -101,7 +101,9 @@ function AppLayout() {
     <AccessibilityPreferencesProvider>
       <MapSearchProvider>
         <UiTextTranslator locale={locale} />
-        <div className={`app-frame${isProfilePdfExportPage ? ' app-frame--document' : ''}`}>
+        <div
+          className={`app-frame${isProfilePdfExportPage ? ' app-frame--document' : ''}${isMapPage ? ' app-frame--map' : ''}`}
+        >
           {!isProfilePdfExportPage ? <AppHeader showMapSearch={isMapPage} /> : null}
           {authNotice && !isProfilePdfExportPage ? (
             <div className="app-frame__notice">
@@ -114,7 +116,7 @@ function AppLayout() {
           <div className="app-frame__body">
             {!isProfilePdfExportPage ? <AppTabNavigation /> : null}
             <div className="app-frame__content">
-              <div className="app-frame__main">
+              <div className={`app-frame__main${isMapPage ? ' app-frame__main--map' : ''}`}>
                 <AppErrorBoundary
                   resetKey={`${location.pathname}${location.search}${location.hash}`}
                   onError={(error, info) => {

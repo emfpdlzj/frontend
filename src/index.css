@@ -111,6 +111,31 @@ a:hover {
   min-height: calc(100dvh - var(--app-header-height));
 }
 
+.app-frame--map {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.app-frame--map .app-frame__body {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-frame--map .app-frame__content {
+  height: calc(100vh - var(--app-header-height));
+  height: calc(100dvh - var(--app-header-height));
+  overflow: hidden;
+}
+
+.app-frame__main--map {
+  height: calc(100vh - var(--app-header-height));
+  height: calc(100dvh - var(--app-header-height));
+  min-height: 0;
+  overflow: hidden;
+}
+
 .app-frame--document {
   background: #eef3f8;
 }
@@ -10089,6 +10114,19 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 @media (max-width: 1180px) {
+  .app-frame--map,
+  .app-frame--map .app-frame__body,
+  .app-frame--map .app-frame__content,
+  .app-frame__main--map {
+    height: auto;
+    overflow: visible;
+  }
+
+  .app-frame--map .app-frame__body,
+  .app-frame__main--map {
+    min-height: 0;
+  }
+
   .accessibility-map {
     height: auto;
     min-height: var(--accessibility-map-height);
