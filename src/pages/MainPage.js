@@ -1253,7 +1253,7 @@ const getPhoneHref = (value) => {
   return digits ? `tel:${digits}` : '';
 };
 
-function PopularPostingDetailModal({
+export function PopularPostingDetailModal({
   detail,
   loading,
   error,
@@ -1264,6 +1264,7 @@ function PopularPostingDetailModal({
 }) {
   const dialogRef = useRef(null);
   const closeButtonRef = useRef(null);
+  const onCloseRef = useRef(onClose);
   const scrapButtonLabel = !detail?.postingId ? '스크랩 불가' : detail?.scrappedByMe ? '스크랩 완료' : '공고 스크랩';
   const isScrapDisabled = !detail?.postingId || detail?.scrappedByMe || detail?.postingStatus !== 'ACTIVE';
   const hasQuickFitScore = typeof quickFitScore === 'number';
@@ -1316,6 +1317,10 @@ function PopularPostingDetailModal({
   const formattedQuickCautionPoints = formatRecommendationExplanationList(quickExplainState.data?.cautionPoints, quickFitScore);
 
   useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
     const previousActiveElement = document.activeElement;
     const previousBodyOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -1324,7 +1329,7 @@ function PopularPostingDetailModal({
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        onCloseRef.current?.();
         return;
       }
 
@@ -1363,7 +1368,7 @@ function PopularPostingDetailModal({
         previousActiveElement.focus();
       }
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div className="login-modal-backdrop" onMouseDown={(event) => {
@@ -3021,6 +3026,20 @@ export function MainPage({ view = 'home' }) {
     }
   }, [callWithAuth, getQuickProfileForScoring, loadQuickExplanation, selectedProfileId]);
 
+  const handleCloseDetailModal = useCallback(() => {
+    quickExplainRequestSequenceRef.current += 1;
+    setDetailModalOpen(false);
+    setSelectedPostingId(null);
+    setDetailState({ status: 'idle', error: '', data: null });
+    setQuickDetailState({
+      mode: 'none',
+      fitScore: null,
+      explainStatus: 'idle',
+      explainError: '',
+      explainData: null
+    });
+  }, []);
+
   const handleApplyQuickFilters = useCallback(async () => {
     if (!effectiveSelectedProfileId || quickState.status === 'loading' || quickState.status === 'refetching') {
       return;
@@ -3750,19 +3769,7 @@ export function MainPage({ view = 'home' }) {
             error: quickDetailState.explainError,
             data: quickDetailState.explainData
           }}
-          onClose={() => {
-            quickExplainRequestSequenceRef.current += 1;
-            setDetailModalOpen(false);
-            setSelectedPostingId(null);
-            setDetailState({ status: 'idle', error: '', data: null });
-            setQuickDetailState({
-              mode: 'none',
-              fitScore: null,
-              explainStatus: 'idle',
-              explainError: '',
-              explainData: null
-            });
-          }}
+          onClose={handleCloseDetailModal}
           onScrap={() => setScrapConfirmOpen(true)}
         />
       ) : null}
