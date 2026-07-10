@@ -33,6 +33,7 @@ import { getProfileScoringSignature } from '../utils/profileScoringSignature';
 import { filterAccessibilityMapJobs } from '../hooks/useAccessibilityMap';
 import { LoginModal } from '../components/auth/LoginModal';
 import { DefinitionGrid } from '../components/jobs/JobDetailPanel';
+import { PostingMapPreview } from '../components/jobs/PostingMapPreview';
 import { AccessibilityScoreHelpButton } from '../components/accessibility-map/AccessibilityMapDetailPanel';
 import { LlmExplanationProgress } from '../components/common/LlmExplanationProgress';
 import { getAddressCoordinate, getAddressDistrict } from '../utils/addressCoordinates';
@@ -616,6 +617,20 @@ const normalizePostingDetail = (detail) => ({
   scrapCount: Number(detail?.scrapCount || 0),
   scrappedByMe: Boolean(detail?.scrappedByMe)
 });
+
+const getPostingMapPreview = (detail) => {
+  const mapLat = toNumberOrNull(detail?.geoLatitude);
+  const mapLng = toNumberOrNull(detail?.geoLongitude);
+  const hasMapPoint = mapLat !== null && mapLng !== null;
+
+  return {
+    available: hasMapPoint,
+    lat: mapLat,
+    lng: mapLng,
+    label: hasMapPoint ? '연동된 지도 정보입니다.' : '지도 위치 데이터가 없습니다.',
+    address: toSafeText(detail?.workAddress, '근무지 주소 확인 필요')
+  };
+};
 
 const toNullableText = (value) => {
   const text = String(value ?? '').trim();
@@ -1290,6 +1305,7 @@ function PopularPostingDetailModal({
     ['요구전공', toSafeText(detail.requiredMajor)],
     ['요구자격증', toSafeText(detail.requiredLicenses)]
   ] : [];
+  const mapPreview = detail ? getPostingMapPreview(detail) : null;
   const formattedQuickSummary = formatRecommendationExplanationText(quickExplainState.data?.shortSummary, quickFitScore);
   const formattedQuickNextStepSummary = formatRecommendationExplanationText(quickExplainState.data?.nextStepSummary, quickFitScore);
   const formattedQuickChecklist = formatRecommendationExplanationList(quickExplainState.data?.checklist, quickFitScore);
@@ -1546,6 +1562,14 @@ function PopularPostingDetailModal({
                   >
                     <DefinitionGrid items={requirementItems} skipValues />
                   </PostingDetailInfoSection>
+                  {mapPreview ? (
+                    <PostingDetailInfoSection
+                      title="지도 미리보기"
+                      description="스크랩 공고 상세와 동일한 방식으로 근무지 위치를 미리 확인할 수 있습니다."
+                    >
+                      <PostingMapPreview mapPreview={mapPreview} title={detail.jobTitle} />
+                    </PostingDetailInfoSection>
+                  ) : null}
                 </div>
               </div>
             </>
