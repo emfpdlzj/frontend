@@ -2885,8 +2885,13 @@ export function MainPage({ view = 'home' }) {
 
             <section className="home-notices home-section-entrance" aria-labelledby="home-notices-title">
               <div className="home-notices__intro">
-                <h2 id="home-notices-title">공지사항</h2>
-                <p>서비스 운영과 이용에 필요한 안내입니다.</p>
+                <div>
+                  <h2 id="home-notices-title">공지사항</h2>
+                  <p>서비스 운영과 이용에 필요한 안내입니다.</p>
+                </div>
+                <Link className="secondary-button home-notices__more" to={localizePath(ROUTE_PATHS.notices)}>
+                  전체보기
+                </Link>
               </div>
 
               <div className="home-notices__panel">
@@ -2907,9 +2912,6 @@ export function MainPage({ view = 'home' }) {
                         </Link>
                       ))}
                     </div>
-                    <Link className="secondary-button home-notices__more" to={localizePath(ROUTE_PATHS.notices)}>
-                      전체보기
-                    </Link>
                   </div>
                 ) : null}
               </div>
