@@ -1377,7 +1377,41 @@ const UI_TEXT_TRANSLATIONS = {
     en: 'Enter neighborhood-level details for a more accurate commute estimate.',
     ja: '町・村単位まで入力すると通勤時間計算がより正確になります。'
   },
-  '내 포트폴리오 pdf 파일로 생성하기': { zh: '生成我的作品集 PDF', en: 'Create my portfolio PDF', ja: 'ポートフォリオPDFを作成' },
+  '기존 이력서 파일로 브릿지워크 프로필 생성하기': {
+    zh: '用现有简历文件生成 BridgeWork 资料',
+    en: 'Create a BridgeWork profile from an existing resume file',
+    ja: '既存の履歴書ファイルからBridgeWorkプロフィールを作成'
+  },
+  '브릿지워크 프로필을 pdf로 내보내기': {
+    zh: '将 BridgeWork 资料导出为 PDF',
+    en: 'Export BridgeWork profile as PDF',
+    ja: 'BridgeWorkプロフィールをPDFで書き出す'
+  },
+  '브릿지워크 프로필 PDF 내보내기 기능은 준비 중입니다.': {
+    zh: 'BridgeWork 资料 PDF 导出功能正在准备中。',
+    en: 'BridgeWork profile PDF export is coming soon.',
+    ja: 'BridgeWorkプロフィールのPDF書き出し機能は準備中です。'
+  },
+  'PDF로 내보낼 프로필 정보를 찾지 못했습니다. 잠시 후 다시 시도해 주세요.': {
+    zh: '找不到要导出为 PDF 的资料信息。请稍后重试。',
+    en: 'The profile data for PDF export could not be found. Please try again shortly.',
+    ja: 'PDFに書き出すプロフィール情報が見つかりませんでした。しばらくしてから再度お試しください。'
+  },
+  '팝업이 차단되어 PDF 미리보기를 열지 못했습니다. 브라우저 팝업 설정을 확인해 주세요.': {
+    zh: '弹窗被拦截，无法打开 PDF 预览。请检查浏览器的弹窗设置。',
+    en: 'The popup was blocked, so the PDF preview could not be opened. Check your browser popup settings.',
+    ja: 'ポップアップがブロックされ、PDFプレビューを開けませんでした。ブラウザのポップアップ設定を確認してください。'
+  },
+  'PDF로 내보낼 프로필 문서를 준비하고 있습니다.': {
+    zh: '正在准备要导出为 PDF 的资料文档。',
+    en: 'Preparing the profile document for PDF export.',
+    ja: 'PDFに書き出すプロフィール文書を準備しています。'
+  },
+  '프로필 PDF 내보내기 데이터를 불러오지 못했습니다.': {
+    zh: '无法加载资料 PDF 导出数据。',
+    en: 'Failed to load the profile PDF export data.',
+    ja: 'プロフィールPDF書き出しデータを読み込めませんでした。'
+  },
   'PDF 분석 중...': { zh: '正在分析 PDF...', en: 'Analyzing PDF...', ja: 'PDFを分析中...' },
   'PDF 분석 중입니다': { zh: '正在分析 PDF', en: 'Analyzing PDF', ja: 'PDFを分析しています' },
   '분석이 끝날 때까지 잠시만 기다려 주세요.': {

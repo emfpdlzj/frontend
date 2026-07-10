@@ -26,6 +26,7 @@ function AppLayout() {
   const locale = getLocaleFromPathname(location.pathname);
   const currentPathname = stripLocaleFromPathname(location.pathname);
   const isMapPage = currentPathname === ROUTE_PATHS.accessibilityMap;
+  const isProfilePdfExportPage = currentPathname.startsWith('/profile/export/');
   const isOAuthCallbackPage = Object.values(AUTH_PROVIDER_ROUTES).some(
     (route) => route.callbackPath === currentPathname
   );
@@ -100,9 +101,9 @@ function AppLayout() {
     <AccessibilityPreferencesProvider>
       <MapSearchProvider>
         <UiTextTranslator locale={locale} />
-        <div className="app-frame">
-          <AppHeader showMapSearch={isMapPage} />
-          {authNotice ? (
+        <div className={`app-frame${isProfilePdfExportPage ? ' app-frame--document' : ''}`}>
+          {!isProfilePdfExportPage ? <AppHeader showMapSearch={isMapPage} /> : null}
+          {authNotice && !isProfilePdfExportPage ? (
             <div className="app-frame__notice">
               <StatusMessage kind="error">{authNotice}</StatusMessage>
               <button type="button" onClick={dismissAuthNotice} aria-label="인증 안내 닫기">
@@ -111,7 +112,7 @@ function AppLayout() {
             </div>
           ) : null}
           <div className="app-frame__body">
-            <AppTabNavigation />
+            {!isProfilePdfExportPage ? <AppTabNavigation /> : null}
             <div className="app-frame__content">
               <div className="app-frame__main">
                 <AppErrorBoundary
@@ -126,7 +127,7 @@ function AppLayout() {
                   <AppRouter />
                 </AppErrorBoundary>
               </div>
-              {isMapPage ? null : <AppFooter />}
+              {isMapPage || isProfilePdfExportPage ? null : <AppFooter />}
             </div>
           </div>
           {isWithdrawalRestoredOpen ? <WithdrawalRestoredModal onClose={closeWithdrawalRestoredModal} /> : null}

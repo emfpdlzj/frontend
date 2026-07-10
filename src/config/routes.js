@@ -11,6 +11,7 @@ export const ROUTE_PATHS = Object.freeze({
   adminNotices: '/admin/notices',
   jobs: '/jobs',
   profile: '/profile',
+  profilePdfExport: '/profile/export/:profileId',
   signup: '/signup',
   myProfile: '/my/profile',
   settings: '/settings',

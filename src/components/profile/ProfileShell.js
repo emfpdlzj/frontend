@@ -6,14 +6,22 @@ import plusIcon from '../../assets/profile/plus_icon.png';
 import { profileApi } from '../../api/profileApi';
 import { useAuth } from '../../auth/AuthContext';
 import { STORAGE_KEYS } from '../../config/appConfig';
+import { ROUTE_PATHS } from '../../config/routes';
 import { FILE_UPLOAD_POLICY } from '../../config/securityPolicy';
 import { useProfiles } from '../../hooks/useProfiles';
+import { useLocale } from '../../i18n/LocaleContext';
 import { normalizeBirthDate } from '../../utils/birthDate';
 import { validateFileUpload } from '../../utils/fileValidation';
 import { formatPhoneNumber, getFieldFormatMessage } from '../../utils/formValidation';
 import { LoadingView } from '../common/LoadingView';
 import { StatusMessage } from '../common/StatusMessage';
 import { ProfileSectionPanel } from './ProfileSectionPanel';
+import {
+  createProfilePdfExportChannelId,
+  normalizeProfileDocumentData,
+  PROFILE_PDF_EXPORT_DATA_EVENT,
+  PROFILE_PDF_EXPORT_READY_EVENT
+} from './profileDocumentUtils';
 
 const sectionRows = [
   [
@@ -181,6 +189,7 @@ function useProfileLeavePrompt(shouldPrompt) {
 
 export function ProfileShell() {
   const { callWithAuth } = useAuth();
+  const { localizePath } = useLocale();
   const {
     status,
     detailStatus,
@@ -685,6 +694,64 @@ export function ProfileShell() {
     }
   };
 
+  const handleProfilePdfExportClick = () => {
+    const exportProfileId = String(visibleProfile?.profileId || selectedProfile?.profileId || selectedProfileId || '');
+
+    if (!exportProfileId || !visibleProfile) {
+      setFormError('PDF로 내보낼 프로필 정보를 찾지 못했습니다. 잠시 후 다시 시도해 주세요.');
+      return;
+    }
+
+    const channelId = createProfilePdfExportChannelId();
+    const exportPath = localizePath(ROUTE_PATHS.profilePdfExport.replace(':profileId', exportProfileId));
+    const exportUrl = `${exportPath}?channel=${encodeURIComponent(channelId)}`;
+    const exportPayload = normalizeProfileDocumentData(visibleProfile);
+    const origin = window.location.origin;
+    let timeoutId = null;
+
+    const handleExportReady = (event) => {
+      if (event.origin !== origin) {
+        return;
+      }
+
+      const message = event.data;
+      if (message?.type !== PROFILE_PDF_EXPORT_READY_EVENT || message?.channelId !== channelId) {
+        return;
+      }
+
+      event.source?.postMessage(
+        {
+          type: PROFILE_PDF_EXPORT_DATA_EVENT,
+          channelId,
+          profile: exportPayload
+        },
+        origin
+      );
+
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+
+      window.removeEventListener('message', handleExportReady);
+    };
+
+    window.addEventListener('message', handleExportReady);
+    timeoutId = window.setTimeout(() => {
+      window.removeEventListener('message', handleExportReady);
+    }, 15000);
+
+    const exportWindow = window.open(exportUrl, '_blank');
+
+    if (!exportWindow) {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+
+      window.removeEventListener('message', handleExportReady);
+      showDraftToast('팝업이 차단되어 PDF 미리보기를 열지 못했습니다. 브라우저 팝업 설정을 확인해 주세요.', 'error');
+    }
+  };
+
   return (
     <main className="profile-page">
       <div className="profile-layout">
@@ -766,7 +833,7 @@ export function ProfileShell() {
                   onClick={handlePortfolioExtractClick}
                   disabled={isMutating || isExtractingPortfolio || (!isCreateMode && detailStatus !== 'success')}
                 >
-                  {isExtractingPortfolio ? 'PDF 분석 중...' : '내 포트폴리오 pdf 파일로 생성하기'}
+                  {isExtractingPortfolio ? 'PDF 분석 중...' : '기존 이력서 파일로 브릿지워크 프로필 생성하기'}
                 </button>
                 <p className="profile-top-portfolio-note">업로드 가능: PDF, 최대 {MAX_PORTFOLIO_PDF_SIZE_LABEL}</p>
               </div>
@@ -826,6 +893,19 @@ export function ProfileShell() {
             </div>
           </header>
 
+          {!isCreateMode && detailStatus === 'success' && visibleProfile ? (
+            <div className="profile-export-placeholder">
+              <button
+                type="button"
+                className="profile-primary-action profile-export-placeholder__button"
+                onClick={handleProfilePdfExportClick}
+                disabled={isMutating || isExtractingPortfolio}
+              >
+                브릿지워크 프로필을 pdf로 내보내기
+              </button>
+            </div>
+          ) : null}
+
           <div className="profile-form-area">
             {mutationMessage ? (
               <StatusMessage kind={mutationMessage.includes('실패') ? 'error' : 'success'}>{mutationMessage}</StatusMessage>
@@ -845,51 +925,49 @@ export function ProfileShell() {
 
             {(isCreateMode || (detailStatus === 'success' && visibleProfile)) ? (
               <>
-                <div className="profile-form-actions">
-                  {isCreateMode ? (
-                    <>
-                      <button
-                        type="button"
-                        className="profile-secondary-action"
-                        onClick={handleCancelCreate}
-                        disabled={isMutating || isExtractingPortfolio}
-                      >
-                        취소
-                      </button>
-                      <button
-                        type="button"
-                        className="profile-primary-action"
-                        onClick={handleSave}
-                        disabled={isMutating || isExtractingPortfolio}
-                      >
-                        {isMutating ? '저장 중...' : '프로필 추가 완료'}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      {!isReadOnlyMode ? (
-                        <>
-                          <button
-                            type="button"
-                            className="profile-secondary-action"
-                            onClick={handleEditCancelClick}
-                            disabled={isMutating || isExtractingPortfolio}
-                          >
-                            수정 취소
-                          </button>
-                          <button
-                            type="button"
-                            className="profile-primary-action"
-                            onClick={handleSave}
-                            disabled={isMutating || isExtractingPortfolio || !hasDraftChanges}
-                          >
-                            {isMutating ? '저장 중...' : '변경사항 저장'}
-                          </button>
-                        </>
-                      ) : null}
-                    </>
-                  )}
-                </div>
+                {isCreateMode || !isReadOnlyMode ? (
+                  <div className="profile-form-actions">
+                    {isCreateMode ? (
+                      <>
+                        <button
+                          type="button"
+                          className="profile-secondary-action"
+                          onClick={handleCancelCreate}
+                          disabled={isMutating || isExtractingPortfolio}
+                        >
+                          취소
+                        </button>
+                        <button
+                          type="button"
+                          className="profile-primary-action"
+                          onClick={handleSave}
+                          disabled={isMutating || isExtractingPortfolio}
+                        >
+                          {isMutating ? '저장 중...' : '프로필 추가 완료'}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="profile-secondary-action"
+                          onClick={handleEditCancelClick}
+                          disabled={isMutating || isExtractingPortfolio}
+                        >
+                          수정 취소
+                        </button>
+                        <button
+                          type="button"
+                          className="profile-primary-action"
+                          onClick={handleSave}
+                          disabled={isMutating || isExtractingPortfolio || !hasDraftChanges}
+                        >
+                          {isMutating ? '저장 중...' : '변경사항 저장'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ) : null}
                 <div className="profile-form-meta">
                   <div className="profile-form-meta__left">
                     {lastAutosavedAt ? (

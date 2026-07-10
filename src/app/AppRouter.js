@@ -22,6 +22,7 @@ const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((module) =>
 const AccessibilityMapPage = lazy(() => import('../pages/AccessibilityMapPage').then((module) => ({ default: module.AccessibilityMapPage })));
 const JobsPage = lazy(() => import('../pages/JobsPage').then((module) => ({ default: module.JobsPage })));
 const ProfilePage = lazy(() => import('../pages/ProfilePage').then((module) => ({ default: module.ProfilePage })));
+const ProfilePdfExportPage = lazy(() => import('../pages/ProfilePdfExportPage').then((module) => ({ default: module.ProfilePdfExportPage })));
 const TermsPage = lazy(() => import('../pages/TermsPage').then((module) => ({ default: module.TermsPage })));
 const PrivacyPage = lazy(() => import('../pages/PrivacyPage').then((module) => ({ default: module.PrivacyPage })));
 const SettingsPage = lazy(() => import('../pages/SettingsPage').then((module) => ({ default: module.SettingsPage })));
@@ -113,6 +114,7 @@ export function AppRouter() {
         <Route path={ROUTE_PATHS.jobs} element={<LegacyRouteRedirect to={ROUTE_PATHS.jobs} />} />
         <Route path={ROUTE_PATHS.signup} element={<LegacyRouteRedirect to={ROUTE_PATHS.signup} />} />
         <Route path={ROUTE_PATHS.profile} element={<LegacyRouteRedirect to={ROUTE_PATHS.profile} />} />
+        <Route path={ROUTE_PATHS.profilePdfExport} element={<LegacyRouteRedirect to={ROUTE_PATHS.profilePdfExport} />} />
         <Route path={ROUTE_PATHS.myProfile} element={<LegacyRouteRedirect to={ROUTE_PATHS.myProfile} />} />
         <Route path={ROUTE_PATHS.terms} element={<LegacyRouteRedirect to={ROUTE_PATHS.terms} />} />
         <Route path={ROUTE_PATHS.privacy} element={<LegacyRouteRedirect to={ROUTE_PATHS.privacy} />} />
@@ -151,6 +153,10 @@ export function AppRouter() {
           element={<LocaleRoute><SignupPage /></LocaleRoute>}
         />
         <Route path={LOCALIZED_ROUTE_PATHS.profile} element={<LocaleRoute><AuthRoute><ProfilePage /></AuthRoute></LocaleRoute>} />
+        <Route
+          path={LOCALIZED_ROUTE_PATHS.profilePdfExport}
+          element={<LocaleRoute><AuthRoute><ProfilePdfExportPage /></AuthRoute></LocaleRoute>}
+        />
         <Route path={LOCALIZED_ROUTE_PATHS.myProfile} element={<LocaleRoute><AuthRoute><ProfilePage /></AuthRoute></LocaleRoute>} />
         <Route path={LEGACY_ROUTE_PATHS.home} element={<LegacyRouteRedirect to={ROUTE_PATHS.root} />} />
         <Route path={LEGACY_ROUTE_PATHS.meProfile} element={<LegacyRouteRedirect to={ROUTE_PATHS.root} />} />
