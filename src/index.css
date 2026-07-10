@@ -16022,9 +16022,9 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   padding: calc(6px * var(--ui-density-scale)) calc(12px * var(--ui-density-scale));
 }
 
-/* Narrow the left traffic filter column without changing the quick-jobs panel. */
+/* Keep the left traffic filter column a bit wider without changing the quick-jobs panel. */
 .accessibility-map .accessibility-map__layout {
-  grid-template-columns: clamp(268px, 17.5vw, 292px) minmax(0, 1fr) clamp(328px, 22.5vw, 376px);
+  grid-template-columns: clamp(282px, 18.5vw, 308px) minmax(0, 1fr) clamp(328px, 22.5vw, 376px);
 }
 
 .accessibility-map .accessibility-map__filter-panel {
