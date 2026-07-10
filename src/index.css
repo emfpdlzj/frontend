@@ -1638,6 +1638,11 @@ html[data-bw-reduce-motion='off'] .score-ring--no-animate .score-ring__value {
   width: 100%;
 }
 
+.home-quick__actions .accessibility-map__filter-actions {
+  grid-template-columns: repeat(2, minmax(132px, 220px));
+  gap: 12px;
+}
+
 .home-quick__profile-select {
   position: static;
   top: auto;
