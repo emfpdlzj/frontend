@@ -1793,6 +1793,7 @@ export function MainPage({ view = 'home' }) {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailState, setDetailState] = useState({ status: 'idle', error: '', data: null });
   const [selectedPostingId, setSelectedPostingId] = useState(null);
+  const [selectedQuickJob, setSelectedQuickJob] = useState(null);
   const [quickDetailState, setQuickDetailState] = useState({
     mode: 'none',
     fitScore: null,
@@ -1848,6 +1849,7 @@ export function MainPage({ view = 'home' }) {
   const quickLoadMoreInFlightKeyRef = useRef('');
   const quickRenderedJobKeysRef = useRef(new Set());
   const quickPageActiveRef = useRef(false);
+  const wasQuickBatchLoadingRef = useRef(false);
 
   const supportSectionCopy = HOME_SUPPORT_SECTION_COPY[locale] || HOME_SUPPORT_SECTION_COPY.ko;
   const supportOrganizations = useMemo(
@@ -2874,8 +2876,8 @@ export function MainPage({ view = 'home' }) {
   ]);
 
   const loadQuickExplanation = useCallback(async (job, profileObject, detailObject = null, options = {}) => {
-    const { requireFitScore = true } = options;
-    if (!job || !profileObject || !selectedProfileId || !appliedAiEnabled || (requireFitScore && typeof job.fitScore !== 'number')) {
+    const { requireFitScore = true, profileId = effectiveSelectedProfileId, signal } = options;
+    if (!job || !profileObject || !profileId || !appliedAiEnabled || (requireFitScore && typeof job.fitScore !== 'number')) {
       setQuickDetailState((prev) => ({
         ...prev,
         explainStatus: 'idle',
@@ -2888,7 +2890,7 @@ export function MainPage({ view = 'home' }) {
     const profileSignature = getProfileScoringSignature(profileObject);
     const explainCacheKey = [
       'quick-explain',
-      String(selectedProfileId),
+      String(profileId),
       profileSignature || 'current',
       String(job.postingId || job.externalId || job.id || 'unknown')
     ].join(':');
@@ -2934,7 +2936,7 @@ export function MainPage({ view = 'home' }) {
     }));
 
     try {
-      const response = await callWithAuth((accessToken) => explainRecommendation(accessToken, explainPayload));
+      const response = await callWithAuth((accessToken) => explainRecommendation(accessToken, explainPayload, { signal }));
       if (quickExplainRequestSequenceRef.current !== sequence) {
         return;
       }
@@ -2956,7 +2958,89 @@ export function MainPage({ view = 'home' }) {
         explainData: null
       }));
     }
-  }, [appliedAiEnabled, callWithAuth, selectedProfileId]);
+  }, [appliedAiEnabled, callWithAuth, effectiveSelectedProfileId]);
+
+  useEffect(() => {
+    if (!detailModalOpen || quickDetailState.mode !== 'quick' || quickDetailState.explainStatus !== 'idle' || !selectedQuickJob) {
+      return undefined;
+    }
+
+    if (detailState.status === 'loading') {
+      return undefined;
+    }
+
+    const profileId = effectiveSelectedProfileId;
+    const profileObject = getQuickProfileForScoring(profileId);
+    if (!profileId || !profileObject || !appliedAiEnabled || typeof selectedQuickJob.fitScore !== 'number') {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    loadQuickExplanation(selectedQuickJob, profileObject, detailState.data, {
+      profileId,
+      signal: controller.signal
+    });
+    return () => {
+      controller.abort();
+    };
+  }, [
+    appliedAiEnabled,
+    detailModalOpen,
+    detailState.data,
+    detailState.status,
+    effectiveSelectedProfileId,
+    getQuickProfileForScoring,
+    loadQuickExplanation,
+    quickDetailState.explainStatus,
+    quickDetailState.mode,
+    selectedQuickJob
+  ]);
+
+  useEffect(() => {
+    const isQuickBatchLoading = quickState.status === 'loading' || quickState.status === 'refetching' || quickState.isLoadingMore;
+    const wasQuickBatchLoading = wasQuickBatchLoadingRef.current;
+    wasQuickBatchLoadingRef.current = isQuickBatchLoading;
+
+    if (
+      !detailModalOpen ||
+      quickDetailState.mode !== 'quick' ||
+      quickDetailState.explainStatus !== 'error' ||
+      !selectedQuickJob ||
+      !wasQuickBatchLoading ||
+      isQuickBatchLoading ||
+      detailState.status === 'loading'
+    ) {
+      return undefined;
+    }
+
+    const profileId = effectiveSelectedProfileId;
+    const profileObject = getQuickProfileForScoring(profileId);
+    if (!profileId || !profileObject || !appliedAiEnabled || typeof selectedQuickJob.fitScore !== 'number') {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    loadQuickExplanation(selectedQuickJob, profileObject, detailState.data, {
+      profileId,
+      signal: controller.signal
+    });
+    return () => {
+      controller.abort();
+    };
+  }, [
+    appliedAiEnabled,
+    detailModalOpen,
+    detailState.data,
+    detailState.status,
+    effectiveSelectedProfileId,
+    getQuickProfileForScoring,
+    loadQuickExplanation,
+    quickDetailState.explainStatus,
+    quickDetailState.mode,
+    quickState.isLoadingMore,
+    quickState.status,
+    selectedQuickJob
+  ]);
 
   const handleOpenPopularPosting = useCallback(async (postingId) => {
     if (!isAuthenticated) {
@@ -2971,6 +3055,7 @@ export function MainPage({ view = 'home' }) {
       explainError: '',
       explainData: null
     });
+    setSelectedQuickJob(null);
     setSelectedPostingId(postingId);
     setDetailModalOpen(true);
     setDetailState({ status: 'loading', error: '', data: null });
@@ -2989,7 +3074,7 @@ export function MainPage({ view = 'home' }) {
       return;
     }
 
-    const selectedProfileObject = getQuickProfileForScoring(selectedProfileId);
+    setSelectedQuickJob(job);
     setQuickDetailState({
       mode: 'quick',
       fitScore: typeof job.fitScore === 'number' ? job.fitScore : null,
@@ -3004,7 +3089,6 @@ export function MainPage({ view = 'home' }) {
 
     if (!postingId) {
       setDetailState({ status: 'success', error: '', data: toQuickFallbackDetail(job) });
-      loadQuickExplanation(job, selectedProfileObject, null);
       return;
     }
 
@@ -3012,7 +3096,6 @@ export function MainPage({ view = 'home' }) {
       const detail = await callWithAuth((accessToken) => postingApi.getPostingDetail(postingId, { accessToken }));
       const normalizedDetail = normalizePostingDetail(detail);
       setDetailState({ status: 'success', error: '', data: normalizedDetail });
-      loadQuickExplanation(job, selectedProfileObject, normalizedDetail);
     } catch (error) {
       const fallbackDetail = toQuickFallbackDetail(job);
       setDetailState({
@@ -3020,14 +3103,14 @@ export function MainPage({ view = 'home' }) {
         error: '',
         data: fallbackDetail
       });
-      loadQuickExplanation(job, selectedProfileObject, fallbackDetail);
     }
-  }, [callWithAuth, getQuickProfileForScoring, loadQuickExplanation, selectedProfileId]);
+  }, [callWithAuth]);
 
   const handleCloseDetailModal = useCallback(() => {
     quickExplainRequestSequenceRef.current += 1;
     setDetailModalOpen(false);
     setSelectedPostingId(null);
+    setSelectedQuickJob(null);
     setDetailState({ status: 'idle', error: '', data: null });
     setQuickDetailState({
       mode: 'none',
