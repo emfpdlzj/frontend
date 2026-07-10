@@ -16090,6 +16090,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   --map-panel-padding-x: calc(14px * var(--ui-density-scale));
   padding-top: calc(9px * var(--ui-density-scale));
   padding-bottom: calc(11px * var(--ui-density-scale));
+  overflow: hidden;
 }
 
 .accessibility-map .accessibility-map__filter-header {
@@ -17082,6 +17083,10 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
     grid-column: 1;
     height: auto;
     min-height: 520px;
+  }
+
+  .accessibility-map .accessibility-map__filter-panel {
+    overflow: visible;
   }
 }
 
