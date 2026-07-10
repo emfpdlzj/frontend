@@ -1386,6 +1386,7 @@ const UI_TEXT_TRANSLATIONS = {
     ja: '分析が完了するまで少しお待ちください。'
   },
   '업로드 가능: PDF, 최대': { zh: '可上传：PDF，最大', en: 'Upload: PDF, up to', ja: 'アップロード可能：PDF、最大' },
+  '필수 입력 정보입니다': { zh: '为必填信息。', en: 'Required information.', ja: '必須入力情報です。' },
   '이미 입력된 값들도 새로 덮어쓰기 됩니다. 진행하시겠습니까?': {
     zh: '已输入的值也会被新内容覆盖。要继续吗？',
     en: 'Existing values will also be overwritten. Continue?',

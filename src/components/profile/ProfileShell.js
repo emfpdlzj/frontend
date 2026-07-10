@@ -35,6 +35,7 @@ const PROFILE_DRAFT_CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_PORTFOLIO_PDF_SIZE_BYTES = 10 * 1024 * 1024;
 const MAX_PORTFOLIO_PDF_SIZE_LABEL = '10MB';
 const PROFILE_LEAVE_CONFIRM_MESSAGE = '작성 중인 프로필 정보가 있습니다. 저장하지 않고 나가시겠습니까?';
+const DEFAULT_MAJOR_CAREER = '신입';
 const HIGHEST_EDUCATION_LABEL_MAP = {
   HIGH_SCHOOL_OR_BELOW: '고졸 이하',
   HIGH_SCHOOL: '고졸',
@@ -44,12 +45,85 @@ const HIGHEST_EDUCATION_LABEL_MAP = {
   DOCTOR: '박사',
   OTHER: '기타'
 };
+const STRUCTURED_EDUCATION_LABEL_MAP = {
+  HIGH_SCHOOL: '고등학교',
+  COLLEGE_2_3: '전문대(2,3년제)',
+  COLLEGE_4: '대학교(4년제)',
+  MASTER: '대학원(석사)',
+  DOCTOR: '대학원(박사)',
+  BOOTCAMP: '부트캠프',
+  OTHER: '기타'
+};
+const STRUCTURED_GRADUATION_STATUS_LABEL_MAP = {
+  GRADUATED: '졸업',
+  EXPECTED: '졸업예정',
+  ENROLLED: '재학',
+  COMPLETED: '수료',
+  DROPPED_OUT: '중퇴',
+  OTHER: '기타'
+};
+const STRUCTURED_PROJECT_TYPE_LABEL_MAP = {
+  COMPANY_PROJECT: '실무 프로젝트',
+  BOOTCAMP: '부트캠프',
+  FREELANCE: '외주·프리랜서',
+  HACKATHON: '해커톤',
+  CONTEST: '공모전',
+  CLUB: '동아리',
+  VOLUNTEER: '봉사활동',
+  PERSONAL: '개인 프로젝트',
+  OTHER: '기타'
+};
+const STRUCTURED_EDUCATION_TO_HIGHEST_EDUCATION_MAP = {
+  HIGH_SCHOOL: 'HIGH_SCHOOL',
+  COLLEGE_2_3: 'COLLEGE',
+  COLLEGE_4: 'BACHELOR',
+  MASTER: 'MASTER',
+  DOCTOR: 'DOCTOR',
+  BOOTCAMP: 'OTHER',
+  OTHER: 'OTHER'
+};
+const LEGACY_TO_STRUCTURED_EDUCATION_MAP = {
+  HIGH_SCHOOL_OR_BELOW: 'HIGH_SCHOOL',
+  HIGH_SCHOOL: 'HIGH_SCHOOL',
+  COLLEGE: 'COLLEGE_2_3',
+  BACHELOR: 'COLLEGE_4',
+  MASTER: 'MASTER',
+  DOCTOR: 'DOCTOR',
+  OTHER: 'OTHER'
+};
+const STRUCTURED_GRADUATION_TO_PROFILE_MAP = {
+  GRADUATED: 'GRADUATED',
+  EXPECTED: 'EXPECTED',
+  ENROLLED: 'ENROLLED',
+  COMPLETED: 'COMPLETED',
+  DROPPED_OUT: 'DROPPED_OUT',
+  OTHER: 'OTHER'
+};
+const EDUCATION_PRIORITY_MAP = {
+  HIGH_SCHOOL: 1,
+  COLLEGE_2_3: 2,
+  COLLEGE_4: 3,
+  MASTER: 4,
+  DOCTOR: 5,
+  BOOTCAMP: 0,
+  OTHER: 0
+};
+let structuredEntrySequence = 0;
 const SAFE_PROFILE_DRAFT_FIELDS = [
   'desiredJob',
   'commuteRange',
   'preferredWorkEnvironments',
   'avoidedWorkEnvironments',
   'requiredSupports',
+  'sensitiveInfoConsentYn',
+  'educationEntries',
+  'careerEntries',
+  'projectEntries',
+  'certificationEntries',
+  'languageEntries',
+  'portfolioEntries',
+  'awardEntries',
+  'trainingEntries',
   'careerSummary',
   'educationSummary',
   'employmentTypeSummary',
@@ -135,6 +209,7 @@ export function ProfileShell() {
   const [cachedDraftCards, setCachedDraftCards] = useState([]);
   const [isExtractingPortfolio, setIsExtractingPortfolio] = useState(false);
   const [isPortfolioConfirmOpen, setIsPortfolioConfirmOpen] = useState(false);
+  const [isEditCancelConfirmOpen, setIsEditCancelConfirmOpen] = useState(false);
   const loadedDraftKeyRef = useRef('');
   const lastAutosavedSnapshotRef = useRef('');
   const autosaveDebounceRef = useRef(null);
@@ -229,10 +304,10 @@ export function ProfileShell() {
     const cachedDraft = readProfileDraftCache(storageKey);
 
     if (cachedDraft?.draft && JSON.stringify(cachedDraft.draft) !== JSON.stringify(baseDraft)) {
-      setDraftProfile({
+      setDraftProfile(normalizeStructuredProfileDraft({
         ...baseDraft,
         ...cachedDraft.draft
-      });
+      }));
       setLastAutosavedAt(formatAutosaveTime(cachedDraft.savedAt));
       lastAutosavedSnapshotRef.current = JSON.stringify(cachedDraft.draft);
       showDraftToast('민감 정보를 제외한 임시저장 내용을 불러왔습니다.');
@@ -354,16 +429,16 @@ export function ProfileShell() {
     const cachedDraft = readProfileDraftCache(storageKey);
 
     if (cachedDraft?.draft) {
-      setDraftProfile({
+      setDraftProfile(normalizeStructuredProfileDraft({
         ...createEmptyProfileDraft(),
         ...cachedDraft.draft
-      });
+      }));
       setLastAutosavedAt(formatAutosaveTime(cachedDraft.savedAt));
       lastAutosavedSnapshotRef.current = JSON.stringify(cachedDraft.draft);
       loadedDraftKeyRef.current = storageKey;
       showDraftToast('임시저장된 새 프로필을 불러왔습니다.');
     } else {
-      const emptyDraft = createEmptyProfileDraft();
+      const emptyDraft = normalizeStructuredProfileDraft(createEmptyProfileDraft());
 
       setDraftProfile(emptyDraft);
       setLastAutosavedAt('');
@@ -401,17 +476,53 @@ export function ProfileShell() {
     setFormatValidationVisible({});
   };
 
+  const handleEditCancelClick = () => {
+    if (isCreateMode || isReadOnlyMode || isMutating || isExtractingPortfolio) {
+      return;
+    }
+
+    setIsEditCancelConfirmOpen(true);
+  };
+
+  const handleEditCancelDismiss = () => {
+    setIsEditCancelConfirmOpen(false);
+  };
+
+  const handleEditCancelConfirm = () => {
+    if (!selectedProfile) {
+      setIsEditCancelConfirmOpen(false);
+      setIsEditMode(false);
+      return;
+    }
+
+    const storageKey = getProfileDraftStorageKey(selectedProfile.profileId);
+    const baseDraft = toDraftProfile(selectedProfile);
+
+    clearProfileDraftCache(storageKey);
+    refreshCachedDraftCards();
+    setDraftProfile(baseDraft);
+    setLastAutosavedAt('');
+    loadedDraftKeyRef.current = storageKey;
+    lastAutosavedSnapshotRef.current = JSON.stringify(baseDraft);
+    setFormError('');
+    setFormatValidationVisible({});
+    setIsEditMode(false);
+    setIsEditCancelConfirmOpen(false);
+  };
+
   const updateDraft = (field, value) => {
     if (!isCreateMode && !isEditMode) {
       return;
     }
     setFormError('');
     const nextValue = field === 'contactPhone' ? formatPhoneNumber(value) : value;
-    setDraftProfile((prev) => ({
-      ...createEmptyProfileDraft(),
-      ...prev,
-      [field]: nextValue
-    }));
+    setDraftProfile((prev) =>
+      normalizeStructuredProfileDraft({
+        ...createEmptyProfileDraft(),
+        ...prev,
+        [field]: nextValue
+      })
+    );
   };
 
   const showFormatValidation = (field) => {
@@ -546,14 +657,16 @@ export function ProfileShell() {
         throw new Error('포트폴리오에서 프로필 정보를 추출하지 못했습니다.');
       }
 
-      setDraftProfile((prev) => ({
-        ...createEmptyProfileDraft(),
-        profileId: prev?.profileId,
-        userId: prev?.userId,
-        isDefault: prev?.isDefault,
-        updatedAt: prev?.updatedAt,
-        ...extractedDraft
-      }));
+      setDraftProfile((prev) =>
+        normalizeStructuredProfileDraft({
+          ...createEmptyProfileDraft(),
+          profileId: prev?.profileId,
+          userId: prev?.userId,
+          isDefault: prev?.isDefault,
+          updatedAt: prev?.updatedAt,
+          ...extractedDraft
+        })
+      );
 
       setIsEditMode(true);
       setFormatValidationVisible({});
@@ -645,6 +758,19 @@ export function ProfileShell() {
             onChange={handlePortfolioFileSelected}
           />
           <div className="profile-top-actions">
+            {(isCreateMode || (detailStatus === 'success' && visibleProfile)) ? (
+              <div className="profile-top-portfolio-group">
+                <button
+                  type="button"
+                  className="profile-secondary-action profile-top-portfolio-button"
+                  onClick={handlePortfolioExtractClick}
+                  disabled={isMutating || isExtractingPortfolio || (!isCreateMode && detailStatus !== 'success')}
+                >
+                  {isExtractingPortfolio ? 'PDF 분석 중...' : '내 포트폴리오 pdf 파일로 생성하기'}
+                </button>
+                <p className="profile-top-portfolio-note">업로드 가능: PDF, 최대 {MAX_PORTFOLIO_PDF_SIZE_LABEL}</p>
+              </div>
+            ) : null}
             {!isCreateMode && isReadOnlyMode ? (
               <button
                 type="button"
@@ -705,11 +831,6 @@ export function ProfileShell() {
               <StatusMessage kind={mutationMessage.includes('실패') ? 'error' : 'success'}>{mutationMessage}</StatusMessage>
             ) : null}
             {formError ? <StatusMessage kind="error">{formError}</StatusMessage> : null}
-            {lastAutosavedAt ? (
-              <p className="profile-autosave-note" aria-live="polite">
-                임시저장됨 {lastAutosavedAt}
-              </p>
-            ) : null}
 
             {detailStatus === 'loading' ? <LoadingView label="프로필 상세 정보를 불러오는 중입니다." /> : null}
 
@@ -729,14 +850,6 @@ export function ProfileShell() {
                     <>
                       <button
                         type="button"
-                        className="profile-secondary-action profile-portfolio-action"
-                        onClick={handlePortfolioExtractClick}
-                        disabled={isMutating || isExtractingPortfolio}
-                      >
-                        {isExtractingPortfolio ? 'PDF 분석 중...' : '내 포트폴리오 pdf 파일로 생성하기'}
-                      </button>
-                      <button
-                        type="button"
                         className="profile-secondary-action"
                         onClick={handleCancelCreate}
                         disabled={isMutating || isExtractingPortfolio}
@@ -754,28 +867,41 @@ export function ProfileShell() {
                     </>
                   ) : (
                     <>
-                      <button
-                        type="button"
-                        className="profile-secondary-action profile-portfolio-action"
-                        onClick={handlePortfolioExtractClick}
-                        disabled={isMutating || isExtractingPortfolio || detailStatus !== 'success'}
-                      >
-                        {isExtractingPortfolio ? 'PDF 분석 중...' : '내 포트폴리오 pdf 파일로 생성하기'}
-                      </button>
                       {!isReadOnlyMode ? (
-                        <button
-                          type="button"
-                          className="profile-primary-action"
-                          onClick={handleSave}
-                          disabled={isMutating || isExtractingPortfolio || !hasDraftChanges}
-                        >
-                          {isMutating ? '저장 중...' : '변경사항 저장'}
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            className="profile-secondary-action"
+                            onClick={handleEditCancelClick}
+                            disabled={isMutating || isExtractingPortfolio}
+                          >
+                            수정 취소
+                          </button>
+                          <button
+                            type="button"
+                            className="profile-primary-action"
+                            onClick={handleSave}
+                            disabled={isMutating || isExtractingPortfolio || !hasDraftChanges}
+                          >
+                            {isMutating ? '저장 중...' : '변경사항 저장'}
+                          </button>
+                        </>
                       ) : null}
                     </>
                   )}
                 </div>
-                {!isReadOnlyMode ? <p className="profile-portfolio-note">업로드 가능: PDF, 최대 {MAX_PORTFOLIO_PDF_SIZE_LABEL}</p> : null}
+                <div className="profile-form-meta">
+                  <div className="profile-form-meta__left">
+                    {lastAutosavedAt ? (
+                      <p className="profile-autosave-note" aria-live="polite">
+                        임시저장됨 {lastAutosavedAt}
+                      </p>
+                    ) : null}
+                  </div>
+                  <p className="profile-required-note">
+                    <em aria-hidden="true">*</em> 필수 입력 정보입니다
+                  </p>
+                </div>
                 <ProfileTabs rows={visibleTopRows} activeSection={activeSection} onTabClick={handleTabClick} />
                 <ProfileSectionPanel
                   activeSection={activeSection}
@@ -814,6 +940,26 @@ export function ProfileShell() {
           </div>
         </div>
       ) : null}
+      {isEditCancelConfirmOpen ? (
+        <div className="profile-confirm-backdrop" role="presentation">
+          <div className="profile-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-edit-cancel-title">
+            <h2 id="profile-edit-cancel-title">수정을 취소할까요?</h2>
+            <p>
+              {hasDraftChanges
+                ? '저장하지 않은 변경사항은 사라집니다. 상세 보기로 돌아가시겠습니까?'
+                : '수정을 취소하고 상세 보기로 돌아가시겠습니까?'}
+            </p>
+            <div className="profile-confirm-actions">
+              <button type="button" className="profile-primary-action" onClick={handleEditCancelDismiss}>
+                계속 수정
+              </button>
+              <button type="button" className="profile-secondary-action" onClick={handleEditCancelConfirm}>
+                수정 취소
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {isExtractingPortfolio ? (
         <div className="profile-loading-backdrop" role="presentation">
           <div className="profile-loading-modal" role="dialog" aria-modal="true" aria-labelledby="profile-loading-title">
@@ -844,6 +990,608 @@ const requiredFields = [
   ['selfIntroduction', '자기소개']
 ];
 
+function createStructuredEntryId(prefix) {
+  structuredEntrySequence += 1;
+  return `${prefix}-${structuredEntrySequence}`;
+}
+
+function createEducationEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('education'),
+    schoolType: '',
+    schoolName: '',
+    admissionYear: '',
+    graduationYear: '',
+    graduationStatus: '',
+    ...entry
+  };
+}
+
+function createCareerEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('career'),
+    companyName: '',
+    departmentName: '',
+    startYearMonth: '',
+    endYearMonth: '',
+    responsibilities: '',
+    ...entry
+  };
+}
+
+function createProjectEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('project'),
+    projectType: '',
+    projectName: '',
+    startYearMonth: '',
+    endYearMonth: '',
+    projectDescription: '',
+    ...entry
+  };
+}
+
+function createCertificationEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('certification'),
+    issuer: '',
+    certificationName: '',
+    acquiredYearMonth: '',
+    ...entry
+  };
+}
+
+function createLanguageEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('language'),
+    languageName: '',
+    testName: '',
+    scoreOrGrade: '',
+    acquiredYearMonth: '',
+    ...entry
+  };
+}
+
+function createPortfolioEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('portfolio'),
+    portfolioType: '',
+    title: '',
+    url: '',
+    ...entry
+  };
+}
+
+function createAwardEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('award'),
+    awardName: '',
+    awardingOrganization: '',
+    awardYear: '',
+    awardDescription: '',
+    ...entry
+  };
+}
+
+function createTrainingEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('training'),
+    trainingType: '',
+    trainingName: '',
+    institutionName: '',
+    startYearMonth: '',
+    endYearMonth: '',
+    trainingDescription: '',
+    ...entry
+  };
+}
+
+function ensureStructuredEntries(entries, entryFactory) {
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+
+  return entries.map((entry) => entryFactory(entry || {}));
+}
+
+function limitText(value, maxLength) {
+  const normalized = trimValue(value);
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return normalized.slice(0, maxLength);
+}
+
+function joinSegments(segments, separator = ' · ') {
+  return segments.map((segment) => trimValue(segment)).filter(Boolean).join(separator);
+}
+
+function formatStructuredPeriod(start, end) {
+  const startText = trimValue(start);
+  const endText = trimValue(end);
+
+  if (startText && endText) {
+    return `${startText} - ${endText}`;
+  }
+
+  if (startText) {
+    return `${startText} -`;
+  }
+
+  return endText ? `- ${endText}` : '';
+}
+
+function stripClientId(entry) {
+  const { clientId: _clientId, ...rest } = entry || {};
+  return rest;
+}
+
+function sanitizeEducationEntries(entries) {
+  return ensureStructuredEntries(entries, createEducationEntry)
+    .map((entry) => ({
+      schoolType: trimValue(entry.schoolType),
+      schoolName: trimValue(entry.schoolName),
+      admissionYear: trimValue(entry.admissionYear),
+      graduationYear: trimValue(entry.graduationYear),
+      graduationStatus: trimValue(entry.graduationStatus)
+    }))
+    .filter((entry) => Object.values(entry).some(Boolean));
+}
+
+function sanitizeCareerEntries(entries) {
+  return ensureStructuredEntries(entries, createCareerEntry)
+    .map((entry) => ({
+      companyName: trimValue(entry.companyName),
+      departmentName: trimValue(entry.departmentName),
+      startYearMonth: trimValue(entry.startYearMonth),
+      endYearMonth: trimValue(entry.endYearMonth),
+      responsibilities: trimValue(entry.responsibilities)
+    }))
+    .filter((entry) => Object.values(entry).some(Boolean));
+}
+
+function sanitizeProjectEntries(entries) {
+  return ensureStructuredEntries(entries, createProjectEntry)
+    .map((entry) => ({
+      projectType: trimValue(entry.projectType),
+      projectName: trimValue(entry.projectName),
+      startYearMonth: trimValue(entry.startYearMonth),
+      endYearMonth: trimValue(entry.endYearMonth),
+      projectDescription: trimValue(entry.projectDescription)
+    }))
+    .filter((entry) => Object.values(entry).some(Boolean));
+}
+
+function sanitizeCertificationEntries(entries) {
+  return ensureStructuredEntries(entries, createCertificationEntry)
+    .map((entry) => ({
+      issuer: trimValue(entry.issuer),
+      certificationName: trimValue(entry.certificationName),
+      acquiredYearMonth: trimValue(entry.acquiredYearMonth)
+    }))
+    .filter((entry) => Object.values(entry).some(Boolean));
+}
+
+function sanitizeLanguageEntries(entries) {
+  return ensureStructuredEntries(entries, createLanguageEntry)
+    .map((entry) => ({
+      languageName: trimValue(entry.languageName),
+      testName: trimValue(entry.testName),
+      scoreOrGrade: trimValue(entry.scoreOrGrade),
+      acquiredYearMonth: trimValue(entry.acquiredYearMonth)
+    }))
+    .filter((entry) => Object.values(entry).some(Boolean));
+}
+
+function sanitizePortfolioEntries(entries) {
+  return ensureStructuredEntries(entries, createPortfolioEntry)
+    .map((entry) => ({
+      portfolioType: trimValue(entry.portfolioType),
+      title: trimValue(entry.title),
+      url: trimValue(entry.url)
+    }))
+    .filter((entry) => Object.values(entry).some(Boolean));
+}
+
+function sanitizeAwardEntries(entries) {
+  return ensureStructuredEntries(entries, createAwardEntry)
+    .map((entry) => ({
+      awardName: trimValue(entry.awardName),
+      awardingOrganization: trimValue(entry.awardingOrganization),
+      awardYear: trimValue(entry.awardYear),
+      awardDescription: trimValue(entry.awardDescription)
+    }))
+    .filter((entry) => Object.values(entry).some(Boolean));
+}
+
+function sanitizeTrainingEntries(entries) {
+  return ensureStructuredEntries(entries, createTrainingEntry)
+    .map((entry) => ({
+      trainingType: trimValue(entry.trainingType),
+      trainingName: trimValue(entry.trainingName),
+      institutionName: trimValue(entry.institutionName),
+      startYearMonth: trimValue(entry.startYearMonth),
+      endYearMonth: trimValue(entry.endYearMonth),
+      trainingDescription: trimValue(entry.trainingDescription)
+    }))
+    .filter((entry) => Object.values(entry).some(Boolean));
+}
+
+function deriveEducationEntries(profile) {
+  const entries = ensureStructuredEntries(profile?.educationEntries, createEducationEntry);
+  if (entries.length > 0) {
+    return entries;
+  }
+
+  const highestEducation = trimValue(profile?.highestEducation);
+  const graduationStatus = trimValue(profile?.graduationStatus);
+  const educationSummary = trimValue(profile?.educationSummary);
+
+  if (!highestEducation && !graduationStatus && !educationSummary) {
+    return [];
+  }
+
+  return [
+    createEducationEntry({
+      schoolType: LEGACY_TO_STRUCTURED_EDUCATION_MAP[highestEducation] || '',
+      schoolName: '',
+      admissionYear: '',
+      graduationYear: '',
+      graduationStatus: graduationStatus || ''
+    })
+  ];
+}
+
+function deriveCareerEntries(profile) {
+  const entries = ensureStructuredEntries(profile?.careerEntries, createCareerEntry);
+  if (entries.length > 0) {
+    return entries;
+  }
+
+  const majorCareer = trimValue(profile?.majorCareer);
+  const careerSummary = trimValue(profile?.careerSummary);
+  const careerDetail = trimValue(profile?.careerDetail);
+
+  if (!majorCareer && !careerSummary && !careerDetail) {
+    return [];
+  }
+
+  return [
+    createCareerEntry({
+      companyName: majorCareer,
+      departmentName: '',
+      startYearMonth: '',
+      endYearMonth: '',
+      responsibilities: careerDetail || careerSummary
+    })
+  ];
+}
+
+function deriveProjectEntries(profile) {
+  const entries = ensureStructuredEntries(profile?.projectEntries, createProjectEntry);
+  if (entries.length > 0) {
+    return entries;
+  }
+
+  const projectExperience = trimValue(profile?.projectExperience);
+
+  if (!projectExperience) {
+    return [];
+  }
+
+  return [
+    createProjectEntry({
+      projectType: 'OTHER',
+      projectName: '프로젝트 경험',
+      startYearMonth: '',
+      endYearMonth: '',
+      projectDescription: projectExperience
+    })
+  ];
+}
+
+function deriveCertificationEntries(profile) {
+  const entries = ensureStructuredEntries(profile?.certificationEntries, createCertificationEntry);
+  if (entries.length > 0) {
+    return entries;
+  }
+
+  const certifications = toStringArray(profile?.certifications);
+  if (certifications.length === 0) {
+    return [];
+  }
+
+  return certifications.map((certificationName) =>
+    createCertificationEntry({
+      issuer: '',
+      certificationName,
+      acquiredYearMonth: ''
+    })
+  );
+}
+
+function deriveLanguageEntries(profile) {
+  return ensureStructuredEntries(profile?.languageEntries, createLanguageEntry);
+}
+
+function derivePortfolioEntries(profile) {
+  const entries = ensureStructuredEntries(profile?.portfolioEntries, createPortfolioEntry);
+  if (entries.length > 0) {
+    return entries;
+  }
+
+  const portfolioUrl = trimValue(profile?.portfolioUrl);
+  if (!portfolioUrl) {
+    return [];
+  }
+
+  return [
+    createPortfolioEntry({
+      portfolioType: '',
+      title: '',
+      url: portfolioUrl
+    })
+  ];
+}
+
+function deriveAwardEntries(profile) {
+  const entries = ensureStructuredEntries(profile?.awardEntries, createAwardEntry);
+  if (entries.length > 0) {
+    return entries;
+  }
+
+  const awards = trimValue(profile?.awards);
+  if (!awards) {
+    return [];
+  }
+
+  return [
+    createAwardEntry({
+      awardName: '',
+      awardingOrganization: '',
+      awardYear: '',
+      awardDescription: awards
+    })
+  ];
+}
+
+function deriveTrainingEntries(profile) {
+  const entries = ensureStructuredEntries(profile?.trainingEntries, createTrainingEntry);
+  if (entries.length > 0) {
+    return entries;
+  }
+
+  const trainings = trimValue(profile?.trainings);
+  if (!trainings) {
+    return [];
+  }
+
+  return [
+    createTrainingEntry({
+      trainingType: '',
+      trainingName: '',
+      institutionName: '',
+      startYearMonth: '',
+      endYearMonth: '',
+      trainingDescription: trainings
+    })
+  ];
+}
+
+function hasSensitiveDisabilityContent(profile) {
+  return [
+    profile?.disabilityDescription,
+    profile?.assistiveDevices,
+    profile?.workSupportRequirements
+  ].some((value) => trimValue(value).length > 0) || toStringArray(profile?.requiredSupports).length > 0;
+}
+
+function deriveEducationFields(profile, educationEntries) {
+  const fallbackHighestEducation = trimValue(profile?.highestEducation);
+  const fallbackGraduationStatus = trimValue(profile?.graduationStatus);
+  const fallbackEducationSummary = normalizeEducationSummary(trimValue(profile?.educationSummary), fallbackHighestEducation);
+
+  if (educationEntries.length === 0) {
+    return {
+      highestEducation: fallbackHighestEducation,
+      graduationStatus: fallbackGraduationStatus,
+      educationSummary: fallbackEducationSummary
+    };
+  }
+
+  const representativeEntry = [...educationEntries].sort(
+    (left, right) => (EDUCATION_PRIORITY_MAP[right.schoolType] || 0) - (EDUCATION_PRIORITY_MAP[left.schoolType] || 0)
+  )[0];
+  const highestEducation = STRUCTURED_EDUCATION_TO_HIGHEST_EDUCATION_MAP[representativeEntry.schoolType] || fallbackHighestEducation;
+  const graduationStatus = STRUCTURED_GRADUATION_TO_PROFILE_MAP[representativeEntry.graduationStatus] || fallbackGraduationStatus;
+  const educationSummary = limitText(
+    educationEntries
+      .map((entry) =>
+        joinSegments([
+          trimValue(entry.schoolName) || STRUCTURED_EDUCATION_LABEL_MAP[entry.schoolType],
+          STRUCTURED_EDUCATION_LABEL_MAP[entry.schoolType],
+          formatStructuredPeriod(entry.admissionYear, entry.graduationYear),
+          STRUCTURED_GRADUATION_STATUS_LABEL_MAP[entry.graduationStatus]
+        ])
+      )
+      .filter(Boolean)
+      .join('\n'),
+    500
+  );
+
+  return {
+    highestEducation,
+    graduationStatus,
+    educationSummary: educationSummary || fallbackEducationSummary
+  };
+}
+
+function deriveCareerFields(profile, careerEntries) {
+  const fallbackMajorCareer = trimValue(profile?.majorCareer);
+  const fallbackCareerSummary = trimValue(profile?.careerSummary) || fallbackMajorCareer;
+  const fallbackCareerDetail = trimValue(profile?.careerDetail);
+
+  if (careerEntries.length === 0) {
+    const majorCareer = fallbackMajorCareer || DEFAULT_MAJOR_CAREER;
+    return {
+      majorCareer,
+      careerSummary: fallbackCareerSummary || majorCareer,
+      careerDetail: fallbackCareerDetail
+    };
+  }
+
+  const representativeEntry = careerEntries[0];
+  const majorCareer = limitText(
+    joinSegments([
+      representativeEntry.companyName,
+      representativeEntry.departmentName,
+      formatStructuredPeriod(representativeEntry.startYearMonth, representativeEntry.endYearMonth)
+    ]),
+    500
+  );
+  const careerSummary = limitText(
+    careerEntries
+      .map((entry) =>
+        joinSegments([
+          entry.companyName,
+          entry.departmentName,
+          formatStructuredPeriod(entry.startYearMonth, entry.endYearMonth)
+        ])
+      )
+      .filter(Boolean)
+      .join('\n'),
+    500
+  );
+  const careerDetail = careerEntries
+    .map((entry) => joinSegments([entry.companyName, entry.responsibilities], ': '))
+    .filter(Boolean)
+    .join('\n\n');
+
+  return {
+    majorCareer: majorCareer || fallbackMajorCareer || DEFAULT_MAJOR_CAREER,
+    careerSummary: careerSummary || fallbackCareerSummary || DEFAULT_MAJOR_CAREER,
+    careerDetail: careerDetail || fallbackCareerDetail
+  };
+}
+
+function deriveProjectFields(profile, projectEntries) {
+  const fallbackProjectExperience = trimValue(profile?.projectExperience);
+
+  if (projectEntries.length === 0) {
+    return {
+      projectExperience: fallbackProjectExperience
+    };
+  }
+
+  return {
+    projectExperience: projectEntries
+      .map((entry) =>
+        joinSegments([
+          STRUCTURED_PROJECT_TYPE_LABEL_MAP[entry.projectType],
+          entry.projectName,
+          formatStructuredPeriod(entry.startYearMonth, entry.endYearMonth),
+          entry.projectDescription
+        ])
+      )
+      .filter(Boolean)
+      .join('\n\n')
+  };
+}
+
+function deriveJobExtraFields(profile, certificationEntries, portfolioEntries, awardEntries, trainingEntries) {
+  const fallbackCertifications = toStringArray(profile?.certifications);
+  const fallbackPortfolioUrl = trimValue(profile?.portfolioUrl);
+  const fallbackAwards = trimValue(profile?.awards);
+  const fallbackTrainings = trimValue(profile?.trainings);
+
+  const certifications = certificationEntries.length
+    ? certificationEntries.map((entry) => entry.certificationName).filter(Boolean)
+    : fallbackCertifications;
+
+  const primaryPortfolio = portfolioEntries.find((entry) => trimValue(entry.url));
+  const portfolioUrl = primaryPortfolio?.url || fallbackPortfolioUrl;
+  const awards = awardEntries.length
+    ? awardEntries
+      .map((entry) =>
+        joinSegments([
+          entry.awardName,
+          entry.awardingOrganization,
+          entry.awardYear
+        ])
+      )
+      .concat(awardEntries.map((entry) => trimValue(entry.awardDescription)).filter(Boolean))
+      .filter(Boolean)
+      .join('\n')
+    : fallbackAwards;
+  const trainings = trainingEntries.length
+    ? trainingEntries
+      .map((entry) =>
+        joinSegments([
+          entry.trainingType,
+          entry.trainingName,
+          entry.institutionName,
+          formatStructuredPeriod(entry.startYearMonth, entry.endYearMonth)
+        ])
+      )
+      .concat(trainingEntries.map((entry) => trimValue(entry.trainingDescription)).filter(Boolean))
+      .filter(Boolean)
+      .join('\n')
+    : fallbackTrainings;
+
+  return {
+    certifications,
+    portfolioUrl,
+    awards,
+    trainings
+  };
+}
+
+function normalizeStructuredProfileDraft(profile) {
+  const nextProfile = {
+    ...createEmptyProfileDraft(),
+    ...profile
+  };
+  const educationEntries = deriveEducationEntries(nextProfile);
+  const careerEntries = deriveCareerEntries(nextProfile);
+  const projectEntries = deriveProjectEntries(nextProfile);
+  const certificationEntries = deriveCertificationEntries(nextProfile);
+  const languageEntries = deriveLanguageEntries(nextProfile);
+  const portfolioEntries = derivePortfolioEntries(nextProfile);
+  const awardEntries = deriveAwardEntries(nextProfile);
+  const trainingEntries = deriveTrainingEntries(nextProfile);
+  const educationFields = deriveEducationFields(nextProfile, sanitizeEducationEntries(educationEntries));
+  const careerFields = deriveCareerFields(nextProfile, sanitizeCareerEntries(careerEntries));
+  const projectFields = deriveProjectFields(nextProfile, sanitizeProjectEntries(projectEntries));
+  const jobExtraFields = deriveJobExtraFields(
+    nextProfile,
+    sanitizeCertificationEntries(certificationEntries),
+    sanitizePortfolioEntries(portfolioEntries),
+    sanitizeAwardEntries(awardEntries),
+    sanitizeTrainingEntries(trainingEntries)
+  );
+
+  return {
+    ...nextProfile,
+    educationEntries,
+    careerEntries,
+    projectEntries,
+    certificationEntries,
+    languageEntries,
+    portfolioEntries,
+    awardEntries,
+    trainingEntries,
+    sensitiveInfoConsentYn:
+      typeof nextProfile.sensitiveInfoConsentYn === 'boolean'
+        ? nextProfile.sensitiveInfoConsentYn
+        : hasSensitiveDisabilityContent(nextProfile),
+    ...educationFields,
+    ...careerFields,
+    ...projectFields,
+    ...jobExtraFields
+  };
+}
+
 function createEmptyProfileDraft() {
   return {
     desiredJob: '',
@@ -866,18 +1614,27 @@ function createEmptyProfileDraft() {
     emergencyContact: '',
     highestEducation: '',
     graduationStatus: '',
+    educationEntries: [],
     majorCareer: '',
+    careerEntries: [],
     careerDetail: '',
+    projectEntries: [],
     projectExperience: '',
     careerGapReason: '',
     targetJob: '',
     skills: [],
+    certificationEntries: [],
     certifications: [],
+    languageEntries: [],
+    portfolioEntries: [],
     portfolioUrl: '',
+    awardEntries: [],
     awards: '',
+    trainingEntries: [],
     trainings: '',
     disabilitySeverity: '',
     disabilityRegisteredYn: null,
+    sensitiveInfoConsentYn: false,
     disabilityDescription: '',
     assistiveDevices: '',
     workSupportRequirements: '',
@@ -900,10 +1657,9 @@ function createEmptyProfileDraft() {
 function toDraftProfile(profile) {
   const { referrer: _referrer, ...profileWithoutReferrer } = profile || {};
 
-  return {
+  return normalizeStructuredProfileDraft({
     ...createEmptyProfileDraft(),
     ...profileWithoutReferrer,
-    educationSummary: normalizeEducationSummary(profileWithoutReferrer?.educationSummary, profileWithoutReferrer?.highestEducation),
     preferredWorkEnvironments: profile?.preferredWorkEnvironments || [],
     avoidedWorkEnvironments: profile?.avoidedWorkEnvironments || [],
     requiredSupports: profile?.requiredSupports || [],
@@ -914,7 +1670,7 @@ function toDraftProfile(profile) {
       typeof profile?.disabilityRegisteredYn === 'boolean' ? profile.disabilityRegisteredYn : null,
     remoteAvailableYn: typeof profile?.remoteAvailableYn === 'boolean' ? profile.remoteAvailableYn : null,
     patrioticVeteranYn: typeof profile?.patrioticVeteranYn === 'boolean' ? profile.patrioticVeteranYn : null
-  };
+  });
 }
 
 function toTextOrEmpty(value) {
@@ -948,7 +1704,7 @@ function toExtractedDraft(draft) {
     return null;
   }
 
-  return {
+  return normalizeStructuredProfileDraft({
     desiredJob: toTextOrEmpty(draft.desiredJob),
     commuteRange: toTextOrEmpty(draft.commuteRange),
     preferredWorkEnvironments: toStringArray(draft.preferredWorkEnvironments),
@@ -969,18 +1725,37 @@ function toExtractedDraft(draft) {
     emergencyContact: toTextOrEmpty(draft.emergencyContact),
     highestEducation: toTextOrEmpty(draft.highestEducation),
     graduationStatus: toTextOrEmpty(draft.graduationStatus),
+    educationEntries: Array.isArray(draft.educationEntries) ? draft.educationEntries.map((entry) => stripClientId(createEducationEntry(entry))) : [],
     majorCareer: toTextOrEmpty(draft.majorCareer),
+    careerEntries: Array.isArray(draft.careerEntries) ? draft.careerEntries.map((entry) => stripClientId(createCareerEntry(entry))) : [],
     careerDetail: toTextOrEmpty(draft.careerDetail),
+    projectEntries: Array.isArray(draft.projectEntries) ? draft.projectEntries.map((entry) => stripClientId(createProjectEntry(entry))) : [],
     projectExperience: toTextOrEmpty(draft.projectExperience),
     careerGapReason: toTextOrEmpty(draft.careerGapReason),
     targetJob: toTextOrEmpty(draft.targetJob),
     skills: toStringArray(draft.skills),
+    certificationEntries: Array.isArray(draft.certificationEntries)
+      ? draft.certificationEntries.map((entry) => stripClientId(createCertificationEntry(entry)))
+      : [],
     certifications: toStringArray(draft.certifications),
+    languageEntries: Array.isArray(draft.languageEntries)
+      ? draft.languageEntries.map((entry) => stripClientId(createLanguageEntry(entry)))
+      : [],
+    portfolioEntries: Array.isArray(draft.portfolioEntries)
+      ? draft.portfolioEntries.map((entry) => stripClientId(createPortfolioEntry(entry)))
+      : [],
     portfolioUrl: toTextOrEmpty(draft.portfolioUrl),
+    awardEntries: Array.isArray(draft.awardEntries)
+      ? draft.awardEntries.map((entry) => stripClientId(createAwardEntry(entry)))
+      : [],
     awards: toTextOrEmpty(draft.awards),
+    trainingEntries: Array.isArray(draft.trainingEntries)
+      ? draft.trainingEntries.map((entry) => stripClientId(createTrainingEntry(entry)))
+      : [],
     trainings: toTextOrEmpty(draft.trainings),
     disabilitySeverity: toTextOrEmpty(draft.disabilitySeverity),
     disabilityRegisteredYn: toBooleanOrNull(draft.disabilityRegisteredYn),
+    sensitiveInfoConsentYn: typeof draft.sensitiveInfoConsentYn === 'boolean' ? draft.sensitiveInfoConsentYn : false,
     disabilityDescription: toTextOrEmpty(draft.disabilityDescription),
     assistiveDevices: toTextOrEmpty(draft.assistiveDevices),
     workSupportRequirements: toTextOrEmpty(draft.workSupportRequirements),
@@ -997,7 +1772,7 @@ function toExtractedDraft(draft) {
     militaryService: toTextOrEmpty(draft.militaryService),
     patrioticVeteranYn: toBooleanOrNull(draft.patrioticVeteranYn),
     snsUrl: toTextOrEmpty(draft.snsUrl)
-  };
+  });
 }
 
 function trimValue(value) {
@@ -1017,55 +1792,73 @@ function compactPayload(payload) {
 }
 
 function toProfilePayload(profile) {
+  const normalizedProfile = normalizeStructuredProfileDraft(profile);
+  const educationEntries = sanitizeEducationEntries(normalizedProfile.educationEntries);
+  const careerEntries = sanitizeCareerEntries(normalizedProfile.careerEntries);
+  const projectEntries = sanitizeProjectEntries(normalizedProfile.projectEntries);
+  const certificationEntries = sanitizeCertificationEntries(normalizedProfile.certificationEntries);
+  const languageEntries = sanitizeLanguageEntries(normalizedProfile.languageEntries);
+  const portfolioEntries = sanitizePortfolioEntries(normalizedProfile.portfolioEntries);
+  const awardEntries = sanitizeAwardEntries(normalizedProfile.awardEntries);
+  const trainingEntries = sanitizeTrainingEntries(normalizedProfile.trainingEntries);
   const payload = {
-    profileName: trimValue(profile.profileName),
-    desiredJob: trimValue(profile.desiredJob) || trimValue(profile.targetJob),
-    commuteRange: trimValue(profile.commuteRange),
-    preferredWorkEnvironments: toStringArray(profile.preferredWorkEnvironments),
-    avoidedWorkEnvironments: toStringArray(profile.avoidedWorkEnvironments),
-    requiredSupports: toStringArray(profile.requiredSupports),
-    disabilityType: trimValue(profile.disabilityType),
-    careerSummary: trimValue(profile.careerSummary) || trimValue(profile.majorCareer),
-    educationSummary: normalizeEducationSummary(trimValue(profile.educationSummary), trimValue(profile.highestEducation)),
-    employmentTypeSummary: trimValue(profile.employmentTypeSummary) || profile.workTypes.join(', '),
-    fullName: trimValue(profile.fullName),
-    contactPhone: trimValue(profile.contactPhone),
-    contactEmail: trimValue(profile.contactEmail),
-    birthDate: normalizeBirthDate(profile.birthDate),
-    genderType: trimValue(profile.genderType),
-    ageGroup: trimValue(profile.ageGroup),
-    detailAddress: trimValue(profile.detailAddress),
-    emergencyContact: trimValue(profile.emergencyContact),
-    highestEducation: trimValue(profile.highestEducation),
-    graduationStatus: trimValue(profile.graduationStatus),
-    majorCareer: trimValue(profile.majorCareer),
-    careerDetail: trimValue(profile.careerDetail),
-    projectExperience: trimValue(profile.projectExperience),
-    careerGapReason: trimValue(profile.careerGapReason),
-    targetJob: trimValue(profile.targetJob),
-    skills: toStringArray(profile.skills),
-    certifications: toStringArray(profile.certifications),
-    portfolioUrl: trimValue(profile.portfolioUrl),
-    awards: trimValue(profile.awards),
-    trainings: trimValue(profile.trainings),
-    disabilitySeverity: trimValue(profile.disabilitySeverity),
-    disabilityRegisteredYn: toBooleanOrNull(profile.disabilityRegisteredYn),
-    disabilityDescription: trimValue(profile.disabilityDescription),
-    assistiveDevices: trimValue(profile.assistiveDevices),
-    workSupportRequirements: trimValue(profile.workSupportRequirements),
-    workAvailability: trimValue(profile.workAvailability),
-    workTypes: toStringArray(profile.workTypes),
-    expectedSalary: trimValue(profile.expectedSalary),
-    workTimePreference: trimValue(profile.workTimePreference),
-    remoteAvailableYn: toBooleanOrNull(profile.remoteAvailableYn),
-    selfIntroduction: trimValue(profile.selfIntroduction),
-    motivation: trimValue(profile.motivation),
-    jobFitDescription: trimValue(profile.jobFitDescription),
-    careerGoal: trimValue(profile.careerGoal),
-    strengthsWeaknesses: trimValue(profile.strengthsWeaknesses),
-    militaryService: trimValue(profile.militaryService),
-    patrioticVeteranYn: toBooleanOrNull(profile.patrioticVeteranYn),
-    snsUrl: trimValue(profile.snsUrl)
+    profileName: trimValue(normalizedProfile.profileName),
+    desiredJob: trimValue(normalizedProfile.desiredJob) || trimValue(normalizedProfile.targetJob),
+    commuteRange: trimValue(normalizedProfile.commuteRange),
+    preferredWorkEnvironments: toStringArray(normalizedProfile.preferredWorkEnvironments),
+    avoidedWorkEnvironments: toStringArray(normalizedProfile.avoidedWorkEnvironments),
+    requiredSupports: toStringArray(normalizedProfile.requiredSupports),
+    disabilityType: trimValue(normalizedProfile.disabilityType),
+    careerSummary: trimValue(normalizedProfile.careerSummary) || trimValue(normalizedProfile.majorCareer),
+    educationSummary: normalizeEducationSummary(trimValue(normalizedProfile.educationSummary), trimValue(normalizedProfile.highestEducation)),
+    employmentTypeSummary: trimValue(normalizedProfile.employmentTypeSummary) || normalizedProfile.workTypes.join(', '),
+    fullName: trimValue(normalizedProfile.fullName),
+    contactPhone: trimValue(normalizedProfile.contactPhone),
+    contactEmail: trimValue(normalizedProfile.contactEmail),
+    birthDate: normalizeBirthDate(normalizedProfile.birthDate),
+    genderType: trimValue(normalizedProfile.genderType),
+    ageGroup: trimValue(normalizedProfile.ageGroup),
+    detailAddress: trimValue(normalizedProfile.detailAddress),
+    emergencyContact: trimValue(normalizedProfile.emergencyContact),
+    highestEducation: trimValue(normalizedProfile.highestEducation),
+    graduationStatus: trimValue(normalizedProfile.graduationStatus),
+    educationEntries,
+    majorCareer: trimValue(normalizedProfile.majorCareer),
+    careerEntries,
+    careerDetail: trimValue(normalizedProfile.careerDetail),
+    projectEntries,
+    projectExperience: trimValue(normalizedProfile.projectExperience),
+    careerGapReason: trimValue(normalizedProfile.careerGapReason),
+    targetJob: trimValue(normalizedProfile.targetJob),
+    skills: toStringArray(normalizedProfile.skills),
+    certificationEntries,
+    certifications: toStringArray(normalizedProfile.certifications),
+    languageEntries,
+    portfolioEntries,
+    portfolioUrl: trimValue(normalizedProfile.portfolioUrl),
+    awardEntries,
+    awards: trimValue(normalizedProfile.awards),
+    trainingEntries,
+    trainings: trimValue(normalizedProfile.trainings),
+    disabilitySeverity: trimValue(normalizedProfile.disabilitySeverity),
+    disabilityRegisteredYn: toBooleanOrNull(normalizedProfile.disabilityRegisteredYn),
+    sensitiveInfoConsentYn: normalizedProfile.sensitiveInfoConsentYn === true,
+    disabilityDescription: trimValue(normalizedProfile.disabilityDescription),
+    assistiveDevices: trimValue(normalizedProfile.assistiveDevices),
+    workSupportRequirements: trimValue(normalizedProfile.workSupportRequirements),
+    workAvailability: trimValue(normalizedProfile.workAvailability),
+    workTypes: toStringArray(normalizedProfile.workTypes),
+    expectedSalary: trimValue(normalizedProfile.expectedSalary),
+    workTimePreference: trimValue(normalizedProfile.workTimePreference),
+    remoteAvailableYn: toBooleanOrNull(normalizedProfile.remoteAvailableYn),
+    selfIntroduction: trimValue(normalizedProfile.selfIntroduction),
+    motivation: trimValue(normalizedProfile.motivation),
+    jobFitDescription: trimValue(normalizedProfile.jobFitDescription),
+    careerGoal: trimValue(normalizedProfile.careerGoal),
+    strengthsWeaknesses: trimValue(normalizedProfile.strengthsWeaknesses),
+    militaryService: trimValue(normalizedProfile.militaryService),
+    patrioticVeteranYn: toBooleanOrNull(normalizedProfile.patrioticVeteranYn),
+    snsUrl: trimValue(normalizedProfile.snsUrl)
   };
 
   return compactPayload(payload);
@@ -1219,28 +2012,33 @@ function getVisibleValidationErrors(profile, visible) {
 }
 
 function getValidationMessage(profile) {
-  const missing = requiredFields.find(([field]) => !hasText(profile[field]));
+  const normalizedProfile = normalizeStructuredProfileDraft(profile);
+  const missing = requiredFields.find(([field]) => !hasText(normalizedProfile[field]));
 
   if (missing) {
     return `${missing[1]} 항목을 입력해 주세요.`;
   }
 
-  const formatMessage = getProfileFormatMessage(profile);
+  const formatMessage = getProfileFormatMessage(normalizedProfile);
 
   if (formatMessage) {
     return formatMessage;
   }
 
-  if (!Array.isArray(profile.skills) || profile.skills.length === 0) {
+  if (!Array.isArray(normalizedProfile.skills) || normalizedProfile.skills.length === 0) {
     return '보유 기술/역량을 1개 이상 입력해 주세요.';
   }
 
-  if (!Array.isArray(profile.workTypes) || profile.workTypes.length === 0) {
+  if (!Array.isArray(normalizedProfile.workTypes) || normalizedProfile.workTypes.length === 0) {
     return '근무 형태 가능 범위를 1개 이상 선택해 주세요.';
   }
 
-  if (typeof profile.disabilityRegisteredYn !== 'boolean') {
+  if (typeof normalizedProfile.disabilityRegisteredYn !== 'boolean') {
     return '장애 등록 여부를 선택해 주세요.';
+  }
+
+  if (normalizedProfile.sensitiveInfoConsentYn !== true) {
+    return '민감정보 수집·이용 동의에 체크해 주세요.';
   }
 
   return '';

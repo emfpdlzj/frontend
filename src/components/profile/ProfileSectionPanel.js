@@ -13,16 +13,6 @@ const genderOptions = [
   { value: 'NOT_DISCLOSED', label: '선택 안 함' }
 ];
 
-const educationOptions = [
-  { value: 'HIGH_SCHOOL_OR_BELOW', label: '고졸 이하' },
-  { value: 'HIGH_SCHOOL', label: '고졸' },
-  { value: 'COLLEGE', label: '전문대졸' },
-  { value: 'BACHELOR', label: '대졸' },
-  { value: 'MASTER', label: '석사' },
-  { value: 'DOCTOR', label: '박사' },
-  { value: 'OTHER', label: '기타' }
-];
-
 const graduationStatusOptions = [
   { value: 'GRADUATED', label: '졸업' },
   { value: 'EXPECTED', label: '졸업예정' },
@@ -31,6 +21,84 @@ const graduationStatusOptions = [
   { value: 'DROPPED_OUT', label: '중퇴' },
   { value: 'OTHER', label: '기타' }
 ];
+
+const structuredEducationTypeOptions = [
+  { value: 'HIGH_SCHOOL', label: '고등학교' },
+  { value: 'COLLEGE_2_3', label: '전문대(2,3년제)' },
+  { value: 'COLLEGE_4', label: '대학교(4년제)' },
+  { value: 'MASTER', label: '대학원(석사)' },
+  { value: 'DOCTOR', label: '대학원(박사)' },
+  { value: 'BOOTCAMP', label: '부트캠프' },
+  { value: 'OTHER', label: '기타' }
+];
+
+const structuredProjectTypeOptions = [
+  { value: 'COMPANY_PROJECT', label: '실무 프로젝트' },
+  { value: 'BOOTCAMP', label: '부트캠프' },
+  { value: 'FREELANCE', label: '외주·프리랜서' },
+  { value: 'HACKATHON', label: '해커톤' },
+  { value: 'CONTEST', label: '공모전' },
+  { value: 'CLUB', label: '동아리' },
+  { value: 'VOLUNTEER', label: '봉사활동' },
+  { value: 'PERSONAL', label: '개인 프로젝트' },
+  { value: 'OTHER', label: '기타' }
+];
+
+const certificationIssuerOptions = [
+  { value: '한국산업인력공단', label: '한국산업인력공단' },
+  { value: '대한상공회의소', label: '대한상공회의소' },
+  { value: '한국생산성본부', label: '한국생산성본부' },
+  { value: '한국데이터산업진흥원', label: '한국데이터산업진흥원' },
+  { value: '한국금융연수원', label: '한국금융연수원' },
+  { value: 'Microsoft', label: 'Microsoft' },
+  { value: 'Amazon Web Services', label: 'Amazon Web Services' },
+  { value: 'Cisco', label: 'Cisco' },
+  { value: '기타', label: '기타' }
+];
+
+const languageOptions = [
+  { value: '영어', label: '영어' },
+  { value: '일본어', label: '일본어' },
+  { value: '중국어', label: '중국어' },
+  { value: '스페인어', label: '스페인어' },
+  { value: '프랑스어', label: '프랑스어' },
+  { value: '독일어', label: '독일어' },
+  { value: '베트남어', label: '베트남어' },
+  { value: '기타', label: '기타' }
+];
+
+const portfolioTypeOptions = [
+  { value: '포트폴리오 사이트', label: '포트폴리오 사이트' },
+  { value: 'GitHub', label: 'GitHub' },
+  { value: 'Notion', label: 'Notion' },
+  { value: 'Behance', label: 'Behance' },
+  { value: '블로그', label: '블로그' },
+  { value: 'PDF 링크', label: 'PDF 링크' },
+  { value: '개인 웹사이트', label: '개인 웹사이트' },
+  { value: '기타', label: '기타' }
+];
+
+const trainingTypeOptions = [
+  { value: '직업훈련', label: '직업훈련' },
+  { value: '부트캠프', label: '부트캠프' },
+  { value: '온라인 강의', label: '온라인 강의' },
+  { value: '사내 교육', label: '사내 교육' },
+  { value: '대학교·평생교육', label: '대학교·평생교육' },
+  { value: '자격증 과정', label: '자격증 과정' },
+  { value: '세미나·워크숍', label: '세미나·워크숍' },
+  { value: '기타', label: '기타' }
+];
+
+const languageTestOptionsByLanguage = {
+  영어: ['TOEIC', 'TOEIC Speaking', 'OPIc', 'TOEFL iBT', 'IELTS', 'TEPS'],
+  일본어: ['JLPT', 'JPT', 'SJPT', 'BJT'],
+  중국어: ['HSK', 'HSKK', 'TSC'],
+  스페인어: ['DELE', 'SIELE'],
+  프랑스어: ['DELF', 'DALF', 'TCF'],
+  독일어: ['Goethe-Zertifikat', 'TestDaF', 'telc'],
+  베트남어: ['VSL', 'OPI 베트남어'],
+  기타: ['기타']
+};
 
 const disabilityTypeOptions = [
   { value: 'PHYSICAL', label: '지체장애' },
@@ -97,6 +165,148 @@ const booleanOptions = [
 ];
 
 const text = (value) => String(value ?? '').trim();
+let structuredEntrySequence = 0;
+const sensitiveConsentDetails = [
+  {
+    title: '수집 목적',
+    body: '장애 유형, 보조기기, 필요 지원 정보를 바탕으로 맞춤 일자리 추천과 근무환경 적합성 안내 품질을 높이기 위해 활용합니다.'
+  },
+  {
+    title: '수집 항목',
+    body: '장애 유형, 장애 정도, 장애 등록 여부, 상세 장애 설명, 보조기기, 근무 시 필요한 지원 사항, 필요 지원 항목'
+  },
+  {
+    title: '보관 기간',
+    body: '회원 탈퇴 또는 민감정보 처리 동의 철회 시까지 보관하며, 법령상 별도 보관이 필요한 경우에는 해당 기간 동안 분리 보관합니다.'
+  },
+  {
+    title: '동의 거부 시 영향',
+    body: '동의를 거부할 수 있으나, 장애 특성을 반영한 추천 결과와 기업 매칭 정확도, 접근성 안내 기능이 제한될 수 있습니다.'
+  }
+];
+
+function createStructuredEntryId(prefix) {
+  structuredEntrySequence += 1;
+  return `${prefix}-${structuredEntrySequence}`;
+}
+
+function createEducationEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('education'),
+    schoolType: '',
+    schoolName: '',
+    admissionYear: '',
+    graduationYear: '',
+    graduationStatus: '',
+    ...entry
+  };
+}
+
+function createCareerEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('career'),
+    companyName: '',
+    departmentName: '',
+    startYearMonth: '',
+    endYearMonth: '',
+    responsibilities: '',
+    ...entry
+  };
+}
+
+function createProjectEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('project'),
+    projectType: '',
+    projectName: '',
+    startYearMonth: '',
+    endYearMonth: '',
+    projectDescription: '',
+    ...entry
+  };
+}
+
+function createCertificationEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('certification'),
+    issuer: '',
+    certificationName: '',
+    acquiredYearMonth: '',
+    ...entry
+  };
+}
+
+function createLanguageEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('language'),
+    languageName: '',
+    testName: '',
+    scoreOrGrade: '',
+    acquiredYearMonth: '',
+    ...entry
+  };
+}
+
+function createPortfolioEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('portfolio'),
+    portfolioType: '',
+    title: '',
+    url: '',
+    ...entry
+  };
+}
+
+function createAwardEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('award'),
+    awardName: '',
+    awardingOrganization: '',
+    awardYear: '',
+    awardDescription: '',
+    ...entry
+  };
+}
+
+function createTrainingEntry(entry = {}) {
+  return {
+    clientId: entry.clientId || createStructuredEntryId('training'),
+    trainingType: '',
+    trainingName: '',
+    institutionName: '',
+    startYearMonth: '',
+    endYearMonth: '',
+    trainingDescription: '',
+    ...entry
+  };
+}
+
+function normalizeYearInput(value) {
+  return String(value ?? '').replace(/\D/g, '').slice(0, 4);
+}
+
+function normalizeYearMonthInput(value) {
+  const digits = String(value ?? '').replace(/\D/g, '').slice(0, 6);
+
+  if (digits.length <= 4) {
+    return digits;
+  }
+
+  return `${digits.slice(0, 4)}.${digits.slice(4)}`;
+}
+
+function getLanguageTestOptions(languageName, currentValue = '') {
+  const baseOptions = (languageTestOptionsByLanguage[languageName] || languageTestOptionsByLanguage.기타 || []).map((option) => ({
+    value: option,
+    label: option
+  }));
+
+  if (currentValue && !baseOptions.some((option) => option.value === currentValue)) {
+    return [{ value: currentValue, label: currentValue }, ...baseOptions];
+  }
+
+  return baseOptions;
+}
 
 export function ProfileSectionPanel({
   activeSection,
@@ -199,43 +409,233 @@ function BasicInfoPanel({ profile, onChange, validationErrors, onFieldBlur }) {
 }
 
 function EducationPanel({ profile, onChange }) {
+  const educationEntries = Array.isArray(profile.educationEntries) ? profile.educationEntries : [];
+  const careerEntries = Array.isArray(profile.careerEntries) ? profile.careerEntries : [];
+  const projectEntries = Array.isArray(profile.projectEntries) ? profile.projectEntries : [];
+
+  const updateEducationEntries = (nextEntries) => onChange('educationEntries', nextEntries);
+  const updateCareerEntries = (nextEntries) => onChange('careerEntries', nextEntries);
+  const updateProjectEntries = (nextEntries) => onChange('projectEntries', nextEntries);
+
+  const addEducationEntry = () => updateEducationEntries([...educationEntries, createEducationEntry()]);
+  const addCareerEntry = () => updateCareerEntries([...careerEntries, createCareerEntry()]);
+  const addProjectEntry = () => updateProjectEntries([...projectEntries, createProjectEntry()]);
+
+  const updateEducationEntry = (entryIndex, field, value) => {
+    updateEducationEntries(
+      educationEntries.map((entry, index) =>
+        index === entryIndex
+          ? {
+            ...entry,
+            [field]: field === 'admissionYear' || field === 'graduationYear' ? normalizeYearInput(value) : value
+          }
+          : entry
+      )
+    );
+  };
+
+  const updateCareerEntry = (entryIndex, field, value) => {
+    updateCareerEntries(
+      careerEntries.map((entry, index) =>
+        index === entryIndex
+          ? {
+            ...entry,
+            [field]: field === 'startYearMonth' || field === 'endYearMonth' ? normalizeYearMonthInput(value) : value
+          }
+          : entry
+      )
+    );
+  };
+
+  const updateProjectEntry = (entryIndex, field, value) => {
+    updateProjectEntries(
+      projectEntries.map((entry, index) =>
+        index === entryIndex
+          ? {
+            ...entry,
+            [field]: field === 'startYearMonth' || field === 'endYearMonth' ? normalizeYearMonthInput(value) : value
+          }
+          : entry
+      )
+    );
+  };
+
   return (
     <>
-      <h2>학력</h2>
-      <div className="profile-form-grid profile-form-grid--education">
-        <Field label="최종 학력" required>
-          <SelectBox value={profile.highestEducation} onChange={(value) => onChange('highestEducation', value)} options={educationOptions} />
-        </Field>
-        <Field label="졸업 여부" required>
-          <SelectBox
-            value={profile.graduationStatus}
-            onChange={(value) => onChange('graduationStatus', value)}
-            options={graduationStatusOptions}
-          />
-        </Field>
-      </div>
+      <RepeatSectionHeader
+        title="학력"
+        description="최신 또는 대표 학력부터 순서대로 입력해 주세요."
+        actionLabel="학력 추가"
+        onAction={addEducationEntry}
+      />
+      {educationEntries.length ? (
+        <div className="profile-repeat-list">
+          {educationEntries.map((entry, index) => (
+            <RepeatCard
+              key={entry.clientId || `education-${index}`}
+              onRemove={() => updateEducationEntries(educationEntries.filter((_, targetIndex) => targetIndex !== index))}
+            >
+              <div className="profile-repeat-grid profile-repeat-grid--education">
+                <Field label="학교구분" required>
+                  <SelectBox
+                    value={entry.schoolType}
+                    onChange={(value) => updateEducationEntry(index, 'schoolType', value)}
+                    options={structuredEducationTypeOptions}
+                  />
+                </Field>
+                <Field label="학교명">
+                  <Input value={entry.schoolName} onChange={(value) => updateEducationEntry(index, 'schoolName', value)} />
+                </Field>
+                <Field label="입학연도">
+                  <Input
+                    value={entry.admissionYear}
+                    onChange={(value) => updateEducationEntry(index, 'admissionYear', value)}
+                    placeholder="YYYY"
+                    inputMode="numeric"
+                  />
+                </Field>
+                <Field label="졸업연도">
+                  <Input
+                    value={entry.graduationYear}
+                    onChange={(value) => updateEducationEntry(index, 'graduationYear', value)}
+                    placeholder="YYYY"
+                    inputMode="numeric"
+                  />
+                </Field>
+                <Field label="졸업상태" required>
+                  <SelectBox
+                    value={entry.graduationStatus}
+                    onChange={(value) => updateEducationEntry(index, 'graduationStatus', value)}
+                    options={graduationStatusOptions}
+                  />
+                </Field>
+              </div>
+            </RepeatCard>
+          ))}
+        </div>
+      ) : (
+        <RepeatEmptyState message="학력 정보를 추가하면 최종 학력과 졸업 상태가 자동으로 정리됩니다." />
+      )}
+
       <Divider />
-      <h2>경력</h2>
-      <div className="profile-form-grid profile-form-grid--career">
-        <Field label="주요 경력" required>
-          <Input value={profile.majorCareer} onChange={(value) => onChange('majorCareer', value)} placeholder="없으면 신입" />
-        </Field>
-        <Field label="경력 요약">
-          <Input value={profile.careerSummary} onChange={(value) => onChange('careerSummary', value)} />
-        </Field>
-      </div>
+      <RepeatSectionHeader
+        title="경력"
+        description="회사명, 재직 기간, 담당 업무를 중심으로 실무 경험을 정리해 주세요."
+        actionLabel="경력 추가"
+        onAction={addCareerEntry}
+      />
+      {careerEntries.length ? (
+        <div className="profile-repeat-list">
+          {careerEntries.map((entry, index) => (
+            <RepeatCard
+              key={entry.clientId || `career-${index}`}
+              onRemove={() => updateCareerEntries(careerEntries.filter((_, targetIndex) => targetIndex !== index))}
+            >
+              <div className="profile-repeat-grid profile-repeat-grid--career-entry">
+                <Field label="회사명">
+                  <Input value={entry.companyName} onChange={(value) => updateCareerEntry(index, 'companyName', value)} />
+                </Field>
+                <Field label="부서명">
+                  <Input value={entry.departmentName} onChange={(value) => updateCareerEntry(index, 'departmentName', value)} />
+                </Field>
+                <Field label="입사연월">
+                  <Input
+                    value={entry.startYearMonth}
+                    onChange={(value) => updateCareerEntry(index, 'startYearMonth', value)}
+                    placeholder="YYYY.MM"
+                    inputMode="numeric"
+                  />
+                </Field>
+                <Field label="퇴사연월">
+                  <Input
+                    value={entry.endYearMonth}
+                    onChange={(value) => updateCareerEntry(index, 'endYearMonth', value)}
+                    placeholder="YYYY.MM"
+                    inputMode="numeric"
+                  />
+                </Field>
+              </div>
+              <Field label="담당업무">
+                <TextArea
+                  value={entry.responsibilities}
+                  onChange={(value) => updateCareerEntry(index, 'responsibilities', value)}
+                  rows={4}
+                  placeholder="담당한 업무, 성과, 사용한 도구를 중심으로 작성해 주세요."
+                />
+              </Field>
+            </RepeatCard>
+          ))}
+        </div>
+      ) : (
+        <RepeatEmptyState message="사무보조, 생산, 서비스 등 실제 근무 경험이 있다면 회사별로 나눠 적어 주세요." />
+      )}
+
       <Divider />
-      <div className="profile-form-grid profile-form-grid--intro-optional">
-        <Field label="학력 요약">
-          <TextArea value={profile.educationSummary} onChange={(value) => onChange('educationSummary', value)} rows={4} />
-        </Field>
-        <Field label="프로젝트 경험">
-          <TextArea value={profile.projectExperience} onChange={(value) => onChange('projectExperience', value)} rows={4} />
-        </Field>
-        <Field label="공백 기간 사유">
-          <TextArea value={profile.careerGapReason} onChange={(value) => onChange('careerGapReason', value)} rows={4} />
-        </Field>
-      </div>
+      <RepeatSectionHeader
+        title="프로젝트 경험"
+        description="부트캠프, 공모전, 해커톤, 개인 프로젝트 등 직무와 연결되는 경험을 작성해 주세요."
+        actionLabel="프로젝트 추가"
+        onAction={addProjectEntry}
+      />
+      {projectEntries.length ? (
+        <div className="profile-repeat-list">
+          {projectEntries.map((entry, index) => (
+            <RepeatCard
+              key={entry.clientId || `project-${index}`}
+              onRemove={() => updateProjectEntries(projectEntries.filter((_, targetIndex) => targetIndex !== index))}
+            >
+              <div className="profile-repeat-grid profile-repeat-grid--project">
+                <Field label="활동유형">
+                  <SelectBox
+                    value={entry.projectType}
+                    onChange={(value) => updateProjectEntry(index, 'projectType', value)}
+                    options={structuredProjectTypeOptions}
+                  />
+                </Field>
+                <Field label="활동명">
+                  <Input value={entry.projectName} onChange={(value) => updateProjectEntry(index, 'projectName', value)} />
+                </Field>
+                <Field label="시작연월">
+                  <Input
+                    value={entry.startYearMonth}
+                    onChange={(value) => updateProjectEntry(index, 'startYearMonth', value)}
+                    placeholder="YYYY.MM"
+                    inputMode="numeric"
+                  />
+                </Field>
+                <Field label="종료연월">
+                  <Input
+                    value={entry.endYearMonth}
+                    onChange={(value) => updateProjectEntry(index, 'endYearMonth', value)}
+                    placeholder="YYYY.MM"
+                    inputMode="numeric"
+                  />
+                </Field>
+              </div>
+              <Field label="활동 내용">
+                <TextArea
+                  value={entry.projectDescription}
+                  onChange={(value) => updateProjectEntry(index, 'projectDescription', value)}
+                  rows={4}
+                  placeholder="목표, 맡은 역할, 결과를 간단히 정리해 주세요."
+                />
+              </Field>
+            </RepeatCard>
+          ))}
+        </div>
+      ) : (
+        <RepeatEmptyState message="실무 경력이 적다면 프로젝트 경험이 직무 적합성을 보여주는 핵심 정보가 됩니다." />
+      )}
+
+      <Divider />
+      <Field label="공백 기간 사유">
+        <TextArea
+          value={profile.careerGapReason}
+          onChange={(value) => onChange('careerGapReason', value)}
+          rows={4}
+          placeholder="필요한 경우에만 간단히 작성해 주세요."
+        />
+      </Field>
     </>
   );
 }
@@ -246,6 +646,11 @@ function JobPanel({ profile, onChange }) {
     () => resolveSelectedJobValues(profile.targetJob, options.jobCategories),
     [options.jobCategories, profile.targetJob]
   );
+  const certificationEntries = Array.isArray(profile.certificationEntries) ? profile.certificationEntries : [];
+  const languageEntries = Array.isArray(profile.languageEntries) ? profile.languageEntries : [];
+  const portfolioEntries = Array.isArray(profile.portfolioEntries) ? profile.portfolioEntries : [];
+  const awardEntries = Array.isArray(profile.awardEntries) ? profile.awardEntries : [];
+  const trainingEntries = Array.isArray(profile.trainingEntries) ? profile.trainingEntries : [];
 
   useEffect(() => {
     if (options.status !== 'success') {
@@ -265,6 +670,12 @@ function JobPanel({ profile, onChange }) {
 
     onChange('targetJob', nextJobs.join(', '));
   };
+
+  const updateCertificationEntries = (nextEntries) => onChange('certificationEntries', nextEntries);
+  const updateLanguageEntries = (nextEntries) => onChange('languageEntries', nextEntries);
+  const updatePortfolioEntries = (nextEntries) => onChange('portfolioEntries', nextEntries);
+  const updateAwardEntries = (nextEntries) => onChange('awardEntries', nextEntries);
+  const updateTrainingEntries = (nextEntries) => onChange('trainingEntries', nextEntries);
 
   return (
     <>
@@ -290,20 +701,355 @@ function JobPanel({ profile, onChange }) {
         <ChipEditor value={profile.skills} onChange={(value) => onChange('skills', value)} placeholder="예) 엑셀" />
       </Field>
       <Divider />
-      <div className="profile-form-grid profile-form-grid--job-extra">
-        <Field label="자격증">
-          <ChipEditor value={profile.certifications} onChange={(value) => onChange('certifications', value)} placeholder="예) 컴퓨터활용능력 2급" />
-        </Field>
-        <Field label="포트폴리오 URL">
-          <Input value={profile.portfolioUrl} onChange={(value) => onChange('portfolioUrl', value)} />
-        </Field>
-        <Field label="수상 이력">
-          <TextArea value={profile.awards} onChange={(value) => onChange('awards', value)} rows={4} />
-        </Field>
-        <Field label="교육 이수 내역">
-          <TextArea value={profile.trainings} onChange={(value) => onChange('trainings', value)} rows={4} />
-        </Field>
-      </div>
+      <RepeatSectionHeader title="자격증" actionLabel="자격증 추가" onAction={() => updateCertificationEntries([...certificationEntries, createCertificationEntry()])} />
+      {certificationEntries.length ? (
+        <div className="profile-repeat-list">
+          {certificationEntries.map((entry, index) => (
+            <RepeatCard
+              key={entry.clientId || `certification-${index}`}
+              onRemove={() => updateCertificationEntries(certificationEntries.filter((_, targetIndex) => targetIndex !== index))}
+            >
+              <div className="profile-repeat-grid profile-repeat-grid--certificate">
+                <Field label="발행처">
+                  <SelectBox
+                    value={entry.issuer}
+                    onChange={(value) =>
+                      updateCertificationEntries(
+                        certificationEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, issuer: value } : item
+                        )
+                      )
+                    }
+                    options={certificationIssuerOptions}
+                  />
+                </Field>
+                <Field label="자격증명">
+                  <Input
+                    value={entry.certificationName}
+                    onChange={(value) =>
+                      updateCertificationEntries(
+                        certificationEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, certificationName: value } : item
+                        )
+                      )
+                    }
+                  />
+                </Field>
+                <Field label="취득년월">
+                  <Input
+                    value={entry.acquiredYearMonth}
+                    onChange={(value) =>
+                      updateCertificationEntries(
+                        certificationEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, acquiredYearMonth: normalizeYearMonthInput(value) } : item
+                        )
+                      )
+                    }
+                    placeholder="YYYY.MM"
+                    inputMode="numeric"
+                  />
+                </Field>
+              </div>
+            </RepeatCard>
+          ))}
+        </div>
+      ) : (
+        <RepeatEmptyState message="보유 자격증을 최신순으로 추가해 주세요." />
+      )}
+
+      <Divider />
+      <RepeatSectionHeader title="어학" actionLabel="어학 추가" onAction={() => updateLanguageEntries([...languageEntries, createLanguageEntry()])} />
+      {languageEntries.length ? (
+        <div className="profile-repeat-list">
+          {languageEntries.map((entry, index) => (
+            <RepeatCard
+              key={entry.clientId || `language-${index}`}
+              onRemove={() => updateLanguageEntries(languageEntries.filter((_, targetIndex) => targetIndex !== index))}
+            >
+              <div className="profile-repeat-grid profile-repeat-grid--language">
+                <Field label="외국어명">
+                  <SelectBox
+                    value={entry.languageName}
+                    onChange={(value) =>
+                      updateLanguageEntries(
+                        languageEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, languageName: value, testName: '' } : item
+                        )
+                      )
+                    }
+                    options={languageOptions}
+                  />
+                </Field>
+                <Field label="시험명">
+                  <SelectBox
+                    value={entry.testName}
+                    onChange={(value) =>
+                      updateLanguageEntries(
+                        languageEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, testName: value } : item
+                        )
+                      )
+                    }
+                    options={getLanguageTestOptions(entry.languageName, entry.testName)}
+                  />
+                </Field>
+                <Field label="급수 / 점수">
+                  <Input
+                    value={entry.scoreOrGrade}
+                    onChange={(value) =>
+                      updateLanguageEntries(
+                        languageEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, scoreOrGrade: value } : item
+                        )
+                      )
+                    }
+                  />
+                </Field>
+                <Field label="취득년월">
+                  <Input
+                    value={entry.acquiredYearMonth}
+                    onChange={(value) =>
+                      updateLanguageEntries(
+                        languageEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, acquiredYearMonth: normalizeYearMonthInput(value) } : item
+                        )
+                      )
+                    }
+                    placeholder="YYYY.MM"
+                    inputMode="numeric"
+                  />
+                </Field>
+              </div>
+            </RepeatCard>
+          ))}
+        </div>
+      ) : (
+        <RepeatEmptyState message="어학 점수나 회화 자격이 있다면 함께 입력해 주세요." />
+      )}
+
+      <Divider />
+      <RepeatSectionHeader title="포트폴리오 및 URL" actionLabel="링크 추가" onAction={() => updatePortfolioEntries([...portfolioEntries, createPortfolioEntry()])} />
+      {portfolioEntries.length ? (
+        <div className="profile-repeat-list">
+          {portfolioEntries.map((entry, index) => (
+            <RepeatCard
+              key={entry.clientId || `portfolio-${index}`}
+              onRemove={() => updatePortfolioEntries(portfolioEntries.filter((_, targetIndex) => targetIndex !== index))}
+            >
+              <div className="profile-repeat-grid profile-repeat-grid--portfolio">
+                <Field label="유형">
+                  <SelectBox
+                    value={entry.portfolioType}
+                    onChange={(value) =>
+                      updatePortfolioEntries(
+                        portfolioEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, portfolioType: value } : item
+                        )
+                      )
+                    }
+                    options={portfolioTypeOptions}
+                  />
+                </Field>
+                <Field label="제목">
+                  <Input
+                    value={entry.title}
+                    onChange={(value) =>
+                      updatePortfolioEntries(
+                        portfolioEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, title: value } : item
+                        )
+                      )
+                    }
+                    placeholder="예) GitHub 메인 저장소"
+                  />
+                </Field>
+                <Field label="URL">
+                  <Input
+                    value={entry.url}
+                    onChange={(value) =>
+                      updatePortfolioEntries(
+                        portfolioEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, url: value } : item
+                        )
+                      )
+                    }
+                    placeholder="https://"
+                  />
+                </Field>
+              </div>
+            </RepeatCard>
+          ))}
+        </div>
+      ) : (
+        <RepeatEmptyState message="GitHub, Notion, 개인 웹사이트 등 직무를 보여줄 수 있는 링크를 추가해 주세요." />
+      )}
+
+      <Divider />
+      <RepeatSectionHeader title="수상" actionLabel="수상 추가" onAction={() => updateAwardEntries([...awardEntries, createAwardEntry()])} />
+      {awardEntries.length ? (
+        <div className="profile-repeat-list">
+          {awardEntries.map((entry, index) => (
+            <RepeatCard
+              key={entry.clientId || `award-${index}`}
+              onRemove={() => updateAwardEntries(awardEntries.filter((_, targetIndex) => targetIndex !== index))}
+            >
+              <div className="profile-repeat-grid profile-repeat-grid--award">
+                <Field label="수상명">
+                  <Input
+                    value={entry.awardName}
+                    onChange={(value) =>
+                      updateAwardEntries(
+                        awardEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, awardName: value } : item
+                        )
+                      )
+                    }
+                  />
+                </Field>
+                <Field label="수여기관">
+                  <Input
+                    value={entry.awardingOrganization}
+                    onChange={(value) =>
+                      updateAwardEntries(
+                        awardEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, awardingOrganization: value } : item
+                        )
+                      )
+                    }
+                  />
+                </Field>
+                <Field label="수상연도">
+                  <Input
+                    value={entry.awardYear}
+                    onChange={(value) =>
+                      updateAwardEntries(
+                        awardEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, awardYear: normalizeYearInput(value) } : item
+                        )
+                      )
+                    }
+                    placeholder="YYYY"
+                    inputMode="numeric"
+                  />
+                </Field>
+              </div>
+              <Field label="수상 내용">
+                <TextArea
+                  value={entry.awardDescription}
+                  onChange={(value) =>
+                    updateAwardEntries(
+                      awardEntries.map((item, itemIndex) =>
+                        itemIndex === index ? { ...item, awardDescription: value } : item
+                      )
+                    )
+                  }
+                  rows={4}
+                  placeholder="수상 배경, 역할, 성과를 간단히 작성해 주세요."
+                />
+              </Field>
+            </RepeatCard>
+          ))}
+        </div>
+      ) : (
+        <RepeatEmptyState message="직무 연관 수상이나 공모전 실적이 있다면 추가해 주세요." />
+      )}
+
+      <Divider />
+      <RepeatSectionHeader title="교육" actionLabel="교육 추가" onAction={() => updateTrainingEntries([...trainingEntries, createTrainingEntry()])} />
+      {trainingEntries.length ? (
+        <div className="profile-repeat-list">
+          {trainingEntries.map((entry, index) => (
+            <RepeatCard
+              key={entry.clientId || `training-${index}`}
+              onRemove={() => updateTrainingEntries(trainingEntries.filter((_, targetIndex) => targetIndex !== index))}
+            >
+              <div className="profile-repeat-grid profile-repeat-grid--training">
+                <Field label="교육구분">
+                  <SelectBox
+                    value={entry.trainingType}
+                    onChange={(value) =>
+                      updateTrainingEntries(
+                        trainingEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, trainingType: value } : item
+                        )
+                      )
+                    }
+                    options={trainingTypeOptions}
+                  />
+                </Field>
+                <Field label="교육명">
+                  <Input
+                    value={entry.trainingName}
+                    onChange={(value) =>
+                      updateTrainingEntries(
+                        trainingEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, trainingName: value } : item
+                        )
+                      )
+                    }
+                  />
+                </Field>
+                <Field label="교육기관">
+                  <Input
+                    value={entry.institutionName}
+                    onChange={(value) =>
+                      updateTrainingEntries(
+                        trainingEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, institutionName: value } : item
+                        )
+                      )
+                    }
+                  />
+                </Field>
+                <Field label="시작년월">
+                  <Input
+                    value={entry.startYearMonth}
+                    onChange={(value) =>
+                      updateTrainingEntries(
+                        trainingEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, startYearMonth: normalizeYearMonthInput(value) } : item
+                        )
+                      )
+                    }
+                    placeholder="YYYY.MM"
+                    inputMode="numeric"
+                  />
+                </Field>
+                <Field label="종료년월">
+                  <Input
+                    value={entry.endYearMonth}
+                    onChange={(value) =>
+                      updateTrainingEntries(
+                        trainingEntries.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, endYearMonth: normalizeYearMonthInput(value) } : item
+                        )
+                      )
+                    }
+                    placeholder="YYYY.MM"
+                    inputMode="numeric"
+                  />
+                </Field>
+              </div>
+              <Field label="교육 내용">
+                <TextArea
+                  value={entry.trainingDescription}
+                  onChange={(value) =>
+                    updateTrainingEntries(
+                      trainingEntries.map((item, itemIndex) =>
+                        itemIndex === index ? { ...item, trainingDescription: value } : item
+                      )
+                    )
+                  }
+                  rows={4}
+                  placeholder="핵심 커리큘럼이나 직무 연관 포인트를 작성해 주세요."
+                />
+              </Field>
+            </RepeatCard>
+          ))}
+        </div>
+      ) : (
+        <RepeatEmptyState message="직무 연관 교육 이수 내역을 입력해 주세요." />
+      )}
     </>
   );
 }
@@ -541,6 +1287,28 @@ function DisabilityPanel({ profile, onChange }) {
         </Field>
       </div>
       <Divider />
+      <div className="profile-sensitive-consent">
+        <label className="profile-sensitive-consent__toggle">
+          <input
+            type="checkbox"
+            checked={profile.sensitiveInfoConsentYn === true}
+            onChange={(event) => onChange('sensitiveInfoConsentYn', event.target.checked)}
+          />
+          <span aria-hidden="true" />
+          필수 민감정보 수집·이용에 동의합니다.
+        </label>
+        <div className="profile-sensitive-consent__detail" role="note">
+          <ol>
+            {sensitiveConsentDetails.map((item) => (
+              <li key={item.title}>
+                <strong>{item.title}</strong>
+                <span>{item.body}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+      <Divider />
       <div className="profile-disability-detail">
         <Field label="상세 장애 설명">
           <TextArea value={profile.disabilityDescription} onChange={(value) => onChange('disabilityDescription', value)} rows={5} />
@@ -665,6 +1433,45 @@ function ExtraPanel({ profile, onChange }) {
       </Field>
     </>
   );
+}
+
+function RepeatSectionHeader({ title, description, actionLabel, onAction }) {
+  return (
+    <div className="profile-repeat-section__header">
+      <div>
+        <h2>{title}</h2>
+        {description ? <p>{description}</p> : null}
+      </div>
+      <button type="button" className="profile-repeat-section__add-button" onClick={onAction}>
+        {actionLabel}
+      </button>
+    </div>
+  );
+}
+
+function RepeatCard({ title, subtitle, onRemove, children }) {
+  return (
+    <section className="profile-repeat-card">
+      {title || subtitle ? (
+        <div className="profile-repeat-card__head">
+          <div>
+            {title ? <h3>{title}</h3> : null}
+            {subtitle ? <p>{subtitle}</p> : null}
+          </div>
+        </div>
+      ) : null}
+      <div className="profile-repeat-card__body">{children}</div>
+      <div className="profile-repeat-card__footer">
+        <button type="button" className="profile-repeat-card__remove-button" onClick={onRemove}>
+          삭제
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function RepeatEmptyState({ message }) {
+  return <div className="profile-repeat-empty">{message}</div>;
 }
 
 function Field({ label, required = false, hint, error, children, width }) {
