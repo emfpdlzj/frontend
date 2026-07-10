@@ -362,7 +362,7 @@ export function TrafficFilterPanel({
       <section className="accessibility-map__ai-toggle" aria-label="통근 가능 기업 필터 설정">
         <div>
           <strong>통근 가능한 기업만 보기</strong>
-          <span>대중교통 75분 또는 직선거리 25km 이내를 기본으로 봅니다.</span>
+          <span>직선거리 25km 이내</span>
         </div>
         <button
           type="button"
