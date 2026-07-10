@@ -483,9 +483,6 @@ export function TrafficFilterPanel({
             <h3>
               <span>검색 결과 {resultCount}개</span>
             </h3>
-            {appliedAiEnabled && isCommutableOnlyApplied ? (
-              <p className="accessibility-map__results-subtext">통근 가능한 기업 공고 {resultCount}개</p>
-            ) : null}
           </div>
         </div>
         <div ref={sortMenuRef} className={`accessibility-map__sort${isSortMenuOpen ? ' is-open' : ''}`}>
