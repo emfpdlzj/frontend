@@ -15848,6 +15848,9 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   --map-gap-lg: calc(16px * var(--ui-density-scale));
   --map-gap-md: calc(10px * var(--ui-density-scale));
   --map-gap-sm: calc(7px * var(--ui-density-scale));
+  --map-filter-gap-section: calc(14px * var(--ui-density-scale));
+  --map-filter-gap-block: calc(10px * var(--ui-density-scale));
+  --map-filter-gap-tight: calc(6px * var(--ui-density-scale));
 }
 
 .accessibility-map__layout {
@@ -16082,26 +16085,57 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .accessibility-map .accessibility-map__filter-header {
-  margin-bottom: calc(8px * var(--ui-density-scale));
+  display: grid;
+  gap: var(--map-filter-gap-block);
+  margin-bottom: 0;
+}
+
+.accessibility-map .accessibility-map__filter-header h2,
+.accessibility-map .accessibility-map__filter-header p {
+  margin: 0;
 }
 
 .accessibility-map .accessibility-map__collapse-button {
   min-height: 28px;
-  margin-top: calc(4px * var(--ui-density-scale));
-  margin-bottom: calc(5px * var(--ui-density-scale));
+  margin: 0;
 }
 
 .accessibility-map .accessibility-map__ai-toggle {
   padding: calc(8px * var(--ui-density-scale)) calc(10px * var(--ui-density-scale));
-  margin-top: calc(8px * var(--ui-density-scale));
-  margin-bottom: calc(8px * var(--ui-density-scale));
+  margin: 0;
+}
+
+.accessibility-map .accessibility-map__filter-header + .accessibility-map__ai-toggle,
+.accessibility-map .accessibility-map__ai-toggle + .accessibility-map__ai-toggle,
+.accessibility-map .accessibility-map__ai-toggle + .accessibility-map__ai-applied-note,
+.accessibility-map .accessibility-map__ai-applied-note + .accessibility-map__filter-list,
+.accessibility-map .accessibility-map__ai-applied-note + .accessibility-map__filter-actions,
+.accessibility-map .accessibility-map__filter-list + .accessibility-map__filter-actions {
+  margin-top: var(--map-filter-gap-block);
+}
+
+.accessibility-map .accessibility-map__ai-applied-note {
+  margin: 0;
+}
+
+.accessibility-map .accessibility-map__filter-list {
+  margin-top: 0;
+  gap: var(--map-filter-gap-tight);
+}
+
+.accessibility-map .accessibility-map__filter-group {
+  padding: 0;
+}
+
+.accessibility-map .accessibility-map__filter-title-row h3 {
+  margin: 0 0 var(--map-filter-gap-tight);
 }
 
 .accessibility-map .accessibility-map__filter-actions {
   grid-template-columns: repeat(2, minmax(96px, 1fr));
   gap: calc(6px * var(--ui-density-scale));
-  padding-top: calc(7px * var(--ui-density-scale));
-  padding-bottom: calc(9px * var(--ui-density-scale));
+  padding: 0;
+  margin-top: var(--map-filter-gap-section);
 }
 
 .accessibility-map .accessibility-map__filter-reset-button,
@@ -16112,8 +16146,13 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .accessibility-map .accessibility-map__results-header {
-  padding-top: calc(4px * var(--ui-density-scale));
+  margin-top: var(--map-filter-gap-section);
+  padding-top: 0;
   padding-bottom: calc(8px * var(--ui-density-scale));
+}
+
+.accessibility-map .accessibility-map__loading-bar {
+  margin: 0 0 var(--map-filter-gap-block);
 }
 
 .accessibility-map__detail-header {
