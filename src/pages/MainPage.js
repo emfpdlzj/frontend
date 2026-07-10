@@ -2826,7 +2826,7 @@ export function MainPage({ view = 'home' }) {
           <>
             <section className="home-overview" aria-labelledby="main-page-title">
               <div className="home-overview__heading">
-                <p className="home-eyebrow">Home</p>
+                <p className="home-eyebrow">홈화면</p>
                 <h1 id="main-page-title">현재 인기 공고</h1>
                 <p>사람들이 많이 스크랩한 공고들을 스크랩 해보세요.</p>
               </div>
@@ -2884,33 +2884,35 @@ export function MainPage({ view = 'home' }) {
             </section>
 
             <section className="home-notices home-section-entrance" aria-labelledby="home-notices-title">
-              <div className="home-section-head">
-                <div>
-                  <h2 id="home-notices-title">공지사항</h2>
-                  <p>서비스 운영과 이용에 필요한 안내입니다.</p>
-                </div>
-                <Link className="secondary-button home-notices__more" to={localizePath(ROUTE_PATHS.notices)}>
-                  전체보기
-                </Link>
+              <div className="home-notices__intro">
+                <h2 id="home-notices-title">공지사항</h2>
+                <p>서비스 운영과 이용에 필요한 안내입니다.</p>
               </div>
 
-              {noticeState.status === 'loading' ? <div className="home-feedback" role="status">공지사항을 불러오는 중입니다.</div> : null}
-              {noticeState.status === 'error' ? <div className="home-feedback is-error" role="alert">{noticeState.error}</div> : null}
-              {noticeState.status === 'empty' ? <div className="home-feedback" role="status">등록된 공지사항이 없습니다.</div> : null}
+              <div className="home-notices__panel">
+                {noticeState.status === 'loading' ? <div className="home-feedback" role="status">공지사항을 불러오는 중입니다.</div> : null}
+                {noticeState.status === 'error' ? <div className="home-feedback is-error" role="alert">{noticeState.error}</div> : null}
+                {noticeState.status === 'empty' ? <div className="home-feedback" role="status">등록된 공지사항이 없습니다.</div> : null}
 
-              {noticeState.status === 'success' ? (
-                <div className="home-notices__list">
-                  {noticeState.items.map((notice) => (
-                    <Link key={notice.id} className="home-notices__item" to={localizePath(`${ROUTE_PATHS.notices}/${notice.id}`)}>
-                      <span className="home-notices__meta">
-                        {notice.pinned ? <strong>고정</strong> : null}
-                        {formatHomeNoticeDate(notice.createdAt) ? <time>{formatHomeNoticeDate(notice.createdAt)}</time> : null}
-                      </span>
-                      <span className="home-notices__title">{notice.title}</span>
+                {noticeState.status === 'success' ? (
+                  <div className="home-notices__content">
+                    <div className="home-notices__list">
+                      {noticeState.items.map((notice) => (
+                        <Link key={notice.id} className="home-notices__item" to={localizePath(`${ROUTE_PATHS.notices}/${notice.id}`)}>
+                          <span className="home-notices__meta">
+                            {notice.pinned ? <strong>고정</strong> : null}
+                            {formatHomeNoticeDate(notice.createdAt) ? <time>{formatHomeNoticeDate(notice.createdAt)}</time> : null}
+                          </span>
+                          <span className="home-notices__title">{notice.title}</span>
+                        </Link>
+                      ))}
+                    </div>
+                    <Link className="secondary-button home-notices__more" to={localizePath(ROUTE_PATHS.notices)}>
+                      전체보기
                     </Link>
-                  ))}
-                </div>
-              ) : null}
+                  </div>
+                ) : null}
+              </div>
             </section>
           </>
         ) : null}

@@ -167,12 +167,25 @@ function getDisplayGradeFromScore(score) {
   return 'C등급';
 }
 
-const ACCESSIBILITY_SCORE_HELP_TEXT = [
-  '접근성 점수는 공고 정보, 회사 정보, 근무지 주변 이동 정보를 함께 보고 계산합니다.',
-  'AI 스코어링을 켜면 선택한 내 프로필에 맞춰 점수를 다시 계산합니다.',
-  'AI 스코어링을 끄면 저장된 공고 정보를 기준으로 보여주고, 화면에서 고른 필터만 적용합니다.',
-  '근로지원인 수행기관은 지도에 위치만 표시되며 점수에는 들어가지 않습니다.',
-  '이 점수는 지원을 돕는 참고 정보입니다. 실제 출퇴근 경로와 사업장 환경은 지원 전 다시 확인해주세요.'
+const ACCESSIBILITY_SCORE_HELP_SECTIONS = [
+  {
+    accent: '접근성 점수는',
+    body: '채용공고, 회사 정보, 근무지 주변의 이동·편의 정보를 종합해 계산합니다.'
+  },
+  {
+    accent: 'AI 스코어링을 켜면',
+    body: '선택한 내 프로필을 반영해 공고별 점수를 다시 계산합니다.'
+  },
+  {
+    accent: 'AI 스코어링을 끄면',
+    body: '저장된 공고 정보를 기준으로 표시하며, 화면에서 선택한 필터만 적용됩니다.'
+  },
+  {
+    body: '근로지원인 수행기관은 지도에 위치만 표시되며, 접근성 점수에는 반영되지 않습니다.'
+  },
+  {
+    body: '이 점수는 공고를 비교하고 지원을 결정할 때 참고하기 위한 정보입니다. 실제 출퇴근 경로와 근무환경은 지원 전에 직접 확인해 주세요.'
+  }
 ];
 
 export function AccessibilityScoreHelpButton({ className = '', interactive = true }) {
@@ -196,8 +209,15 @@ export function AccessibilityScoreHelpButton({ className = '', interactive = tru
     <span className={`accessibility-map__question ${className}`.trim()}>
       {trigger}
       <span id={tooltipId} className="accessibility-map__question-tooltip" role="tooltip">
-        {ACCESSIBILITY_SCORE_HELP_TEXT.map((text) => (
-          <span key={text}>{text}</span>
+        <strong className="accessibility-map__question-tooltip-title">AI 접근성 점수 안내</strong>
+        {ACCESSIBILITY_SCORE_HELP_SECTIONS.map((section) => (
+          <span
+            key={`${section.accent || 'plain'}-${section.body}`}
+            className={`accessibility-map__question-tooltip-block${section.accent ? ' is-emphasized' : ''}`}
+          >
+            {section.accent ? <strong>{section.accent}</strong> : null}
+            <span>{section.body}</span>
+          </span>
         ))}
       </span>
     </span>

@@ -803,6 +803,51 @@ const UI_TEXT_TRANSLATIONS = {
     en: 'Accessibility score criteria',
     ja: 'アクセシビリティスコア算定基準の案内'
   },
+  'AI 접근성 점수 안내': {
+    zh: 'AI 无障碍评分说明',
+    en: 'AI Accessibility Score Guide',
+    ja: 'AIアクセシビリティスコア案内'
+  },
+  '접근성 점수는': {
+    zh: '无障碍评分会',
+    en: 'Accessibility scores',
+    ja: 'アクセシビリティスコアは'
+  },
+  '채용공고, 회사 정보, 근무지 주변의 이동·편의 정보를 종합해 계산합니다.': {
+    zh: '综合招聘信息、公司信息以及工作地点周边的移动与便利信息进行计算。',
+    en: 'combine job postings, company details, and nearby mobility and convenience information.',
+    ja: '採用情報、会社情報、勤務地周辺の移動・利便情報を総合して計算します。'
+  },
+  'AI 스코어링을 켜면': {
+    zh: '开启 AI 评分后',
+    en: 'When AI scoring is on,',
+    ja: 'AIスコアリングをオンにすると'
+  },
+  '선택한 내 프로필을 반영해 공고별 점수를 다시 계산합니다.': {
+    zh: '会反映所选个人资料，重新计算每条招聘公告的分数。',
+    en: 'it recalculates each posting score using your selected profile.',
+    ja: '選択したプロフィールを反映して求人ごとのスコアを再計算します。'
+  },
+  'AI 스코어링을 끄면': {
+    zh: '关闭 AI 评分后',
+    en: 'When AI scoring is off,',
+    ja: 'AIスコアリングをオフにすると'
+  },
+  '저장된 공고 정보를 기준으로 표시하며, 화면에서 선택한 필터만 적용됩니다.': {
+    zh: '会基于已保存的招聘信息显示，并且只应用当前画面中选择的筛选条件。',
+    en: 'it uses saved posting data and applies only the filters selected on screen.',
+    ja: '保存済み求人情報を基準に表示し、画面で選択したフィルターのみ適用されます。'
+  },
+  '근로지원인 수행기관은 지도에 위치만 표시되며, 접근성 점수에는 반영되지 않습니다.': {
+    zh: '就业辅助人员执行机构只会在地图上显示位置，不会反映到无障碍评分中。',
+    en: 'Support worker agencies are shown on the map only and are not included in the accessibility score.',
+    ja: '就労支援員の実施機関は地図上に位置のみ表示され、アクセシビリティスコアには反映されません。'
+  },
+  '이 점수는 공고를 비교하고 지원을 결정할 때 참고하기 위한 정보입니다. 실제 출퇴근 경로와 근무환경은 지원 전에 직접 확인해 주세요.': {
+    zh: '此分数仅供比较招聘公告和决定是否申请时参考。实际通勤路线和工作环境请在申请前亲自确认。',
+    en: 'Use this score only as a reference when comparing postings and deciding whether to apply. Check the real commute route and working environment before applying.',
+    ja: 'このスコアは求人を比較し応募を決める際の参考情報です。実際の通勤経路と勤務環境は応募前に直接確認してください。'
+  },
   '접근성 점수는 공고 정보, 회사 정보, 근무지 주변 이동 정보를 함께 보고 계산합니다.': {
     zh: '无障碍评分会结合职位信息、公司信息和工作地点周边移动信息计算。',
     en: 'The accessibility score uses job, company, and nearby travel information together.',
@@ -1636,6 +1681,7 @@ const UI_TEXT_TRANSLATIONS = {
   '퀵 추천 요청 상태를 확인할 수 없습니다.': { zh: '无法确认快速推荐请求状态。', en: 'Could not check quick recommendation request status.', ja: 'クイック推薦リクエスト状態を確認できません。' },
   '추천 설명을 요청할 기업명 또는 직무명이 없습니다.': { zh: '缺少请求推荐说明所需的企业名称或岗位名称。', en: 'Company or job name is missing for the recommendation explanation request.', ja: '推薦説明リクエストに必要な企業名または職務名がありません。' },
   '추천 설명을 요청할 필수 정보가 부족합니다.': { zh: '请求推荐说明所需的必填信息不足。', en: 'Required information for recommendation explanation is missing.', ja: '推薦説明リクエストに必要な必須情報が不足しています。' },
+  '홈화면': { zh: '首页画面', en: 'Home', ja: 'ホーム画面' },
   '현재 인기 공고': { zh: '当前热门职位', en: 'Popular jobs now', ja: '現在の人気求人' },
   '사람들이 많이 스크랩한 공고들을 스크랩 해보세요.': { zh: '查看并收藏许多人保存的职位。', en: 'Explore jobs many people have saved.', ja: '多くの人が保存した求人を確認してみてください。' },
   '인기 공고 TOP 20': { zh: '热门职位 TOP 20', en: 'Top 20 popular jobs', ja: '人気求人TOP20' },
