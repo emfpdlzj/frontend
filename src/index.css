@@ -654,18 +654,6 @@ a:hover {
   line-height: 1.45;
 }
 
-.home-job-meta__hint {
-  display: inline-block;
-  margin-left: 5px;
-  color: #6b7280;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.home-job-meta__commute-warning {
-  color: var(--danger);
-}
-
 .home-job-meta__salary dd {
   color: #111827;
   font-size: 17px;

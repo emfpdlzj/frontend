@@ -452,8 +452,6 @@ const formatCommuteEstimate = (minutes) => {
   return `${Math.max(10, Math.round(minutes / 5) * 5)}분`;
 };
 
-const isLongCommuteMinutes = (minutes) => Number.isFinite(minutes) && minutes >= 75;
-
 const estimateCommuteMinutes = (profile, job) => {
   const transitTime = job?.transitTime || job?.transit_time || {};
   const explicitMinutes = toNumberOrNull(
@@ -3707,19 +3705,6 @@ export function MainPage({ view = 'home' }) {
                         <h3 data-i18n-skip>{job.title}</h3>
                         <p className="home-job-role" data-i18n-skip>{job.location}</p>
                         <dl className="home-job-meta" aria-label={`${job.title} 공고 정보`}>
-                          <div>
-                            <dt>통근</dt>
-                            <dd>
-                              <span
-                                className={isLongCommuteMinutes(job.commuteEstimate?.minutes) ? 'home-job-meta__commute-warning' : undefined}
-                                data-i18n-skip
-                              >
-                                {job.commuteEstimate?.label || '확인 필요'}
-                              </span>
-                              {job.commuteEstimate?.source === 'transit_estimate' ? <span className="home-job-meta__hint">대중교통</span> : null}
-                              {job.commuteEstimate?.source === 'estimated' ? <span className="home-job-meta__hint">거리 기반</span> : null}
-                            </dd>
-                          </div>
                           <div><dt>급여</dt><dd data-i18n-skip>{job.salary}</dd></div>
                           <div><dt>고용형태</dt><dd data-i18n-skip>{job.employmentType}</dd></div>
                           <div><dt>등록일</dt><dd>{job.registeredDateText || '없음'}</dd></div>
