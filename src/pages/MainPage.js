@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { noticeApi } from '../api/noticeApi';
 import { postingApi } from '../api/postingApi';
@@ -1253,7 +1253,7 @@ const getPhoneHref = (value) => {
   return digits ? `tel:${digits}` : '';
 };
 
-export function PopularPostingDetailModal({
+export const PopularPostingDetailModal = memo(function PopularPostingDetailModal({
   detail,
   loading,
   error,
@@ -1587,7 +1587,7 @@ export function PopularPostingDetailModal({
       </section>
     </div>
   );
-}
+});
 
 function ScrapConfirmModal({ pending, onConfirm, onClose }) {
   return (
@@ -3039,6 +3039,17 @@ export function MainPage({ view = 'home' }) {
       explainData: null
     });
   }, []);
+  const handleOpenScrapConfirm = useCallback(() => {
+    setScrapConfirmOpen(true);
+  }, []);
+  const detailModalQuickExplainState = useMemo(
+    () => ({
+      status: quickDetailState.explainStatus,
+      error: quickDetailState.explainError,
+      data: quickDetailState.explainData
+    }),
+    [quickDetailState.explainData, quickDetailState.explainError, quickDetailState.explainStatus]
+  );
 
   const handleApplyQuickFilters = useCallback(async () => {
     if (!effectiveSelectedProfileId || quickState.status === 'loading' || quickState.status === 'refetching') {
@@ -3764,13 +3775,9 @@ export function MainPage({ view = 'home' }) {
           loading={detailState.status === 'loading'}
           error={detailState.status === 'error' ? detailState.error : ''}
           quickFitScore={quickDetailState.fitScore}
-          quickExplainState={{
-            status: quickDetailState.explainStatus,
-            error: quickDetailState.explainError,
-            data: quickDetailState.explainData
-          }}
+          quickExplainState={detailModalQuickExplainState}
           onClose={handleCloseDetailModal}
-          onScrap={() => setScrapConfirmOpen(true)}
+          onScrap={handleOpenScrapConfirm}
         />
       ) : null}
 
