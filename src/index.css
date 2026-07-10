@@ -8257,11 +8257,22 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 
 .home-quick .home-quick__filter-panel.accessibility-map__filter-panel {
   /* 홈 퀵 필터는 지도 화면과 달리 패널 내부 스크롤을 사용하지 않는다. */
+  display: block;
   height: auto;
   min-height: 0;
+  padding-bottom: 14px;
   overflow-y: visible;
   overscroll-behavior: auto;
-  border-right: 1px solid #dbe5f3;
+  border-right: 0;
+  align-self: start;
+}
+
+.home-quick .home-quick__filter-panel .accessibility-map__ai-toggle:last-of-type {
+  margin-bottom: 0;
+}
+
+.home-quick .home-quick__filter-panel .accessibility-map__filter-list {
+  margin-top: 10px;
 }
 
 .accessibility-map__profile-trigger {
