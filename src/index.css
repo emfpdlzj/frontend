@@ -1348,7 +1348,10 @@ html[data-bw-reduce-motion='off'] .score-ring--no-animate .score-ring__value {
 }
 
 .home-notices__panel {
-  padding: 0;
+  border: 1px solid #dbe5f3;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 18px 22px;
 }
 
 .home-notices__content {
