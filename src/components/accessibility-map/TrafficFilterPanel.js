@@ -318,7 +318,7 @@ export function TrafficFilterPanel({
         <h2>교통 필터</h2>
         <p>
           <img className="accessibility-map__info-icon" src={infoIcon} alt="안내 아이콘" />
-          프로필 기준으로 필터 조건을 적용해 공고를 조회합니다.
+          프로필 기준 필터 적용으로 공고 조회
         </p>
         <button
           type="button"
