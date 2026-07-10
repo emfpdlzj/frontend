@@ -95,12 +95,13 @@ export function usePageMetadata() {
     setMetaAttribute('meta[property="og:image:type"]', 'content', 'image/png');
     setMetaAttribute('meta[property="og:image:width"]', 'content', '1200');
     setMetaAttribute('meta[property="og:image:height"]', 'content', '630');
-    setMetaAttribute('meta[property="og:image:alt"]', 'content', 'BridgeWork 서비스 소개 이미지');
+    setMetaAttribute('meta[property="og:image:alt"]', 'content', 'BridgeWork 로고');
     setMetaAttribute('meta[name="twitter:card"]', 'content', 'summary_large_image');
     setMetaAttribute('meta[name="twitter:title"]', 'content', metadata.title);
     setMetaAttribute('meta[name="twitter:description"]', 'content', metadata.description);
     setMetaAttribute('meta[name="twitter:url"]', 'content', canonicalUrl);
     setMetaAttribute('meta[name="twitter:image"]', 'content', imageUrl);
+    setMetaAttribute('meta[name="twitter:image:alt"]', 'content', 'BridgeWork 로고');
     setStructuredData(structuredData);
   }, [location.pathname]);
 }

@@ -13,7 +13,7 @@ import {
 const trimTrailingSlash = (value) => String(value || '').replace(/\/+$/, '');
 const configuredSiteUrl = trimTrailingSlash(process.env.REACT_APP_SITE_URL);
 export const SITE_URL = configuredSiteUrl || 'https://www.bridgework.cloud';
-export const DEFAULT_OG_IMAGE_PATH = '/og-image.png';
+export const DEFAULT_OG_IMAGE_PATH = '/og-share-image.png';
 export const SITE_NAME = 'BridgeWork';
 
 const DEFAULT_DESCRIPTION =
