@@ -1250,7 +1250,7 @@ const sortMapJobs = (jobs, sortMode) => {
   return sortJobsByAccessibility(jobs);
 };
 
-const buildExplainPayload = ({ job, profileId, profile }) => {
+export const buildExplainPayload = ({ job, profileId, profile }) => {
   const source = job?.source || {};
   const recruitmentContext = getRecruitmentContext(source);
   const scoreDetail = job?.scoreDetail || {};
@@ -1287,12 +1287,18 @@ const buildExplainPayload = ({ job, profileId, profile }) => {
 
   const normalizedProfileId = Number(profileId);
   const normalizedJobPostId = getFirstInteger(jobPostId, sourceId, 0) ?? 0;
+  const profileAddress = toNullableText(profile?.detailAddress || profile?.address);
+  const profileCoordinate = getAddressCoordinate(profileAddress);
+  const homeLat = toNumberOrNull(getFirstPresentValue(profile?.homeLat, profile?.home_lat)) ?? profileCoordinate?.latitude ?? null;
+  const homeLng = toNumberOrNull(getFirstPresentValue(profile?.homeLng, profile?.home_lng)) ?? profileCoordinate?.longitude ?? null;
 
   const explainProfile = {
     profile_id: Number.isFinite(normalizedProfileId) ? normalizedProfileId : null,
     user_id: Number.isFinite(Number(profile?.userId)) ? Number(profile.userId) : null,
     name: toNullableText(profile?.fullName || profile?.name),
-    address: toNullableText(profile?.detailAddress || profile?.address),
+    address: profileAddress,
+    home_lat: homeLat,
+    home_lng: homeLng,
     desired_jobs: [profile?.targetJob, profile?.desiredJob].filter((item) => toNullableText(item)),
     skills: splitToList(profile?.skills),
     education: toNullableText(profile?.highestEducation || profile?.educationSummary),
@@ -2547,7 +2553,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     sortMode,
     viewState,
     errorMessage: recommendationState.error,
-    explanation: explanationState.data,
+    explanation: explanationState.jobId === selectedJob?.id ? explanationState.data : null,
     explanationViewState: explanationState.status === 'refetching' ? 'success' : explanationState.status,
     explanationErrorMessage: explanationState.error,
     setSelectedJobId,

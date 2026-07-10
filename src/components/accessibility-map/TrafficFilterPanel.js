@@ -30,30 +30,6 @@ const formatScoreBadge = (score) => {
   return `${Math.round(score)}점`;
 };
 
-const formatCommuteMinutes = (value) => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return value || '-';
-  }
-
-  const roundedMinutes = Math.max(0, Math.round(value));
-  if (roundedMinutes >= 75) {
-    return '75분 이상';
-  }
-
-  const hours = Math.floor(roundedMinutes / 60);
-  const minutes = roundedMinutes % 60;
-
-  if (!hours) {
-    return `${minutes}분`;
-  }
-  if (!minutes) {
-    return `${hours}시간`;
-  }
-  return `${hours}시간 ${minutes}분`;
-};
-
-const isLongCommuteMinutes = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 75;
-
 const getFilterValueSnapshot = (filterGroups) =>
   Object.fromEntries(
     filterGroups
@@ -615,13 +591,8 @@ export function TrafficFilterPanel({
                 <strong className="accessibility-map__job-company">{job.company}</strong>
                 <p className="accessibility-map__job-title">{job.title}</p>
                 <div className="accessibility-map__job-meta">
-                  <span>
-                    통근{' '}
-                    <strong className={isLongCommuteMinutes(job.commuteMinutes) ? 'accessibility-map__commute-warning' : undefined}>
-                      {formatCommuteMinutes(job.commuteMinutes)}
-                    </strong>
-                  </span>
                   <span>고용 <strong>{job.employmentType}</strong></span>
+                  <span>지역 <strong>{job.region}</strong></span>
                 </div>
                 <div className="accessibility-map__job-pay">임금 <strong>{job.payText}</strong></div>
               </button>

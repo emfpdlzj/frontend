@@ -176,6 +176,60 @@ function getVisibleCommuteStats(commuteStats = []) {
   ].filter(([, value]) => value && value !== '-');
 }
 
+function formatDurationMinutes(value) {
+  const normalized = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(normalized)) {
+    return '';
+  }
+
+  const roundedMinutes = Math.max(0, Math.round(normalized));
+  const hours = Math.floor(roundedMinutes / 60);
+  const minutes = roundedMinutes % 60;
+
+  if (!hours) {
+    return `${minutes}분`;
+  }
+  if (!minutes) {
+    return `${hours}시간`;
+  }
+  return `${hours}시간 ${minutes}분`;
+}
+
+function formatTransferCount(value) {
+  const normalized = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(normalized) ? `환승 ${Math.max(0, Math.round(normalized))}회` : '';
+}
+
+function formatWalkDistance(value) {
+  const normalized = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(normalized)) {
+    return '';
+  }
+
+  return normalized >= 1000 ? `도보 ${(normalized / 1000).toFixed(1)}km` : `도보 ${Math.round(normalized)}m`;
+}
+
+function getExplanationCommuteStats(explanation) {
+  const transitTime =
+    explanation?.transitTime ||
+    explanation?.transit_time ||
+    explanation?.aiResponse?.result?.transit_time ||
+    explanation?.aiResponse?.result?.transitTime;
+  if (!transitTime || transitTime.error_reason || transitTime.errorReason) {
+    return [];
+  }
+
+  const durationMinutes = transitTime.duration_minutes ?? transitTime.durationMinutes;
+  const transferCount = transitTime.transfer_count ?? transitTime.transferCount;
+  const walkDistanceMeters = transitTime.walk_distance_meters ?? transitTime.walkDistanceMeters;
+
+  return getVisibleCommuteStats([
+    durationMinutes != null ? `총 ${formatDurationMinutes(durationMinutes)}` : '',
+    transferCount != null ? formatTransferCount(transferCount) : '',
+    walkDistanceMeters != null ? formatWalkDistance(walkDistanceMeters) : ''
+  ]);
+}
+
 function formatScoreLabel(score) {
   return typeof score === 'number' ? `${score}점` : '확인 필요';
 }
@@ -297,7 +351,7 @@ export function AccessibilityMapDetailPanel({
   const [scoreRingAnimationKey, setScoreRingAnimationKey] = useState(0);
   const [selectedFeedbackReaction, setSelectedFeedbackReaction] = useState('');
   const [feedbackComment, setFeedbackComment] = useState('');
-  const visibleCommuteStats = getVisibleCommuteStats(accessibility.commuteStats);
+  const visibleCommuteStats = getExplanationCommuteStats(explanation);
   const shortSummary = explanation?.shortSummary || explanation?.aiResponse?.result?.short_summary || '';
   const nextStepSummary = explanation?.nextStepSummary || explanation?.aiResponse?.result?.next_step_summary || '';
   const recommendedPrograms = explanation?.recommendedPrograms || explanation?.aiResponse?.result?.recommended_programs || [];

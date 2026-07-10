@@ -1,4 +1,4 @@
-import { buildRecommendationStateFromPayload, filterAccessibilityMapJobs } from './useAccessibilityMap';
+import { buildExplainPayload, buildRecommendationStateFromPayload, filterAccessibilityMapJobs } from './useAccessibilityMap';
 
 const jobCategories = [
   {
@@ -371,5 +371,37 @@ describe('buildRecommendationStateFromPayload', () => {
       '횡단보도, 신호등, 보행 네트워크 데이터가 1건, 최근접 약 180m 확인됩니다.',
       '접근 양호'
     ]);
+  });
+});
+
+describe('buildExplainPayload', () => {
+  it('includes home coordinates derived from the selected profile address when explicit coordinates are missing', () => {
+    const payload = buildExplainPayload({
+      profileId: 7,
+      profile: {
+        userId: 100,
+        fullName: '홍길동',
+        detailAddress: '서울특별시 강남구 테헤란로 123',
+        targetJob: '사무보조'
+      },
+      job: {
+        id: 'job-1',
+        company: '브릿지워크',
+        title: '사무 보조원',
+        companyInfo: {
+          address: '서울특별시 중구 세종대로 1'
+        },
+        source: {
+          id: 11,
+          geoLatitude: 37.5665,
+          geoLongitude: 126.978,
+          compAddr: '서울특별시 중구 세종대로 1'
+        },
+        score: 82
+      }
+    });
+
+    expect(payload.profile.home_lat).toBeCloseTo(37.5172);
+    expect(payload.profile.home_lng).toBeCloseTo(127.0473);
   });
 });
