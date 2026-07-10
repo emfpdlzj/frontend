@@ -34,6 +34,10 @@ const MARKER_DISPLAY_MODE = {
   PIN: 'pin',
   POPUP: 'popup'
 };
+const SUPPORT_AGENCY_CLUSTER_GRID_PX = {
+  x: 120,
+  y: 56
+};
 const OFFICE_LABEL_CLUSTER_DECIMALS_BY_ZOOM = [
   [20, 6],
   [19, 5],
@@ -58,7 +62,9 @@ function escapeHtml(value) {
 }
 
 function getSafeMarkerType(type) {
-  return ['office', 'office-cluster', 'support-agency'].includes(type) ? type : 'support-agency';
+  return ['office', 'office-cluster', 'support-agency', 'support-agency-cluster'].includes(type)
+    ? type
+    : 'support-agency';
 }
 
 function getSafeOfficeMarkerTone(tone) {
@@ -169,21 +175,130 @@ function groupOfficeMarkers(markers, zoom) {
   }));
 }
 
-function createMarkerElement(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) {
+function projectLatLngToWorldPixel(lat, lng, zoom) {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  const normalizedZoom = Number(zoom);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(normalizedZoom)) {
+    return null;
+  }
+
+  const tileSize = 256;
+  const sinLatitude = Math.sin((Math.max(-85.05112878, Math.min(85.05112878, latitude)) * Math.PI) / 180);
+  const scale = tileSize * 2 ** normalizedZoom;
+
+  return {
+    x: ((longitude + 180) / 360) * scale,
+    y: (0.5 - Math.log((1 + sinLatitude) / (1 - sinLatitude)) / (4 * Math.PI)) * scale
+  };
+}
+
+function groupSupportAgencyMarkers(markers, zoom) {
+  const groups = [];
+
+  markers
+    .map((marker) => ({
+      marker,
+      pixel: projectLatLngToWorldPixel(marker.lat, marker.lng, zoom)
+    }))
+    .forEach(({ marker, pixel }) => {
+      const matchedGroup = pixel
+        ? groups.find((group) =>
+            group.pixel
+            && Math.abs(group.pixel.x - pixel.x) <= SUPPORT_AGENCY_CLUSTER_GRID_PX.x
+            && Math.abs(group.pixel.y - pixel.y) <= SUPPORT_AGENCY_CLUSTER_GRID_PX.y
+          )
+        : groups.find(
+            (group) =>
+              !group.pixel
+              && Number(group.members[0]?.lat).toFixed(6) === Number(marker.lat).toFixed(6)
+              && Number(group.members[0]?.lng).toFixed(6) === Number(marker.lng).toFixed(6)
+          );
+
+      if (!matchedGroup) {
+        groups.push({
+          lat: Number(marker.lat),
+          lng: Number(marker.lng),
+          members: [marker],
+          pixel: pixel ? { ...pixel } : null
+        });
+        return;
+      }
+
+      matchedGroup.members.push(marker);
+      matchedGroup.lat = matchedGroup.members.reduce((sum, member) => sum + Number(member.lat), 0) / matchedGroup.members.length;
+      matchedGroup.lng = matchedGroup.members.reduce((sum, member) => sum + Number(member.lng), 0) / matchedGroup.members.length;
+      if (pixel && matchedGroup.pixel) {
+        matchedGroup.pixel = {
+          x: matchedGroup.members.reduce(
+            (sum, member) => sum + projectLatLngToWorldPixel(member.lat, member.lng, zoom).x,
+            0
+          ) / matchedGroup.members.length,
+          y: matchedGroup.members.reduce(
+            (sum, member) => sum + projectLatLngToWorldPixel(member.lat, member.lng, zoom).y,
+            0
+          ) / matchedGroup.members.length
+        };
+      }
+    });
+
+  return groups.map(({ pixel, ...group }) => group);
+}
+
+function getSupportAgencyMarkerAnchor(zoomMode) {
+  if (zoomMode === MARKER_ZOOM_MODE.DOT) {
+    return new window.naver.maps.Point(11, 11);
+  }
+
+  if (zoomMode === MARKER_ZOOM_MODE.COMPACT) {
+    return new window.naver.maps.Point(48, 20);
+  }
+
+  return new window.naver.maps.Point(90, 25);
+}
+
+export function createMarkerElement(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) {
   const markerType = getSafeMarkerType(marker.type);
   if (markerType === 'support-agency') {
     const wrapper = document.createElement('div');
-    wrapper.className = 'accessibility-map__company-marker is-support-agency';
+    wrapper.className = [
+      'accessibility-map__company-marker',
+      'is-support-agency',
+      `is-zoom-${zoomMode}`
+    ].join(' ');
     wrapper.setAttribute('aria-hidden', 'true');
 
     const image = document.createElement('img');
     image.src = companyMapMarker;
     image.alt = '근로지원기관 위치 마커 아이콘';
 
-    const label = document.createElement('span');
-    label.textContent = marker.displayLabel || marker.label || '';
+    wrapper.append(image);
+    if (zoomMode !== MARKER_ZOOM_MODE.DOT) {
+      const label = document.createElement('span');
+      label.textContent = marker.displayLabel || marker.label || '';
+      wrapper.append(label);
+    }
+    return wrapper;
+  }
 
-    wrapper.append(image, label);
+  if (markerType === 'support-agency-cluster') {
+    const wrapper = document.createElement('div');
+    wrapper.className = [
+      'accessibility-map__job-map-marker',
+      'is-cluster',
+      'is-no-score',
+      'is-support-cluster',
+      `is-zoom-${zoomMode}`
+    ].join(' ');
+    wrapper.setAttribute('aria-hidden', 'true');
+
+    const dot = document.createElement('span');
+    dot.className = 'accessibility-map__job-map-marker-dot';
+
+    const label = document.createElement('strong');
+    label.textContent = String(marker.count);
+
+    wrapper.append(dot, label);
     return wrapper;
   }
 
@@ -281,7 +396,14 @@ function createMarkerIcon(marker, zoomMode = MARKER_ZOOM_MODE.DETAIL) {
   if (marker.type === 'support-agency') {
     return {
       content: createMarkerElement(marker, zoomMode),
-      anchor: new window.naver.maps.Point(90, 25)
+      anchor: getSupportAgencyMarkerAnchor(zoomMode)
+    };
+  }
+
+  if (marker.type === 'support-agency-cluster') {
+    return {
+      content: createMarkerElement(marker, zoomMode),
+      anchor: new window.naver.maps.Point(14, 14)
     };
   }
 
@@ -319,9 +441,11 @@ function getMarkerGridDecimals(zoom) {
 
 export function toRenderableMarkers(markers, zoom, expandedClusterKey = '') {
   const validMarkers = markers.filter((marker) => Number.isFinite(Number(marker.lat)) && Number.isFinite(Number(marker.lng)));
-  const supportMarkers = validMarkers.filter((marker) => marker.type !== 'office');
+  const supportMarkers = validMarkers.filter((marker) => marker.type === 'support-agency');
   const officeMarkers = validMarkers.filter((marker) => marker.type === 'office');
+  const passthroughMarkers = validMarkers.filter((marker) => marker.type !== 'office' && marker.type !== 'support-agency');
   const visualGroups = groupOfficeMarkers(officeMarkers, zoom);
+  const supportGroups = groupSupportAgencyMarkers(supportMarkers, zoom);
 
   const groupedOfficeMarkers = visualGroups.map((group) => {
     const members = group.members;
@@ -355,7 +479,30 @@ export function toRenderableMarkers(markers, zoom, expandedClusterKey = '') {
     };
   });
 
-  const groupedMarkers = [...groupedOfficeMarkers, ...supportMarkers];
+  const groupedSupportMarkers = supportGroups.map((group) => {
+    const members = group.members;
+    if (members.length === 1) {
+      return {
+        ...members[0],
+        clusterKey: getClusterKey(members)
+      };
+    }
+
+    const clusterKey = getClusterKey(members);
+    return {
+      id: `support-cluster:${clusterKey}`,
+      clusterKey,
+      label: `${members.length}개 수행기관`,
+      displayLabel: String(members.length),
+      count: members.length,
+      lat: group.lat,
+      lng: group.lng,
+      type: 'support-agency-cluster',
+      members
+    };
+  });
+
+  const groupedMarkers = [...groupedOfficeMarkers, ...groupedSupportMarkers, ...passthroughMarkers];
 
   if (groupedMarkers.length <= MAX_RENDERED_MARKERS) {
     return groupedMarkers;
@@ -782,7 +929,7 @@ function AccessibilityMapCanvasComponent({
             map: mapInstanceRef.current,
             title: source.label,
             icon,
-            zIndex: kind === 'popup' ? 30 : source.type === 'office-cluster' ? 20 : 10
+            zIndex: kind === 'popup' ? 30 : ['office-cluster', 'support-agency-cluster'].includes(source.type) ? 20 : 10
           });
 
           if (source.type === 'office') {
