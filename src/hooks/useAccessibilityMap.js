@@ -2357,7 +2357,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
   }, [callWithAuth, hasAppliedConditions, isAuthenticated, reloadKey, showSupportAgencies]);
 
   useEffect(() => {
-    if (!appliedAiEnabled || !selectedJob || !selectedProfileId || recommendationState.status !== 'success') {
+    if (!appliedAiEnabled || !selectedJob || !selectedProfileId) {
       setExplanationState({
         status: 'idle',
         error: '',
@@ -2452,7 +2452,7 @@ export function useAccessibilityMap({ searchQuery = '' } = {}) {
     return () => {
       controller.abort();
     };
-  }, [appliedAiEnabled, callWithAuth, recommendationState.status, selectedJob, selectedProfile, selectedProfileId, selectedProfileScoringSignature]);
+  }, [appliedAiEnabled, callWithAuth, selectedJob, selectedProfile, selectedProfileId, selectedProfileScoringSignature]);
 
   const reloadRecommendations = useCallback(() => {
     clearRecommendationCache();
