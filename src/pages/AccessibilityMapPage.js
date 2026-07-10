@@ -106,6 +106,12 @@ export function AccessibilityMapPage() {
     pending: false,
     error: ''
   });
+  const [feedbackState, setFeedbackState] = useState({
+    pending: false,
+    error: '',
+    success: '',
+    submitVersion: 0
+  });
 
   const requestCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -184,6 +190,42 @@ export function AccessibilityMapPage() {
       });
     }
   }, [callWithAuth, markJobScrapped, scrapState.mode, scrapState.pending, selectedJob]);
+  const handleSubmitFeedback = useCallback(async ({ reaction, comment }) => {
+    if (!selectedJob?.postingId || feedbackState.pending) {
+      return;
+    }
+    if (isGuestUser) {
+      openLoginModal();
+      return;
+    }
+
+    setFeedbackState((prev) => ({
+      ...prev,
+      pending: true,
+      error: '',
+      success: ''
+    }));
+
+    try {
+      await callWithAuth((accessToken, signal) => postingApi.submitPostingFeedback(accessToken, selectedJob.postingId, {
+        reaction,
+        comment
+      }, signal));
+      setFeedbackState((prev) => ({
+        pending: false,
+        error: '',
+        success: '피드백을 전송했습니다.',
+        submitVersion: prev.submitVersion + 1
+      }));
+    } catch (error) {
+      setFeedbackState((prev) => ({
+        ...prev,
+        pending: false,
+        error: error.message || '피드백 전송에 실패했습니다.',
+        success: ''
+      }));
+    }
+  }, [callWithAuth, feedbackState.pending, isGuestUser, openLoginModal, selectedJob]);
 
   useEffect(() => {
     setSearchEnabled(hasAppliedConditions);
@@ -196,6 +238,15 @@ export function AccessibilityMapPage() {
     setSearchEnabled(false);
     clearQuery();
   }, [clearQuery, setSearchEnabled]);
+
+  useEffect(() => {
+    setFeedbackState((prev) => ({
+      pending: false,
+      error: '',
+      success: '',
+      submitVersion: prev.submitVersion
+    }));
+  }, [selectedJob?.id]);
 
   return (
     <main className="accessibility-map">
@@ -258,6 +309,11 @@ export function AccessibilityMapPage() {
             onChangeTab={setSelectedTab}
             onScrap={openScrapConfirm}
             scrapErrorMessage={scrapState.error}
+            feedbackPending={feedbackState.pending}
+            feedbackErrorMessage={feedbackState.error}
+            feedbackSuccessMessage={feedbackState.success}
+            feedbackSubmitVersion={feedbackState.submitVersion}
+            onSubmitFeedback={handleSubmitFeedback}
           />
         ) : (
           <aside className="accessibility-map__detail-panel">

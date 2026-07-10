@@ -37,6 +37,17 @@ export const postingApi = {
     );
   },
 
+  async submitPostingFeedback(accessToken, postingId, body, signal) {
+    return unwrapApiResult(
+      await httpRequest(`/postings/${postingId}/feedback`, {
+        method: 'POST',
+        token: accessToken,
+        body,
+        signal
+      })
+    );
+  },
+
   async getMyScraps(accessToken, signal) {
     const result = unwrapApiResult(await httpRequest('/me/scraps', { token: accessToken, signal }));
     return Array.isArray(result) ? result : [];

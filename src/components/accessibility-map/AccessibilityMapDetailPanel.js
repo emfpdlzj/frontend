@@ -71,6 +71,32 @@ function MetaIcon({ type }) {
   return <img className="accessibility-map__meta-icon is-walk" src={walkIcon} alt="도보 이동 아이콘" />;
 }
 
+function FeedbackThumbUpIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M10 21H6.8c-.99 0-1.8-.81-1.8-1.8V10c0-.99.81-1.8 1.8-1.8H10v12.8Z" fill="currentColor" opacity="0.18" />
+      <path d="M10 21H6.8c-.99 0-1.8-.81-1.8-1.8V10c0-.99.81-1.8 1.8-1.8H10m0 12.8V8.2m0 12.8h7.04c.85 0 1.59-.58 1.79-1.41l1.15-4.8a1.8 1.8 0 0 0-1.75-2.22H14V6.93c0-.84-.33-1.65-.93-2.24L11.87 3.5a.9.9 0 0 0-1.53.64V8.2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FeedbackThumbDownIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M14 3h3.2c.99 0 1.8.81 1.8 1.8V14c0 .99-.81 1.8-1.8 1.8H14V3Z" fill="currentColor" opacity="0.18" />
+      <path d="M14 3h3.2c.99 0 1.8.81 1.8 1.8V14c0 .99-.81 1.8-1.8 1.8H14M14 3v12.8M14 3H6.96c-.85 0-1.59.58-1.79 1.41l-1.15 4.8A1.8 1.8 0 0 0 5.77 11.43H10v5.64c0 .84.33 1.65.93 2.24l1.2 1.19a.9.9 0 0 0 1.53-.64V15.8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FeedbackSendIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4 19 20 12 4 5l2.9 7L20 12 6.9 12 4 19Z" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function DetailStatusBadge({ label }) {
   const tone = getDetailStatusTone(label);
 
@@ -258,17 +284,27 @@ export function AccessibilityMapDetailPanel({
   explanationErrorMessage,
   onChangeTab,
   onScrap,
-  scrapErrorMessage = ''
+  scrapErrorMessage = '',
+  feedbackPending = false,
+  feedbackErrorMessage = '',
+  feedbackSuccessMessage = '',
+  feedbackSubmitVersion = 0,
+  onSubmitFeedback
 }) {
   const accessibility = job.accessibilityByPersona[selectedPersonaKey];
   const effectiveSelectedTab = isAiEnabled ? selectedTab : 'job';
   const scoreTone = getScoreGradeTone(job.score);
   const [scoreRingAnimationKey, setScoreRingAnimationKey] = useState(0);
+  const [selectedFeedbackReaction, setSelectedFeedbackReaction] = useState('');
+  const [feedbackComment, setFeedbackComment] = useState('');
   const visibleCommuteStats = getVisibleCommuteStats(accessibility.commuteStats);
   const shortSummary = explanation?.shortSummary || explanation?.aiResponse?.result?.short_summary || '';
   const nextStepSummary = explanation?.nextStepSummary || explanation?.aiResponse?.result?.next_step_summary || '';
   const recommendedPrograms = explanation?.recommendedPrograms || explanation?.aiResponse?.result?.recommended_programs || [];
   const normalizedShortSummary = formatRecommendationExplanationText(shortSummary, job.score);
+  const trimmedFeedbackComment = feedbackComment.trim();
+  const isSendIconActive = Boolean(trimmedFeedbackComment);
+  const canSubmitFeedback = Boolean(job.postingId && selectedFeedbackReaction && trimmedFeedbackComment && !feedbackPending);
   const scrapButtonLabel = !job.postingId ? '스크랩 불가' : job.scrappedByMe ? '스크랩 취소' : '공고 스크랩';
   const scrapButtonClassName = [
     'primary-button',
@@ -289,6 +325,22 @@ export function AccessibilityMapDetailPanel({
       window.cancelAnimationFrame(frameId);
     };
   }, [effectiveSelectedTab, job.id, job.score]);
+
+  useEffect(() => {
+    setSelectedFeedbackReaction('');
+    setFeedbackComment('');
+  }, [job.id, feedbackSubmitVersion]);
+
+  const handleFeedbackSubmit = () => {
+    if (!canSubmitFeedback || typeof onSubmitFeedback !== 'function') {
+      return;
+    }
+
+    onSubmitFeedback({
+      reaction: selectedFeedbackReaction,
+      comment: trimmedFeedbackComment
+    });
+  };
 
   return (
     <aside className="accessibility-map__detail-panel" aria-label="공고 상세 패널">
@@ -447,6 +499,62 @@ export function AccessibilityMapDetailPanel({
                 </div>
               </section>
             ) : null}
+
+            <section className="accessibility-map__feedback-card" aria-label="추천 설명 피드백">
+              <div className="accessibility-map__feedback-header">
+                <strong>설명이 마음에 드셨나요?</strong>
+                <div className="accessibility-map__feedback-reaction-group" role="group" aria-label="피드백 반응 선택">
+                  <button
+                    type="button"
+                    className={`accessibility-map__feedback-reaction${selectedFeedbackReaction === 'LIKE' ? ' is-selected is-like' : ''}${selectedFeedbackReaction === 'DISLIKE' ? ' is-dimmed' : ''}`}
+                    aria-pressed={selectedFeedbackReaction === 'LIKE'}
+                    aria-label="마음에 들어요"
+                    onClick={() => setSelectedFeedbackReaction((current) => (current === 'LIKE' ? '' : 'LIKE'))}
+                  >
+                    <FeedbackThumbUpIcon />
+                  </button>
+                  <button
+                    type="button"
+                    className={`accessibility-map__feedback-reaction${selectedFeedbackReaction === 'DISLIKE' ? ' is-selected is-dislike' : ''}${selectedFeedbackReaction === 'LIKE' ? ' is-dimmed' : ''}`}
+                    aria-pressed={selectedFeedbackReaction === 'DISLIKE'}
+                    aria-label="마음에 들지 않아요"
+                    onClick={() => setSelectedFeedbackReaction((current) => (current === 'DISLIKE' ? '' : 'DISLIKE'))}
+                  >
+                    <FeedbackThumbDownIcon />
+                  </button>
+                </div>
+              </div>
+              <div className="accessibility-map__feedback-input-row">
+                <label className="accessibility-map__feedback-input-wrapper">
+                  <span className="sr-only">피드백 입력</span>
+                  <input
+                    type="text"
+                    className="accessibility-map__feedback-input"
+                    value={feedbackComment}
+                    maxLength={1000}
+                    placeholder="생각하신 이유를 말씀해주세요"
+                    onChange={(event) => setFeedbackComment(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                        event.preventDefault();
+                        handleFeedbackSubmit();
+                      }
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className={`accessibility-map__feedback-send${isSendIconActive ? ' is-active' : ''}`}
+                  aria-label="피드백 전송"
+                  disabled={!canSubmitFeedback}
+                  onClick={handleFeedbackSubmit}
+                >
+                  <FeedbackSendIcon />
+                </button>
+              </div>
+              {feedbackErrorMessage ? <p className="accessibility-map__feedback-message is-error" role="alert">{feedbackErrorMessage}</p> : null}
+              {feedbackSuccessMessage ? <p className="accessibility-map__feedback-message is-success" role="status">{feedbackSuccessMessage}</p> : null}
+            </section>
 
             <div className="accessibility-map__source-note">
               <img src={infoIcon} alt="데이터 출처 안내 아이콘" loading="lazy" decoding="async" />
