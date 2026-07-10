@@ -101,6 +101,7 @@ export function AppHeader({ showMapSearch = false }) {
       ) : null}
 
       <div className="app-header__actions" ref={languageMenuRef}>
+        {!showMapSearch ? <p className="app-header__accessibility-note">{t('header.accessibilityNotice')}</p> : null}
         <button
           type="button"
           className="app-header__translate-button"
@@ -109,7 +110,7 @@ export function AppHeader({ showMapSearch = false }) {
           aria-label={`${t('common.languageSelect')}: ${currentLocale.label}`}
           onClick={() => setIsLanguageMenuOpen((current) => !current)}
         >
-          <span aria-hidden="true">{t('common.translateButton')}</span>
+          <span aria-hidden="true">{t('header.languageSettings')}</span>
           <strong>{currentLocale.shortLabel}</strong>
         </button>
         {isLanguageMenuOpen ? (

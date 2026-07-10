@@ -1821,7 +1821,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 .app-footer__brand-group {
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 22px;
   min-width: 0;
 }
 
@@ -1873,48 +1873,70 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   line-height: 1.6;
 }
 
-.app-footer__social-list {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.app-footer__contact {
   margin: 0;
-  padding: 0;
-  list-style: none;
+  color: #222831;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.6;
 }
 
-.app-footer__social-item {
-  appearance: none;
-  width: 40px;
-  height: 40px;
+.app-footer__contact a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-footer__contact a:hover {
+  text-decoration: underline;
+}
+
+.app-footer__support {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  text-align: right;
+}
+
+.app-footer__kakao-button {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  cursor: pointer;
-  transition:
-    opacity 160ms ease,
-    transform 160ms ease;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 11px;
+  background: #fee500;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
 }
 
-.app-footer__social-item:hover {
-  opacity: 0.78;
-  transform: translateY(-1px);
+.app-footer__kakao-button:hover {
+  text-decoration: none;
+  opacity: 0.9;
 }
 
-.app-footer__social-item:focus-visible {
+.app-footer__kakao-button:focus-visible {
   outline: 3px solid rgba(13, 99, 243, 0.24);
   outline-offset: 3px;
 }
 
-.app-footer__social-item img {
-  width: 40px;
-  height: 40px;
+.app-footer__kakao-button img {
+  width: 20px;
+  height: 20px;
   display: block;
-  object-fit: contain;
+  flex: 0 0 auto;
+  object-fit: cover;
+}
+
+.app-footer__support-text {
+  margin: 0;
+  color: #222831;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
 }
 
 .app-footer__bottom {
@@ -2253,32 +2275,43 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 16px;
   margin-left: auto;
+}
+
+.app-header__accessibility-note {
+  margin: 0;
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 
 .app-header__translate-button {
   appearance: none;
-  min-width: 96px;
-  height: 44px;
+  min-width: 124px;
+  height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 0 14px;
-  border: 1px solid #dde3eb;
-  border-radius: 8px;
+  gap: 10px;
+  padding: 0 18px;
+  border: 1px solid #d7dde6;
+  border-radius: 9px;
   background: #fff;
   color: #1f2937;
   font: inherit;
-  font-size: 0.9rem;
+  font-size: 14px;
   font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
 }
 
 .app-header__translate-button strong {
-  min-width: 24px;
-  color: #2f7df6;
+  min-width: 22px;
+  color: #2563eb;
   text-align: center;
 }
 
@@ -10375,23 +10408,15 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
     font-size: 16px;
   }
 
-  .app-header__translate-button {
-    min-width: 76px;
-    height: 42px;
-    padding: 0 10px;
-    gap: 6px;
+  .app-header__accessibility-note {
+    display: none;
   }
 
-  .app-header__translate-button span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+  .app-header__translate-button {
+    min-width: 118px;
+    height: 42px;
+    padding: 0 14px;
+    gap: 6px;
   }
 
   .app-header__language-menu {
@@ -10419,12 +10444,15 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
     gap: 22px;
   }
 
-  .app-footer__description {
+  .app-footer__description,
+  .app-footer__contact,
+  .app-footer__support-text {
     font-size: 16px;
   }
 
-  .app-footer__social-list {
-    flex-wrap: wrap;
+  .app-footer__support {
+    align-items: flex-start;
+    text-align: left;
   }
 
   .app-footer__bottom {

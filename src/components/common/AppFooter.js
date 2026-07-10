@@ -1,11 +1,7 @@
 import { Link } from 'react-router-dom';
 import logo from '../../assets/header/logo.png';
 import logoText from '../../assets/header/logo-text.png';
-import blogIcon from '../../assets/footer/blog-social.png';
-import facebookIcon from '../../assets/footer/facebook-social.png';
-import instagramIcon from '../../assets/footer/insta-social.png';
-import twitterIcon from '../../assets/footer/twitter-social.png';
-import youtubeIcon from '../../assets/footer/youtube-social.png';
+import kakaoLogo from '../../assets/settings/kakao-logo.png';
 import { getPolicyPath } from '../../config/policyDocuments';
 import { ROUTE_PATHS } from '../../config/routes';
 import { useLocale } from '../../i18n/LocaleContext';
@@ -21,23 +17,14 @@ const footerPolicies = [
   { id: 'outsourcing', labelKey: 'footer.outsourcing', to: getPolicyPath('outsourcing') }
 ];
 
-const footerSocials = [
-  { id: 'instagram', label: 'Instagram', icon: instagramIcon },
-  { id: 'youtube', label: 'YouTube', icon: youtubeIcon },
-  { id: 'twitter', label: 'X', icon: twitterIcon },
-  { id: 'facebook', label: 'Facebook', icon: facebookIcon },
-  { id: 'blog', label: 'Blog', icon: blogIcon }
-];
+const SUPPORT_EMAIL = 'emfpdlzj@gmail.com';
+const KAKAO_CHANNEL_URL = 'http://pf.kakao.com/_uxoQxbX';
 
 export function AppFooter() {
   const { localizePath, t } = useLocale();
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleSocialClick = () => {
-    window.alert(t('footer.socialOpeningNotice'));
   };
 
   return (
@@ -52,17 +39,26 @@ export function AppFooter() {
             <p className="app-footer__description">
               {t('footer.description')}
             </p>
+            <p className="app-footer__contact">
+              <span>{t('footer.contactEmailLabel')}</span>{' '}
+              <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+            </p>
           </div>
 
-          <ul className="app-footer__social-list" aria-label={t('footer.socials')}>
-            {footerSocials.map((social) => (
-              <li key={social.id}>
-                <button className="app-footer__social-item" type="button" aria-label={social.label} onClick={handleSocialClick}>
-                  <img src={social.icon} alt={`${social.label} 아이콘`} />
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div className="app-footer__support" aria-label={t('footer.support')}>
+            <a
+              className="app-footer__kakao-button"
+              href={KAKAO_CHANNEL_URL}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={t('footer.kakaoChannelAriaLabel')}
+            >
+              <img src={kakaoLogo} alt={t('footer.kakaoIconAlt')} />
+              {t('footer.kakaoChannel')}
+            </a>
+            <p className="app-footer__support-text">{t('footer.businessHours')}</p>
+            <p className="app-footer__support-text">{t('footer.responseTime')}</p>
+          </div>
         </div>
 
         <div className="app-footer__bottom">
