@@ -84,7 +84,7 @@ export function AppHeader({ showMapSearch = false }) {
           <input
             id="app-header-map-search"
             type="search"
-            placeholder={searchEnabled ? '검색 결과 내 주소/회사/직무를 검색하세요.' : '검색을 먼저 해주세요.'}
+            placeholder={searchEnabled ? t('header.searchEnabledPlaceholder') : t('header.searchDisabledPlaceholder')}
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             disabled={!searchEnabled}

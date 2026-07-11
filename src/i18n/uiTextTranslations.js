@@ -554,7 +554,11 @@ const UI_TEXT_TRANSLATIONS = {
     en: 'Search addresses, companies, or roles in the results.',
     ja: '検索結果内の住所・会社・職務を検索してください。'
   },
-  '검색을 먼저 해주세요.': { zh: '请先搜索。', en: 'Search first.', ja: '先に検索してください。' },
+  '왼쪽 필터에서 검색해 보세요.': {
+    zh: '请使用左侧筛选条件进行搜索。',
+    en: 'Search using the filters on the left.',
+    ja: '左側のフィルターから検索してみてください。'
+  },
   '처리 중입니다...': { zh: '正在处理...', en: 'Processing...', ja: '処理中です...' },
   '필수 텍스트 항목을 입력해 주세요.': {
     zh: '请输入必填文本项目。',

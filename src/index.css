@@ -1,4 +1,9 @@
 :root {
+  /* Keep the app at the same visual density as the former 80% browser zoom. */
+  --ui-viewport-scale: 0.8;
+  --ui-viewport-width: 125vw;
+  --ui-viewport-height: 125vh;
+  --ui-dynamic-viewport-height: 125dvh;
   --bg-top: #f5fbff;
   --bg-mid: #eef5ff;
   --bg-bottom: #ecf2ff;
@@ -30,7 +35,17 @@
 }
 
 html {
+  zoom: var(--ui-viewport-scale);
   scroll-padding-top: calc(var(--app-header-height) + 24px);
+}
+
+@media print {
+  :root {
+    --ui-viewport-scale: 1;
+    --ui-viewport-width: 100vw;
+    --ui-viewport-height: 100vh;
+    --ui-dynamic-viewport-height: 100dvh;
+  }
 }
 
 @media (max-width: 900px) {
@@ -52,7 +67,7 @@ body {
   line-height: 1.5;
   color: var(--text-main);
   background: #fff;
-  min-height: 100vh;
+  min-height: var(--ui-viewport-height);
 }
 
 a {
@@ -100,7 +115,7 @@ a:hover {
 }
 
 .app-frame {
-  min-height: 100vh;
+  min-height: var(--ui-viewport-height);
   background: linear-gradient(
     90deg,
     #0b2f5b 0 var(--app-tab-nav-width),
@@ -109,7 +124,7 @@ a:hover {
 }
 
 .app-frame__body {
-  min-height: 100vh;
+  min-height: var(--ui-viewport-height);
   padding-top: var(--app-header-height);
 }
 
@@ -118,7 +133,7 @@ a:hover {
   top: calc(var(--app-header-height) + 12px);
   right: 24px;
   z-index: 40;
-  width: min(420px, calc(100vw - 32px));
+  width: min(420px, calc(var(--ui-viewport-width) - 32px));
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -146,8 +161,8 @@ a:hover {
 }
 
 .app-frame__main {
-  min-height: calc(100vh - var(--app-header-height));
-  min-height: calc(100dvh - var(--app-header-height));
+  min-height: calc(var(--ui-viewport-height) - var(--app-header-height));
+  min-height: calc(var(--ui-dynamic-viewport-height) - var(--app-header-height));
 }
 
 .app-frame__main:focus {
@@ -155,26 +170,26 @@ a:hover {
 }
 
 .app-frame--map {
-  height: 100vh;
-  height: 100dvh;
+  height: var(--ui-viewport-height);
+  height: var(--ui-dynamic-viewport-height);
 }
 
 .app-frame--map .app-frame__body {
-  height: 100vh;
-  height: 100dvh;
+  height: var(--ui-viewport-height);
+  height: var(--ui-dynamic-viewport-height);
   min-height: 0;
   overflow: hidden;
 }
 
 .app-frame--map .app-frame__content {
-  height: calc(100vh - var(--app-header-height));
-  height: calc(100dvh - var(--app-header-height));
+  height: calc(var(--ui-viewport-height) - var(--app-header-height));
+  height: calc(var(--ui-dynamic-viewport-height) - var(--app-header-height));
   overflow: hidden;
 }
 
 .app-frame__main--map {
-  height: calc(100vh - var(--app-header-height));
-  height: calc(100dvh - var(--app-header-height));
+  height: calc(var(--ui-viewport-height) - var(--app-header-height));
+  height: calc(var(--ui-dynamic-viewport-height) - var(--app-header-height));
   min-height: 0;
   overflow: hidden;
 }
@@ -184,8 +199,8 @@ a:hover {
 }
 
 .app-frame--document .app-frame__body {
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: var(--ui-viewport-height);
+  min-height: var(--ui-dynamic-viewport-height);
   padding-top: 0;
 }
 
@@ -194,13 +209,13 @@ a:hover {
 }
 
 .app-frame--document .app-frame__main {
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: var(--ui-viewport-height);
+  min-height: var(--ui-dynamic-viewport-height);
 }
 
 .main-page {
-  min-height: calc(100vh - var(--app-header-height));
-  min-height: calc(100dvh - var(--app-header-height));
+  min-height: calc(var(--ui-viewport-height) - var(--app-header-height));
+  min-height: calc(var(--ui-dynamic-viewport-height) - var(--app-header-height));
   background: #ffffff;
 }
 
@@ -519,7 +534,7 @@ a:hover {
 }
 
 .home-loading-modal__panel {
-  width: min(360px, calc(100vw - 40px));
+  width: min(360px, calc(var(--ui-viewport-width) - 40px));
   padding: 24px 20px;
   border: 1px solid #d7dee8;
   border-radius: 12px;
@@ -1032,8 +1047,8 @@ html[data-bw-reduce-motion='off'] .score-ring--no-animate .score-ring__value {
 .home-side-rail {
   position: sticky;
   top: calc(var(--app-header-height) + 24px);
-  max-height: calc(100vh - var(--app-header-height) - 48px);
-  max-height: calc(100dvh - var(--app-header-height) - 48px);
+  max-height: calc(var(--ui-viewport-height) - var(--app-header-height) - 48px);
+  max-height: calc(var(--ui-dynamic-viewport-height) - var(--app-header-height) - 48px);
   display: grid;
   gap: 12px;
   overflow-y: auto;
@@ -1825,7 +1840,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   --posting-detail-accent: var(--primary);
   --posting-detail-accent-deep: var(--primary-strong);
   --posting-detail-accent-soft: #eef5ff;
-  width: min(1160px, calc(100vw - 64px));
+  width: min(1160px, calc(var(--ui-viewport-width) - 64px));
   max-height: min(90vh, 980px);
   border: 1px solid #cbd5d9;
   border-radius: 12px;
@@ -2413,7 +2428,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   }
 
   .accessibility-map__question-tooltip {
-    width: min(440px, calc(100vw - 32px));
+    width: min(440px, calc(var(--ui-viewport-width) - 32px));
     gap: 16px;
     padding: 18px 20px 20px;
     font-size: 18px;
@@ -2651,8 +2666,8 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   inset: var(--app-header-height) auto 0 0;
   z-index: 1000;
   width: var(--app-tab-nav-width);
-  height: calc(100vh - var(--app-header-height));
-  height: calc(100dvh - var(--app-header-height));
+  height: calc(var(--ui-viewport-height) - var(--app-header-height));
+  height: calc(var(--ui-dynamic-viewport-height) - var(--app-header-height));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2857,7 +2872,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .app-header__map-search {
-  width: min(1088px, calc(100vw - 360px));
+  width: min(1088px, calc(var(--ui-viewport-width) - 360px));
   height: 42px;
   display: flex;
   align-items: center;
@@ -3128,8 +3143,8 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 
 .login-modal {
   width: min(420px, 100%);
-  max-height: calc(100vh - 48px);
-  max-height: calc(100dvh - 48px);
+  max-height: calc(var(--ui-viewport-height) - 48px);
+  max-height: calc(var(--ui-dynamic-viewport-height) - 48px);
   position: relative;
   overflow-y: auto;
   border: 1px solid #e5e7eb;
@@ -3673,8 +3688,8 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .common-error-page {
-  min-height: calc(100vh - var(--app-header-height));
-  min-height: calc(100dvh - var(--app-header-height));
+  min-height: calc(var(--ui-viewport-height) - var(--app-header-height));
+  min-height: calc(var(--ui-dynamic-viewport-height) - var(--app-header-height));
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -4031,8 +4046,8 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .jobs-page {
-  min-height: calc(100vh - var(--app-header-height));
-  min-height: calc(100dvh - var(--app-header-height));
+  min-height: calc(var(--ui-viewport-height) - var(--app-header-height));
+  min-height: calc(var(--ui-dynamic-viewport-height) - var(--app-header-height));
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -5613,8 +5628,8 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .jobs-page {
-  min-height: calc(100vh - var(--app-header-height));
-  min-height: calc(100dvh - var(--app-header-height));
+  min-height: calc(var(--ui-viewport-height) - var(--app-header-height));
+  min-height: calc(var(--ui-dynamic-viewport-height) - var(--app-header-height));
   overflow: visible;
   gap: 10px;
   padding: 16px 18px 18px;
@@ -6396,8 +6411,8 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   }
 
   .login-modal.posting-detail-modal {
-    width: min(100%, calc(100vw - 24px));
-    max-height: calc(100vh - 24px);
+    width: min(100%, calc(var(--ui-viewport-width) - 24px));
+    max-height: calc(var(--ui-viewport-height) - 24px);
   }
 
   .posting-detail-modal__body {
@@ -6478,8 +6493,8 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .settings-page {
-  min-height: calc(100vh - var(--app-header-height));
-  min-height: calc(100dvh - var(--app-header-height));
+  min-height: calc(var(--ui-viewport-height) - var(--app-header-height));
+  min-height: calc(var(--ui-dynamic-viewport-height) - var(--app-header-height));
   padding: 32px 40px 56px;
   background: #f8fafc;
   color: #111827;
@@ -7237,7 +7252,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 
 .settings-dialog {
   width: min(560px, 100%);
-  max-height: calc(100vh - 48px);
+  max-height: calc(var(--ui-viewport-height) - 48px);
   overflow-y: auto;
   padding: 24px;
   border: 1px solid #e5e7eb;
@@ -7488,8 +7503,8 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .accessibility-map {
-  --accessibility-map-height: calc(100vh - var(--app-header-height));
-  --accessibility-map-height: calc(100dvh - var(--app-header-height));
+  --accessibility-map-height: calc(var(--ui-viewport-height) - var(--app-header-height));
+  --accessibility-map-height: calc(var(--ui-dynamic-viewport-height) - var(--app-header-height));
   height: var(--accessibility-map-height);
   overflow: hidden;
   background: #f4f7fb;
@@ -8323,7 +8338,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   top: 12px;
   left: 16px;
   z-index: 20;
-  width: min(222px, calc(100vw - 32px));
+  width: min(222px, calc(var(--ui-viewport-width) - 32px));
   color: #222c3a;
 }
 
@@ -9647,7 +9662,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   left: 0;
   z-index: 120;
   display: grid;
-  width: min(520px, calc(100vw - 48px));
+  width: min(520px, calc(var(--ui-viewport-width) - 48px));
   gap: 18px;
   padding: 22px 24px 24px;
   border: 1px solid #bfdbfe;
@@ -10268,7 +10283,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .onboarding-page {
-  min-height: calc(100vh - var(--app-header-height));
+  min-height: calc(var(--ui-viewport-height) - var(--app-header-height));
   background: #ffffff;
   color: #16181d;
 }
@@ -10621,7 +10636,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   top: calc(100% + 8px);
   left: 0;
   z-index: 20;
-  width: min(356px, calc(100vw - var(--app-tab-nav-width) - 44px));
+  width: min(356px, calc(var(--ui-viewport-width) - var(--app-tab-nav-width) - 44px));
   padding: 18px;
   border: 1px solid #d8e0ea;
   border-radius: 8px;
@@ -11590,7 +11605,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .profile-page {
-  min-height: calc(100vh - var(--app-header-height));
+  min-height: calc(var(--ui-viewport-height) - var(--app-header-height));
   background: #fff;
   color: #111827;
   font-family: 'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
@@ -11599,7 +11614,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 .profile-layout {
   display: grid;
   grid-template-columns: clamp(260px, 18vw, 340px) minmax(0, 1fr);
-  min-height: calc(100vh - 73px);
+  min-height: calc(var(--ui-viewport-height) - 73px);
 }
 
 .profile-list-panel {
@@ -11898,14 +11913,14 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .profile-pdf-page {
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: var(--ui-viewport-height);
+  min-height: var(--ui-dynamic-viewport-height);
   padding: 32px 20px 48px;
   background: #eef3f8;
 }
 
 .profile-pdf-toolbar {
-  width: min(1120px, calc(100vw - 40px));
+  width: min(1120px, calc(var(--ui-viewport-width) - 40px));
   margin: 0 auto 20px;
   padding: 16px 20px;
   border: 1px solid #d9e2ec;
@@ -11941,7 +11956,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .profile-pdf-page__canvas {
-  width: min(1120px, calc(100vw - 40px));
+  width: min(1120px, calc(var(--ui-viewport-width) - 40px));
   margin: 0 auto;
 }
 
@@ -15026,7 +15041,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   top: calc(var(--app-header-height) + 10px);
   right: 18px;
   gap: 6px;
-  width: min(360px, calc(100vw - 24px));
+  width: min(360px, calc(var(--ui-viewport-width) - 24px));
 }
 
 .app-footer__inner {
@@ -15154,7 +15169,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .app-header__map-search {
-  width: min(960px, calc(100vw - 320px));
+  width: min(960px, calc(var(--ui-viewport-width) - 320px));
   height: calc(42px * var(--ui-shell-scale));
   gap: calc(10px * var(--ui-shell-scale));
   padding: 0 calc(8px * var(--ui-shell-scale)) 0 calc(16px * var(--ui-shell-scale));
@@ -15372,7 +15387,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .home-loading-modal__panel {
-  width: min(328px, calc(100vw - 32px));
+  width: min(328px, calc(var(--ui-viewport-width) - 32px));
   padding: calc(22px * var(--ui-density-scale)) calc(18px * var(--ui-density-scale));
   border-radius: var(--ui-card-radius-lg);
 }
@@ -15437,8 +15452,8 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 
 .home-side-rail {
   top: calc(var(--app-header-height) + 18px);
-  max-height: calc(100vh - var(--app-header-height) - 36px);
-  max-height: calc(100dvh - var(--app-header-height) - 36px);
+  max-height: calc(var(--ui-viewport-height) - var(--app-header-height) - 36px);
+  max-height: calc(var(--ui-dynamic-viewport-height) - var(--app-header-height) - 36px);
   gap: var(--main-gap-sm);
 }
 
@@ -15958,7 +15973,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 
 .settings-dialog {
   width: min(520px, 100%);
-  max-height: calc(100vh - 36px);
+  max-height: calc(var(--ui-viewport-height) - 36px);
   border-radius: var(--ui-card-radius-lg);
 }
 
@@ -16362,7 +16377,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 }
 
 .accessibility-map__question-tooltip {
-  width: min(460px, calc(100vw - 40px));
+  width: min(460px, calc(var(--ui-viewport-width) - 40px));
   gap: var(--map-gap-lg);
   padding: calc(16px * var(--ui-density-scale)) calc(18px * var(--ui-density-scale));
   border-radius: calc(14px * var(--ui-density-scale));
@@ -16452,7 +16467,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
 @media (min-width: 901px) {
   .profile-layout {
     grid-template-columns: clamp(228px, 16.5vw, 292px) minmax(0, 1fr);
-    min-height: calc(100vh - var(--app-header-height));
+    min-height: calc(var(--ui-viewport-height) - var(--app-header-height));
   }
 
   .profile-list-panel {
@@ -17351,7 +17366,7 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   }
 
   .accessibility-map__question-tooltip {
-    width: min(420px, calc(100vw - 32px));
+    width: min(420px, calc(var(--ui-viewport-width) - 32px));
     padding: 16px 18px 18px;
   }
 
@@ -17938,7 +17953,7 @@ html[data-bw-screen-reader-mode='on'] .settings-page--refined .settings-section_
 }
 
 .policy-detail-page {
-  min-height: 100vh;
+  min-height: var(--ui-viewport-height);
   padding: 40px clamp(24px, 4vw, 72px) 72px;
   background:
     radial-gradient(circle at 88% 0%, rgba(55, 139, 126, 0.09), transparent 24%),
@@ -17958,7 +17973,7 @@ html[data-bw-screen-reader-mode='on'] .settings-page--refined .settings-section_
 .policy-detail-page__side {
   position: sticky;
   top: calc(var(--app-header-height) + 20px);
-  max-height: calc(100vh - var(--app-header-height) - 40px);
+  max-height: calc(var(--ui-viewport-height) - var(--app-header-height) - 40px);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -18401,8 +18416,8 @@ html[data-bw-screen-reader-mode='on'] .settings-page--refined .settings-section_
 
 .jobs-workspace--scrap {
   width: 100%;
-  min-height: calc(100vh - var(--app-header-height));
-  min-height: calc(100dvh - var(--app-header-height));
+  min-height: calc(var(--ui-viewport-height) - var(--app-header-height));
+  min-height: calc(var(--ui-dynamic-viewport-height) - var(--app-header-height));
   display: grid;
   grid-template-columns: clamp(260px, 18vw, 340px) minmax(0, 1fr);
   align-items: stretch;
@@ -18763,8 +18778,8 @@ html[data-bw-screen-reader-mode='on'] .settings-page--refined .settings-section_
   .scrap-sidebar {
     position: sticky;
     top: var(--app-header-height);
-    height: calc(100vh - var(--app-header-height));
-    height: calc(100dvh - var(--app-header-height));
+    height: calc(var(--ui-viewport-height) - var(--app-header-height));
+    height: calc(var(--ui-dynamic-viewport-height) - var(--app-header-height));
   }
 
   .scrap-sidebar .jobs-list-panel--scrap {
