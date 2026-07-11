@@ -73,6 +73,7 @@ a:hover {
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
+  pointer-events: none;
 }
 
 .skip-navigation__link {
@@ -89,6 +90,7 @@ a:hover {
   box-shadow: 0 10px 24px rgba(10, 34, 69, 0.12);
   transform: translateX(calc(100% + 24px));
   transition: transform 0.2s ease;
+  pointer-events: auto;
 }
 
 .skip-navigation__link:focus,
