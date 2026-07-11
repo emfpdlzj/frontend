@@ -3381,7 +3381,7 @@ export function MainPage({ view = 'home' }) {
   }, [isGuestUser, openLoginModal]);
 
   return (
-    <main className="main-page" aria-labelledby={isQuickPage ? 'quick-recommend-title' : 'main-page-title'}>
+    <main className={`main-page${isQuickPage ? ' main-page--quick' : ''}`} aria-labelledby={isQuickPage ? 'quick-recommend-title' : 'main-page-title'}>
       <div className="main-page__inner">
         {isHomePage ? (
           <>
