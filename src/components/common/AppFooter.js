@@ -28,13 +28,13 @@ export function AppFooter() {
   };
 
   return (
-    <footer className="app-footer">
+    <footer id="page-footer" className="app-footer">
       <div className="app-footer__inner">
         <div className="app-footer__top">
           <div className="app-footer__brand-group">
             <button className="app-footer__brand" type="button" onClick={scrollToTop} aria-label={t('footer.backToTop')}>
-              <img className="app-footer__logo" src={logo} alt="Bridgework 로고 아이콘" />
-              <img className="app-footer__logo-text" src={logoText} alt="Bridgework" />
+              <img className="app-footer__logo" src={logo} alt="" aria-hidden="true" />
+              <img className="app-footer__logo-text" src={logoText} alt="" aria-hidden="true" />
             </button>
             <p className="app-footer__description">
               {t('footer.description')}
@@ -53,7 +53,7 @@ export function AppFooter() {
               rel="noreferrer"
               aria-label={t('footer.kakaoChannelAriaLabel')}
             >
-              <img src={kakaoLogo} alt={t('footer.kakaoIconAlt')} />
+              <img src={kakaoLogo} alt="" aria-hidden="true" />
               {t('footer.kakaoChannel')}
             </a>
             <p className="app-footer__support-text">{t('footer.businessHours')}</p>

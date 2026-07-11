@@ -14,6 +14,8 @@ export function AccessibilityPreferencesProvider({ children }) {
 
   useEffect(() => {
     applyAccessibilityPreferences(preferences);
+    saveAccessibilityPreferences(preferences);
+    setSavedPreferences(preferences);
   }, [preferences]);
 
   useEffect(() => {

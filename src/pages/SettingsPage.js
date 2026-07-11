@@ -253,14 +253,33 @@ export function SettingsPage() {
       : '';
   const [isWithdrawalOpen, setIsWithdrawalOpen] = useState(false);
   const [isWithdrawalConfirmed, setIsWithdrawalConfirmed] = useState(false);
+  const [preferenceAnnouncement, setPreferenceAnnouncement] = useState('');
   const [withdrawalState, setWithdrawalState] = useState({
     status: 'idle',
     message: ''
   });
   const withdrawalInFlightRef = useRef(false);
 
+  const getPreferenceAnnouncement = (key, value) => {
+    if (key === 'fontSize') {
+      const nextLabel = value === 'large' ? '크게' : value === 'xlarge' ? '아주 크게' : '기본';
+      return `글자 크기를 ${nextLabel}로 변경했습니다.`;
+    }
+
+    const status = value ? '켰습니다.' : '껐습니다.';
+    const labels = {
+      contrast: '고대비 모드를',
+      reduceMotion: '애니메이션 끄기를',
+      screenReaderMode: '스크린리더 최적화를',
+      colorBlindMode: '색약 모드를'
+    };
+
+    return `${labels[key] || '설정을'} ${status}`;
+  };
+
   const handlePreferenceChange = (key, value) => {
     updatePreference(key, value);
+    setPreferenceAnnouncement(getPreferenceAnnouncement(key, value));
   };
 
   const resetWithdrawalDialog = () => {
@@ -318,11 +337,17 @@ export function SettingsPage() {
       behavior: shouldReduceMotion ? 'auto' : 'smooth',
       block: 'start'
     });
+    window.requestAnimationFrame(() => {
+      target.focus({ preventScroll: true });
+    });
     window.history.replaceState(null, '', `#${targetId}`);
   };
 
   return (
     <main className="settings-page settings-page--refined" aria-labelledby="settings-page-title">
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {preferenceAnnouncement}
+      </p>
       <header className="settings-page__header settings-hero">
         <div>
           <span className="settings-eyebrow">Settings</span>
@@ -332,23 +357,26 @@ export function SettingsPage() {
       </header>
 
       <div className="settings-page__layout settings-page__layout--refined">
-        <aside className="settings-page__menu settings-page__menu--refined" aria-label="설정 카테고리">
-          {settingsMenu.map((item, index) => {
-            const shouldShowGroup = index === 0 || settingsMenu[index - 1].group !== item.group;
+        <aside className="settings-page__menu settings-page__menu--refined" aria-labelledby="settings-menu-title">
+          <h2 id="settings-menu-title" className="sr-only">설정 카테고리</h2>
+          <nav aria-label="설정 카테고리">
+            {settingsMenu.map((item, index) => {
+              const shouldShowGroup = index === 0 || settingsMenu[index - 1].group !== item.group;
 
-            return (
-              <div key={item.id} className="settings-menu-item">
-                {shouldShowGroup ? <strong>{item.group}</strong> : null}
-                <a
-                  href={`#${item.id}`}
-                  className="settings-page__menu-link"
-                  onClick={(event) => handleMenuClick(event, item.id)}
-                >
-                  {item.label}
-                </a>
-              </div>
-            );
-          })}
+              return (
+                <div key={item.id} className="settings-menu-item">
+                  {shouldShowGroup ? <strong>{item.group}</strong> : null}
+                  <a
+                    href={`#${item.id}`}
+                    className="settings-page__menu-link"
+                    onClick={(event) => handleMenuClick(event, item.id)}
+                  >
+                    {item.label}
+                  </a>
+                </div>
+              );
+            })}
+          </nav>
         </aside>
 
         <div className="settings-page__content settings-page__content--refined">
@@ -365,7 +393,7 @@ export function SettingsPage() {
                   <span className="settings-profile-card__provider">
                     {accountProviderLogo ? (
                       <span className={`settings-profile-card__provider-logo ${accountProviderLogoClass}`}>
-                        <img src={accountProviderLogo} alt={`${accountProvider} 로고`} />
+                        <img src={accountProviderLogo} alt="" aria-hidden="true" />
                       </span>
                     ) : null}
                     {accountProviderLabel}
@@ -433,16 +461,6 @@ export function SettingsPage() {
                       { value: 'xlarge', label: '아주 크게' }
                     ]}
                   />
-                  <SettingsRadioGroup
-                    legend="점수 표시"
-                    name="score-display"
-                    value={preferences.scoreDisplay}
-                    onChange={(value) => handlePreferenceChange('scoreDisplay', value)}
-                    options={[
-                      { value: 'text-color', label: '색상+문자' },
-                      { value: 'text-first', label: '문자 중심' }
-                    ]}
-                  />
                 </div>
                 <div className="settings-toggle-list settings-toggle-list--compact">
                   <SettingsToggle
@@ -454,24 +472,24 @@ export function SettingsPage() {
                   />
                   <SettingsToggle
                     id="reduce-motion"
-                    label="애니메이션 줄이기"
-                    description="전환과 지도 움직임을 줄임"
+                    label="애니메이션 끄기"
+                    description="전환, 강조 효과, 자동 스크롤 애니메이션을 최소화"
                     checked={preferences.reduceMotion}
                     onChange={(value) => handlePreferenceChange('reduceMotion', value)}
                   />
                   <SettingsToggle
-                    id="map-color-assist"
-                    label="지도 색상 보조"
-                    description="마커에 텍스트와 패턴을 함께 표시"
-                    checked={preferences.mapColorAssist}
-                    onChange={(value) => handlePreferenceChange('mapColorAssist', value)}
-                  />
-                  <SettingsToggle
                     id="screen-reader-mode"
                     label="스크린리더 최적화"
-                    description="추천 이유와 지도 요약을 읽기 순서로 제공"
+                    description="페이지 이동과 주요 상태 변경을 읽기 쉬운 순서로 안내"
                     checked={preferences.screenReaderMode}
                     onChange={(value) => handlePreferenceChange('screenReaderMode', value)}
+                  />
+                  <SettingsToggle
+                    id="color-blind-mode"
+                    label="색약 모드"
+                    description="상태 배지와 지도 표시를 색상 외 패턴과 윤곽선으로 함께 구분"
+                    checked={preferences.colorBlindMode}
+                    onChange={(value) => handlePreferenceChange('colorBlindMode', value)}
                   />
                 </div>
               </div>
@@ -537,7 +555,7 @@ export function SettingsPage() {
                   rel="noreferrer"
                   aria-label="카톡 상담채널 새 창으로 열기"
                 >
-                  <img src={kakaoLogo} alt="카카오톡 아이콘" />
+                  <img src={kakaoLogo} alt="" aria-hidden="true" />
                   카톡상담채널
                 </a>
                 <span>

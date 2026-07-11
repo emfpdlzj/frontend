@@ -28,8 +28,8 @@ const adminTabs = [
   { id: 'adminNotices', label: '공지 관리', icon: docsIcon, to: ROUTE_PATHS.adminNotices }
 ];
 
-function TabIcon({ item, label }) {
-  return <img src={item.icon} alt={`${label} 아이콘`} />;
+function TabIcon({ item }) {
+  return <img src={item.icon} alt="" aria-hidden="true" />;
 }
 
 function SessionActionTab({ onRequireLogin }) {
@@ -78,7 +78,7 @@ function SessionActionTab({ onRequireLogin }) {
         onClick={handleClick}
         disabled={isLoggingOut}
       >
-        <TabIcon item={{ icon: profileIcon }} label={label} />
+        <TabIcon item={{ icon: profileIcon }} />
         <span className="app-tab-nav__label">{label}</span>
       </button>
       {isLogoutModalOpen ? (
@@ -102,7 +102,7 @@ function TabLink({ item, onRequireLogin }) {
   if (!item.to) {
     return (
       <button type="button" className="app-tab-nav__link" aria-label={label} title={label}>
-        <TabIcon item={item} label={label} />
+        <TabIcon item={item} />
         <span className="app-tab-nav__label">{label}</span>
       </button>
     );
@@ -117,7 +117,7 @@ function TabLink({ item, onRequireLogin }) {
         title={label}
         onClick={onRequireLogin}
       >
-        <TabIcon item={item} label={label} />
+        <TabIcon item={item} />
         <span className="app-tab-nav__label">{label}</span>
       </button>
     );
@@ -131,7 +131,7 @@ function TabLink({ item, onRequireLogin }) {
       aria-label={label}
       title={label}
     >
-      <TabIcon item={item} label={label} />
+      <TabIcon item={item} />
       <span className="app-tab-nav__label">{label}</span>
     </NavLink>
   );
@@ -147,6 +147,7 @@ export function AppTabNavigation() {
   return (
     <>
       <nav
+        id="primary-navigation"
         className={`app-tab-nav${isExpanded ? ' is-expanded' : ''}`}
         aria-label={t('nav.mainMenu')}
         onMouseEnter={() => setIsExpanded(true)}

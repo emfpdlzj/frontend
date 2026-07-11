@@ -1,6 +1,6 @@
 export function SettingsToggle({ id, label, description, checked, onChange }) {
   return (
-    <label className="settings-toggle" htmlFor={id}>
+    <label className={`settings-toggle${checked ? ' is-active' : ''}`} htmlFor={id}>
       <span className="settings-toggle__copy">
         <span className="settings-toggle__label">{label}</span>
         {description ? <span className="settings-toggle__description">{description}</span> : null}
@@ -19,7 +19,10 @@ export function SettingsRadioGroup({ legend, name, options, value, onChange }) {
       <legend>{legend}</legend>
       <div className="settings-radio-group__options">
         {options.map((option) => (
-          <label key={option.value} className="settings-radio-option">
+          <label
+            key={option.value}
+            className={`settings-radio-option${value === option.value ? ' is-active' : ''}`}
+          >
             <input
               type="radio"
               name={name}
@@ -41,7 +44,7 @@ export function SettingsStatusBadge({ tone = 'neutral', children }) {
 
 export function SettingsSection({ id, title, description, children, tone = 'default', actions = null }) {
   return (
-    <section id={id} className={`settings-section settings-section--${tone}`} aria-labelledby={`${id}-title`}>
+    <section id={id} className={`settings-section settings-section--${tone}`} aria-labelledby={`${id}-title`} tabIndex={-1}>
       <div className="settings-section__header">
         <div>
           <h2 id={`${id}-title`}>{title}</h2>

@@ -2948,6 +2948,17 @@ export function MainPage({ view = 'home' }) {
         explainData: response
       }));
     } catch (error) {
+      if (error?.name === 'AbortError') {
+        if (quickExplainRequestSequenceRef.current === sequence) {
+          setQuickDetailState((prev) => ({
+            ...prev,
+            explainStatus: 'idle',
+            explainError: '',
+            explainData: null
+          }));
+        }
+        return;
+      }
       if (quickExplainRequestSequenceRef.current !== sequence) {
         return;
       }
@@ -2991,7 +3002,6 @@ export function MainPage({ view = 'home' }) {
     effectiveSelectedProfileId,
     getQuickProfileForScoring,
     loadQuickExplanation,
-    quickDetailState.explainStatus,
     quickDetailState.mode,
     selectedQuickJob
   ]);
@@ -3035,7 +3045,6 @@ export function MainPage({ view = 'home' }) {
     effectiveSelectedProfileId,
     getQuickProfileForScoring,
     loadQuickExplanation,
-    quickDetailState.explainStatus,
     quickDetailState.mode,
     quickState.isLoadingMore,
     quickState.status,

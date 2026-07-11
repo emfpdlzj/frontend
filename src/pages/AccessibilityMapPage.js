@@ -250,6 +250,7 @@ export function AccessibilityMapPage() {
 
   return (
     <main className="accessibility-map">
+      <h1 className="sr-only">지역 접근성 지도</h1>
       <div className="accessibility-map__layout">
         <TrafficFilterPanel
           filterGroups={filterGroups}

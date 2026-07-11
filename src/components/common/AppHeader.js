@@ -67,8 +67,8 @@ export function AppHeader({ showMapSearch = false }) {
   return (
     <header className="app-header">
       <Link className="app-header__brand" to={localizePath(ROUTE_PATHS.root)} aria-label={t('header.brandLabel')}>
-        <img className="app-header__logo" src={logo} alt="Bridgework 로고 아이콘" decoding="async" />
-        <img className="app-header__logo-text" src={logoText} alt="Bridgework" decoding="async" />
+        <img className="app-header__logo" src={logo} alt="" aria-hidden="true" decoding="async" />
+        <img className="app-header__logo-text" src={logoText} alt="" aria-hidden="true" decoding="async" />
       </Link>
 
       {showMapSearch ? (
@@ -95,7 +95,7 @@ export function AppHeader({ showMapSearch = false }) {
             aria-label={t('header.searchButtonLabel')}
             disabled={!searchEnabled}
           >
-            <img src={searchIcon} alt="검색 아이콘" loading="lazy" decoding="async" />
+            <img src={searchIcon} alt="" aria-hidden="true" loading="lazy" decoding="async" />
           </button>
         </form>
       ) : null}

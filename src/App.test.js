@@ -31,6 +31,9 @@ test.each(['/', '/profile', '/my/profile'])('renders the login button in the sha
   renderApp(path);
 
   expect(screen.getByRole('button', { name: '회원가입/로그인' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '본문으로 바로가기' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '주요 메뉴로 바로가기' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '하단 정보로 바로가기' })).toBeInTheDocument();
 });
 
 test('renders the shared footer on the jobs page', () => {

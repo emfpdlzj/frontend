@@ -240,7 +240,9 @@ describe('QuickJobsPage explanation retry', () => {
     const searchButton = await screen.findByRole('button', { name: '검색' });
     await waitFor(() => expect(searchButton).not.toBeDisabled());
 
-    fireEvent.click(searchButton);
+    await act(async () => {
+      fireEvent.click(searchButton);
+    });
 
     await waitFor(() => expect(mockedFetchQuickJobRecommendations).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(mockedFetchRecommendTaskStatus).toHaveBeenCalledTimes(1));
@@ -250,7 +252,9 @@ describe('QuickJobsPage explanation retry', () => {
     });
 
     const jobButton = await screen.findByRole('button', { name: '사무 보조 상세 보기' });
-    fireEvent.click(jobButton);
+    await act(async () => {
+      fireEvent.click(jobButton);
+    });
 
     await waitFor(() => expect(mockedPostingApi.getPostingDetail).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(mockedExplainRecommendation).toHaveBeenCalledTimes(1));
@@ -271,5 +275,77 @@ describe('QuickJobsPage explanation retry', () => {
 
     await waitFor(() => expect(mockedExplainRecommendation).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(screen.getAllByText('추천 요약')).toHaveLength(2));
+  });
+
+  it('requests the quick explanation only once when opening the detail modal', async () => {
+    mockedFetchQuickJobRecommendations.mockResolvedValue({
+      status: 'COMPLETED',
+      result: buildQuickJobResult()
+    });
+
+    mockedExplainRecommendation.mockImplementation(() => new Promise(() => {}));
+
+    render(<QuickJobsPage />);
+
+    await waitFor(() => expect(mockedProfileApi.getProfiles).toHaveBeenCalledTimes(1));
+
+    const searchButton = await screen.findByRole('button', { name: '검색' });
+    await waitFor(() => expect(searchButton).not.toBeDisabled());
+
+    await act(async () => {
+      fireEvent.click(searchButton);
+    });
+
+    const jobButton = await screen.findByRole('button', { name: '사무 보조 상세 보기' });
+    await act(async () => {
+      fireEvent.click(jobButton);
+    });
+
+    await waitFor(() => expect(mockedExplainRecommendation).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+      await Promise.resolve();
+    });
+
+    expect(mockedExplainRecommendation).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not surface an abort error when the quick explanation request is canceled', async () => {
+    mockedFetchQuickJobRecommendations.mockResolvedValue({
+      status: 'COMPLETED',
+      result: buildQuickJobResult()
+    });
+    mockedExplainRecommendation
+      .mockRejectedValueOnce(new DOMException('signal is aborted without reason', 'AbortError'))
+      .mockResolvedValueOnce({
+        shortSummary: '추천 요약',
+        recommendationReasons: ['직무 경험과 공고 조건이 잘 맞아요.'],
+        cautionPoints: [],
+        checklist: [],
+        recommendedPrograms: []
+      });
+
+    render(<QuickJobsPage />);
+
+    await waitFor(() => expect(mockedProfileApi.getProfiles).toHaveBeenCalledTimes(1));
+
+    const searchButton = await screen.findByRole('button', { name: '검색' });
+    await waitFor(() => expect(searchButton).not.toBeDisabled());
+
+    await act(async () => {
+      fireEvent.click(searchButton);
+    });
+
+    const jobButton = await screen.findByRole('button', { name: '사무 보조 상세 보기' });
+    await act(async () => {
+      fireEvent.click(jobButton);
+    });
+
+    await waitFor(() => expect(mockedExplainRecommendation).toHaveBeenCalledTimes(1));
+
+    await waitFor(() => {
+      expect(screen.queryByText('signal is aborted without reason')).not.toBeInTheDocument();
+    });
   });
 });
