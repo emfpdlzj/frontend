@@ -54,7 +54,7 @@ export function AppFooter() {
               aria-label={t('footer.kakaoChannelAriaLabel')}
             >
               <img src={kakaoLogo} alt="" aria-hidden="true" />
-              {t('footer.kakaoChannel')}
+              <span>{t('footer.kakaoChannel')}</span>
             </a>
             <p className="app-footer__support-text">{t('footer.businessHours')}</p>
             <p className="app-footer__support-text">{t('footer.responseTime')}</p>

@@ -2564,6 +2564,11 @@ html[data-bw-reduce-motion='off'] .home-section-entrance--quick {
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.app-footer__kakao-button > * {
+  pointer-events: none;
 }
 
 .app-footer__kakao-button:hover {
