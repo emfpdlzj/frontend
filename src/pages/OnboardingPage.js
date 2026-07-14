@@ -89,6 +89,7 @@ const toInitialForm = (seed) => ({
   disabilityType: '',
   disabilitySeverity: '',
   registeredYn: '',
+  sensitiveInfoConsentYn: false,
   introduction: ''
 });
 
@@ -152,7 +153,7 @@ const getStepValidationMessage = (step, form) => {
   }
 
   if (step === 4) {
-    if (!form.disabilityType || !form.disabilitySeverity || !form.registeredYn) {
+    if (form.sensitiveInfoConsentYn && (!form.disabilityType || !form.disabilitySeverity || !form.registeredYn)) {
       return '장애 유형, 장애 정도, 장애인 등록 여부를 모두 선택해 주세요.';
     }
 
@@ -268,9 +269,12 @@ const toSignupProfile = (form) => {
     majorCareer: trimmedCareer,
     targetJob: selectedJobs.join(', '),
     skills: selectedJobs,
-    disabilityType: form.disabilityType,
-    disabilitySeverity: form.disabilitySeverity,
-    disabilityRegisteredYn: toBooleanFromChoice(form.registeredYn, '등록'),
+    disabilityType: form.sensitiveInfoConsentYn ? form.disabilityType : undefined,
+    disabilitySeverity: form.sensitiveInfoConsentYn ? form.disabilitySeverity : undefined,
+    disabilityRegisteredYn: form.sensitiveInfoConsentYn
+      ? toBooleanFromChoice(form.registeredYn, '등록')
+      : undefined,
+    sensitiveInfoConsentYn: form.sensitiveInfoConsentYn === true,
     workTypes: form.employmentTypes,
     selfIntroduction: trimmedIntroduction
   });
@@ -663,29 +667,42 @@ function StepContent({
       <div className="onboarding-panel__content">
         <h2>장애 정보</h2>
         <div className="onboarding-info-box onboarding-info-box--neutral">
-          장애 정보는 추천 이유와 근무 지원사항 판단에 사용됩니다. 분류가 명확하지 않다면 기타를 선택하고 설명에 필요한 내용을 남겨 주세요.
+          장애 정보 제공은 선택 사항입니다. 동의하면 맞춤 추천과 근무 지원사항 안내에 사용하며, 동의하지 않아도 가입할 수 있습니다.
         </div>
-        <ChoiceField
-          label="장애 유형"
-          required
-          options={disabilityTypes}
-          value={form.disabilityType}
-          onChange={(value) => updateField('disabilityType', value)}
-        />
-        <ChoiceField
-          label="장애 정도"
-          required
-          options={disabilitySeverityOptions}
-          value={form.disabilitySeverity}
-          onChange={(value) => updateField('disabilitySeverity', value)}
-        />
-        <ChoiceField
-          label="장애인 등록 여부"
-          required
-          options={disabilityRegisteredOptions}
-          value={form.registeredYn}
-          onChange={(value) => updateField('registeredYn', value)}
-        />
+        <label className="profile-sensitive-consent__toggle">
+          <input
+            type="checkbox"
+            checked={form.sensitiveInfoConsentYn}
+            onChange={(event) => updateField('sensitiveInfoConsentYn', event.target.checked)}
+          />
+          <span aria-hidden="true" />
+          선택 민감정보 수집·이용에 동의합니다.
+        </label>
+        {form.sensitiveInfoConsentYn ? (
+          <>
+            <ChoiceField
+              label="장애 유형"
+              required
+              options={disabilityTypes}
+              value={form.disabilityType}
+              onChange={(value) => updateField('disabilityType', value)}
+            />
+            <ChoiceField
+              label="장애 정도"
+              required
+              options={disabilitySeverityOptions}
+              value={form.disabilitySeverity}
+              onChange={(value) => updateField('disabilitySeverity', value)}
+            />
+            <ChoiceField
+              label="장애인 등록 여부"
+              required
+              options={disabilityRegisteredOptions}
+              value={form.registeredYn}
+              onChange={(value) => updateField('registeredYn', value)}
+            />
+          </>
+        ) : null}
       </div>
     );
   }

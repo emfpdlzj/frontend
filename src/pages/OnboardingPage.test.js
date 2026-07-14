@@ -105,6 +105,7 @@ test('blocks each signup step until required fields are completed', async () => 
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
   expect(screen.getByRole('heading', { name: '장애 정보' })).toBeInTheDocument();
+  userEvent.click(screen.getByRole('checkbox', { name: '선택 민감정보 수집·이용에 동의합니다.' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
   expect(screen.getByRole('alert')).toHaveTextContent('장애 유형, 장애 정도, 장애인 등록 여부를 모두 선택해 주세요.');
 
@@ -146,6 +147,7 @@ test('blocks each signup step until required fields are completed', async () => 
       disabilityType: 'PHYSICAL',
       disabilitySeverity: 'SEVERE',
       disabilityRegisteredYn: true,
+      sensitiveInfoConsentYn: true,
       workTypes: ['FULL_TIME'],
       selfIntroduction: '사무 지원 경험이 있습니다.'
     }
@@ -167,6 +169,38 @@ test('blocks signup when birth date is missing', async () => {
   expect(completeSignup).not.toHaveBeenCalled();
 });
 
+test('allows signup without optional sensitive information consent', async () => {
+  renderPage();
+
+  userEvent.type(screen.getByLabelText('이름 *'), '홍길동');
+  userEvent.click(screen.getByRole('button', { name: '남성' }));
+  userEvent.type(screen.getByLabelText('연락처 *'), '010-1234-5678');
+  userEvent.type(screen.getByLabelText('이메일 *'), 'hong@example.com');
+  userEvent.type(screen.getByLabelText('생년월일'), '1990.01.01');
+  fillAddress('서울시 영등포구 OO로 12');
+  userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
+
+  userEvent.click(screen.getByRole('button', { name: '대졸' }));
+  userEvent.click(screen.getByRole('button', { name: '졸업' }));
+  userEvent.type(screen.getByLabelText('주요 경력 한 줄 *'), '사무 지원 2년');
+  userEvent.click(screen.getByRole('button', { name: '서비스 기획' }));
+  userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
+  userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
+
+  expect(screen.getByRole('checkbox', { name: '선택 민감정보 수집·이용에 동의합니다.' })).not.toBeChecked();
+  userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
+
+  userEvent.type(screen.getByPlaceholderText('간단하게 본인을 소개해 주세요. 채용 담당자에게 표시될 수 있어요.'), '사무 지원 경험이 있습니다.');
+  userEvent.click(screen.getByRole('button', { name: '가입 완료' }));
+
+  await waitFor(() => expect(completeSignup).toHaveBeenCalledTimes(1));
+  const submittedProfile = completeSignup.mock.calls[0][0].profile;
+  expect(submittedProfile.sensitiveInfoConsentYn).toBe(false);
+  expect(submittedProfile).not.toHaveProperty('disabilityType');
+  expect(submittedProfile).not.toHaveProperty('disabilitySeverity');
+  expect(submittedProfile).not.toHaveProperty('disabilityRegisteredYn');
+});
+
 test('normalizes keyboard birth date input before signup submit', async () => {
   renderPage();
 
@@ -185,6 +219,7 @@ test('normalizes keyboard birth date input before signup submit', async () => {
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
+  userEvent.click(screen.getByRole('checkbox', { name: '선택 민감정보 수집·이용에 동의합니다.' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
   expect(screen.getByRole('alert')).toHaveTextContent('장애 유형, 장애 정도, 장애인 등록 여부를 모두 선택해 주세요.');
 
@@ -236,6 +271,7 @@ test('allows non-disability choices without hiding required accessibility fields
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
+  userEvent.click(screen.getByRole('checkbox', { name: '선택 민감정보 수집·이용에 동의합니다.' }));
   userEvent.click(screen.getByRole('button', { name: '기타' }));
   userEvent.click(screen.getByRole('button', { name: '경증' }));
   userEvent.click(screen.getByRole('button', { name: '등록 안 됨' }));
@@ -292,6 +328,7 @@ test('keeps required single-choice signup fields selected when clicked again', a
 
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
+  userEvent.click(screen.getByRole('checkbox', { name: '선택 민감정보 수집·이용에 동의합니다.' }));
   const severityButton = screen.getByRole('button', { name: '중증' });
   userEvent.click(severityButton);
   expect(severityButton).toHaveAttribute('aria-pressed', 'true');

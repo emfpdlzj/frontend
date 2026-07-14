@@ -1063,8 +1063,6 @@ const requiredFields = [
   ['graduationStatus', '졸업 상태'],
   ['majorCareer', '주요 경력'],
   ['targetJob', '지원 직무'],
-  ['disabilityType', '장애 유형'],
-  ['disabilitySeverity', '장애 정도'],
   ['selfIntroduction', '자기소개']
 ];
 
@@ -2111,12 +2109,13 @@ function getValidationMessage(profile) {
     return '근무 형태 가능 범위를 1개 이상 선택해 주세요.';
   }
 
-  if (typeof normalizedProfile.disabilityRegisteredYn !== 'boolean') {
-    return '장애 등록 여부를 선택해 주세요.';
-  }
-
-  if (normalizedProfile.sensitiveInfoConsentYn !== true) {
-    return '민감정보 수집·이용 동의에 체크해 주세요.';
+  if (
+    normalizedProfile.sensitiveInfoConsentYn === true &&
+    (!hasText(normalizedProfile.disabilityType) ||
+      !hasText(normalizedProfile.disabilitySeverity) ||
+      typeof normalizedProfile.disabilityRegisteredYn !== 'boolean')
+  ) {
+    return '민감정보 처리에 동의한 경우 장애 유형, 장애 정도, 장애 등록 여부를 모두 입력해 주세요.';
   }
 
   return '';

@@ -1268,17 +1268,17 @@ function DisabilityPanel({ profile, onChange }) {
     <>
       <h2>장애 정보</h2>
       <div className="profile-form-grid profile-form-grid--disability">
-        <Field label="장애 유형" required>
+        <Field label="장애 유형" required={profile.sensitiveInfoConsentYn === true}>
           <SelectBox value={profile.disabilityType} onChange={(value) => onChange('disabilityType', value)} options={disabilityTypeOptions} />
         </Field>
-        <Field label="장애 정도" required>
+        <Field label="장애 정도" required={profile.sensitiveInfoConsentYn === true}>
           <SelectBox
             value={profile.disabilitySeverity}
             onChange={(value) => onChange('disabilitySeverity', value)}
             options={disabilitySeverityOptions}
           />
         </Field>
-        <Field label="장애 등록 여부" required>
+        <Field label="장애 등록 여부" required={profile.sensitiveInfoConsentYn === true}>
           <RadioGroup
             options={booleanOptions}
             selected={profile.disabilityRegisteredYn}
@@ -1295,9 +1295,10 @@ function DisabilityPanel({ profile, onChange }) {
             onChange={(event) => onChange('sensitiveInfoConsentYn', event.target.checked)}
           />
           <span aria-hidden="true" />
-          필수 민감정보 수집·이용에 동의합니다.
+          선택 민감정보 수집·이용에 동의합니다.
         </label>
         <div className="profile-sensitive-consent__detail" role="note">
+          <p>동의를 해제하고 저장하면 기존 장애·지원 관련 정보가 삭제됩니다.</p>
           <ol>
             {sensitiveConsentDetails.map((item) => (
               <li key={item.title}>

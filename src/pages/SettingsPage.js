@@ -27,9 +27,8 @@ const settingsMenu = [
   { id: 'danger', label: '회원탈퇴', group: '위험' }
 ];
 
-const privacyItems = [
-  ['개인정보 수집·이용 동의', '동의 완료', 'success', '계정 생성과 서비스 제공에 필요한 동의입니다.', 'privacy-consent'],
-  ['민감정보 수집·이용 동의', '동의 완료', 'success', '추천 품질 개선을 위해 사용되며 기본 공개되지 않습니다.', 'sensitive-consent'],
+const basePrivacyItems = [
+  ['개인정보 수집·이용 동의', '정책 확인', 'neutral', '계정 생성과 서비스 제공에 필요한 처리 내용을 확인합니다.', 'privacy-consent'],
   ['제3자 제공 동의', '확인 필요', 'warning', '지원 또는 기업 공개 설정 시 제공 범위를 확인합니다.', 'third-party'],
   ['마케팅 정보 수신 동의', '선택 미동의', 'neutral', '선택 동의이며 서비스 이용에 필수는 아닙니다.', 'marketing-consent'],
   ['개인정보 다운로드 요청', '신청 가능', 'neutral', '내 계정 데이터를 파일로 요청할 수 있습니다.'],
@@ -212,6 +211,20 @@ export function SettingsPage() {
 
     return defaultProfileSummary;
   }, [defaultProfileSummary, selectedProfile]);
+  const privacyItems = useMemo(() => {
+    const consentedCount = profiles.filter((profile) => profile?.sensitiveInfoConsentYn === true).length;
+    const sensitiveStatus = consentedCount === 0
+      ? ['미동의', 'neutral']
+      : consentedCount === profiles.length
+        ? ['동의 완료', 'success']
+        : ['일부 프로필 동의', 'warning'];
+
+    return [
+      basePrivacyItems[0],
+      ['민감정보 수집·이용 동의', sensitiveStatus[0], sensitiveStatus[1], '프로필별 실제 동의 상태이며 설정에서 언제든 철회할 수 있습니다.', 'sensitive-consent'],
+      ...basePrivacyItems.slice(1)
+    ];
+  }, [profiles]);
   const isProfileLoading = isAuthenticated && ['idle', 'loading'].includes(profileStatus);
   const isProfileDetailLoading =
     isAuthenticated &&
