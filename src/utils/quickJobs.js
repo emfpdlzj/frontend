@@ -7,7 +7,6 @@ import { QUICK_RECOMMENDATION } from '../constants/recommendation';
 import { getAddressCoordinate, getAddressDistrict } from './addressCoordinates';
 
 const QUICK_PAGE_SIZE = QUICK_RECOMMENDATION.pageSize;
-const QUICK_MAX_RESULTS = QUICK_RECOMMENDATION.maxResults;
 const QUICK_EXPLAIN_CACHE_STORAGE_KEY = 'bridgework.quick.explain.cache.v2';
 
 const readQuickExplainCache = () => {
@@ -729,7 +728,7 @@ export const getCachedQuickPages = ({ profileId, aiEnabled, profileSignature }) 
   const jobs = [];
   let totalCount = 0;
 
-  for (let offset = 0; offset < QUICK_MAX_RESULTS; offset += QUICK_PAGE_SIZE) {
+  for (let offset = 0; ; offset += QUICK_PAGE_SIZE) {
     const cachedPayload = getCachedRecommendation(getQuickPageCacheKey({
       profileId,
       aiEnabled,
@@ -747,13 +746,13 @@ export const getCachedQuickPages = ({ profileId, aiEnabled, profileSignature }) 
     }
 
     jobs.push(...pageJobs);
-    if (pageJobs.length < QUICK_PAGE_SIZE) {
+    if (pageJobs.length < QUICK_PAGE_SIZE || (totalCount > 0 && jobs.length >= totalCount)) {
       break;
     }
   }
 
   return {
-    jobs: jobs.slice(0, QUICK_MAX_RESULTS),
+    jobs,
     totalCount: Math.max(totalCount, jobs.length)
   };
 };

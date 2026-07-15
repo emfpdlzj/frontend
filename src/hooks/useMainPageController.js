@@ -13,7 +13,7 @@ import {
 } from '../cache/recommendationCache';
 import { COMMUTABLE_FILTER_ID, FILTER_ALL_VALUE } from '../constants/accessibilityMap';
 import { HOME_SUPPORT_ORGANIZATIONS, HOME_SUPPORT_SECTION_COPY } from '../constants/homeSupport';
-import { QUICK_RECOMMENDATION } from '../constants/recommendation';
+import { hasMoreRecommendationPages, QUICK_RECOMMENDATION } from '../constants/recommendation';
 import { filterAccessibilityMapJobs } from './useAccessibilityMap';
 import { useJobFilterOptions } from './useJobFilterOptions';
 import { useLocale } from '../i18n/LocaleContext';
@@ -51,9 +51,15 @@ import {
 
 const POPULAR_AUTOPLAY_INTERVAL_MS = 3600;
 const QUICK_PAGE_SIZE = QUICK_RECOMMENDATION.pageSize;
-const QUICK_MAX_RESULTS = QUICK_RECOMMENDATION.maxResults;
 const QUICK_INCREMENTAL_APPEND_DELAY_MS = QUICK_RECOMMENDATION.incrementalAppendDelayMs;
 const QUICK_ACTIVE_TASK_SCOPE = QUICK_RECOMMENDATION.activeTaskScope;
+const hasMoreQuickJobs = (payload, pageLength, offset = 0) =>
+  hasMoreRecommendationPages({
+    pageSize: QUICK_PAGE_SIZE,
+    loadedCount: pageLength,
+    offset,
+    totalCount: getRecommendationTotalCount(payload, offset + pageLength)
+  });
 const QUICK_LIST_MOVE_ANIMATION_OPTIONS = {
   duration: 520,
   easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)'
@@ -577,10 +583,10 @@ export function useMainPageController(view) {
     loadingMore = false,
     keepLoading = false,
     showLoadingDuringAppend = false,
-    loadingTarget = Math.min(QUICK_PAGE_SIZE, QUICK_MAX_RESULTS - offset),
+    loadingTarget = QUICK_PAGE_SIZE,
     totalCount = null
   }) => {
-    const incomingJobs = Array.isArray(jobs) ? jobs.slice(0, QUICK_MAX_RESULTS - offset) : [];
+    const incomingJobs = Array.isArray(jobs) ? jobs : [];
     const resolvedTotalCount = getRecommendationTotalCount({ totalCount }, offset + incomingJobs.length);
 
     if (!incomingJobs.length) {
@@ -590,7 +596,7 @@ export function useMainPageController(view) {
         rawJobs: replace ? [] : prev.rawJobs,
         hasMore: false,
         isLoadingMore: false,
-        nextOffset: Math.min(offset, QUICK_MAX_RESULTS),
+        nextOffset: offset,
         totalJobCount: Math.max(replace ? 0 : prev.totalJobCount || 0, resolvedTotalCount),
         loadingLoaded: 0,
         loadingTarget
@@ -617,7 +623,7 @@ export function useMainPageController(view) {
         if (jobKey && baseJobs.some((item) => getQuickJobKey(item) === jobKey)) {
           return prev;
         }
-        const mergedJobs = mergeUniqueQuickJobs(baseJobs, [job]).slice(0, QUICK_MAX_RESULTS);
+        const mergedJobs = mergeUniqueQuickJobs(baseJobs, [job]);
 
         return {
           ...prev,
@@ -626,7 +632,7 @@ export function useMainPageController(view) {
           rawJobs: mergedJobs,
           hasMore: false,
           isLoadingMore: loadingMore,
-          nextOffset: Math.min(mergedJobs.length, QUICK_MAX_RESULTS),
+          nextOffset: mergedJobs.length,
           totalJobCount: Math.max(replace && !didReplace ? 0 : prev.totalJobCount || 0, resolvedTotalCount, mergedJobs.length),
           loadingLoaded: Math.min(Math.max(0, mergedJobs.length - offset), loadingTarget),
           loadingTarget
@@ -647,9 +653,9 @@ export function useMainPageController(view) {
       ...prev,
       status: keepLoading ? (prev.rawJobs.length ? 'refetching' : 'loading') : prev.rawJobs.length ? 'success' : 'empty',
       error: '',
-      hasMore: keepLoading ? false : Boolean(hasMore) && prev.rawJobs.length < QUICK_MAX_RESULTS,
+      hasMore: keepLoading ? false : Boolean(hasMore),
       isLoadingMore: keepLoading ? loadingMore : false,
-      nextOffset: Math.min(prev.rawJobs.length, QUICK_MAX_RESULTS),
+      nextOffset: prev.rawJobs.length,
       totalJobCount: Math.max(prev.totalJobCount || 0, resolvedTotalCount, prev.rawJobs.length),
       loadingLoaded: Math.min(Math.max(0, prev.rawJobs.length - offset), loadingTarget),
       loadingTarget
@@ -657,25 +663,25 @@ export function useMainPageController(view) {
   }, []);
 
   const applyQuickJobsImmediately = useCallback(({ jobs, replace = false, offset = 0, hasMore = false, totalCount = null }) => {
-    const incomingJobs = Array.isArray(jobs) ? jobs.slice(0, QUICK_MAX_RESULTS - offset) : [];
+    const incomingJobs = Array.isArray(jobs) ? jobs : [];
     const resolvedTotalCount = getRecommendationTotalCount({ totalCount }, offset + incomingJobs.length);
 
     setQuickState((prev) => {
       const mergedJobs = replace
-        ? incomingJobs.slice(0, QUICK_MAX_RESULTS)
-        : mergeUniqueQuickJobs(prev.rawJobs, incomingJobs).slice(0, QUICK_MAX_RESULTS);
+        ? incomingJobs
+        : mergeUniqueQuickJobs(prev.rawJobs, incomingJobs);
 
       return {
         ...prev,
         status: mergedJobs.length ? 'success' : 'empty',
         error: '',
         rawJobs: mergedJobs,
-        hasMore: Boolean(hasMore) && mergedJobs.length < QUICK_MAX_RESULTS,
+        hasMore: Boolean(hasMore),
         isLoadingMore: false,
-        nextOffset: Math.min(offset + incomingJobs.length, QUICK_MAX_RESULTS),
+        nextOffset: offset + incomingJobs.length,
         totalJobCount: Math.max(replace ? 0 : prev.totalJobCount || 0, resolvedTotalCount, mergedJobs.length),
         loadingLoaded: 0,
-        loadingTarget: Math.min(QUICK_PAGE_SIZE, QUICK_MAX_RESULTS - offset)
+        loadingTarget: QUICK_PAGE_SIZE
       };
     });
   }, []);
@@ -711,7 +717,7 @@ export function useMainPageController(view) {
         jobs: cachedPages.jobs,
         replace: true,
         offset: 0,
-        hasMore: !aiEnabled && cachedPages.jobs.length < QUICK_MAX_RESULTS && cachedPages.jobs.length % QUICK_PAGE_SIZE === 0,
+        hasMore: !aiEnabled && hasMoreQuickJobs(cachedPages, cachedPages.jobs.length),
         totalCount: cachedPages.totalCount
       });
       return;
@@ -732,7 +738,7 @@ export function useMainPageController(view) {
       status: prev.rawJobs.length ? 'refetching' : 'loading',
       error: '',
       loadingLoaded: 0,
-      loadingTarget: Math.min(QUICK_PAGE_SIZE, QUICK_MAX_RESULTS)
+      loadingTarget: QUICK_PAGE_SIZE
     }));
 
     const proceedTaskResult = async (taskResult) => {
@@ -746,7 +752,7 @@ export function useMainPageController(view) {
             jobs: directJobs,
             replace: true,
             offset: 0,
-            hasMore: directJobs.length === QUICK_PAGE_SIZE && directJobs.length < QUICK_MAX_RESULTS,
+            hasMore: hasMoreQuickJobs(taskResult, directJobs.length),
             totalCount: getRecommendationTotalCount(taskResult, directJobs.length)
           });
           return;
@@ -782,7 +788,7 @@ export function useMainPageController(view) {
             jobs,
             replace: true,
             offset: 0,
-            hasMore: !aiEnabled && jobs.length > 0 && jobs.length < QUICK_MAX_RESULTS && jobs.length % QUICK_PAGE_SIZE === 0,
+            hasMore: !aiEnabled && hasMoreQuickJobs(taskResult.result, jobs.length),
             totalCount: getRecommendationTotalCount(taskResult.result, jobs.length)
           });
           return;
@@ -792,7 +798,7 @@ export function useMainPageController(view) {
             jobs,
             replace: true,
             offset: 0,
-            hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
+            hasMore: hasMoreQuickJobs(taskResult.result, jobs.length),
             totalCount: getRecommendationTotalCount(taskResult.result, jobs.length)
           });
           return;
@@ -864,7 +870,7 @@ export function useMainPageController(view) {
           jobs,
           replace: true,
           offset: 0,
-          hasMore: false,
+          hasMore: !aiEnabled && hasMoreQuickJobs(completed.result, jobs.length),
           totalCount: getRecommendationTotalCount(completed.result, jobs.length)
         });
       } else if (!aiEnabled) {
@@ -872,7 +878,7 @@ export function useMainPageController(view) {
           jobs,
           replace: true,
           offset: 0,
-          hasMore: jobs.length === QUICK_PAGE_SIZE && jobs.length < QUICK_MAX_RESULTS,
+          hasMore: hasMoreQuickJobs(completed.result, jobs.length),
           totalCount: getRecommendationTotalCount(completed.result, jobs.length)
         });
       } else if (hasProgressResult) {
@@ -924,8 +930,8 @@ export function useMainPageController(view) {
     }
 
     const offset = Math.max(quickState.nextOffset || quickState.rawJobs.length, quickState.rawJobs.length);
-    if (offset >= QUICK_MAX_RESULTS) {
-      setQuickState((prev) => ({ ...prev, hasMore: false, isLoadingMore: false, nextOffset: QUICK_MAX_RESULTS, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE }));
+    if (quickState.totalJobCount > 0 && offset >= quickState.totalJobCount) {
+      setQuickState((prev) => ({ ...prev, hasMore: false, isLoadingMore: false, loadingLoaded: 0, loadingTarget: QUICK_PAGE_SIZE }));
       return;
     }
 
@@ -940,7 +946,7 @@ export function useMainPageController(view) {
     quickLoadMoreInFlightKeyRef.current = requestKey;
 
     const controller = new AbortController();
-    const loadingTarget = Math.min(QUICK_PAGE_SIZE, QUICK_MAX_RESULTS - offset);
+    const loadingTarget = QUICK_PAGE_SIZE;
     setQuickState((prev) => ({ ...prev, isLoadingMore: true, error: '', loadingLoaded: 0, loadingTarget }));
 
     try {
@@ -979,7 +985,7 @@ export function useMainPageController(view) {
           jobs: cachedJobs,
           replace: false,
           offset,
-          hasMore: cachedJobs.length === QUICK_PAGE_SIZE && offset + cachedJobs.length < QUICK_MAX_RESULTS,
+          hasMore: hasMoreQuickJobs(cachedPayload, cachedJobs.length, offset),
           totalCount: getRecommendationTotalCount(cachedPayload, offset + cachedJobs.length)
         });
         return;
@@ -991,7 +997,7 @@ export function useMainPageController(view) {
           {
             aiEnabled: appliedAiEnabled,
             profileId: appliedAiEnabled ? selectedProfileId : undefined,
-            limit: Math.min(QUICK_PAGE_SIZE, QUICK_MAX_RESULTS - offset),
+            limit: QUICK_PAGE_SIZE,
             offset
           },
           controller.signal,
@@ -1039,7 +1045,7 @@ export function useMainPageController(view) {
           jobs: nextJobs,
           replace: false,
           offset,
-          hasMore: nextJobs.length === QUICK_PAGE_SIZE && offset + nextJobs.length < QUICK_MAX_RESULTS,
+          hasMore: hasMoreQuickJobs(completedPayload, nextJobs.length, offset),
           totalCount: getRecommendationTotalCount(completedPayload, offset + nextJobs.length)
         });
       } else {
@@ -1047,7 +1053,7 @@ export function useMainPageController(view) {
           jobs: nextJobs,
           replace: false,
           offset,
-          hasMore: nextJobs.length === QUICK_PAGE_SIZE && offset + nextJobs.length < QUICK_MAX_RESULTS,
+          hasMore: hasMoreQuickJobs(completedPayload, nextJobs.length, offset),
           signal: controller.signal,
           showLoadingDuringAppend: true,
           loadingTarget,
@@ -1088,8 +1094,30 @@ export function useMainPageController(view) {
     quickState.nextOffset,
     quickState.rawJobs,
     quickState.status,
+    quickState.totalJobCount,
     selectedProfileId,
     appliedFilters
+  ]);
+
+  useEffect(() => {
+    if (
+      !isQuickPage ||
+      appliedAiEnabled ||
+      !quickState.hasMore ||
+      quickState.isLoadingMore ||
+      quickState.status !== 'success'
+    ) {
+      return;
+    }
+
+    loadMoreQuickRecommendations();
+  }, [
+    appliedAiEnabled,
+    isQuickPage,
+    loadMoreQuickRecommendations,
+    quickState.hasMore,
+    quickState.isLoadingMore,
+    quickState.status
   ]);
 
   useEffect(() => {
