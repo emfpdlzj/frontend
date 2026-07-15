@@ -331,7 +331,11 @@ export function ProfileShell() {
       return;
     }
 
-    await setDefaultProfile(targetProfile.profileId);
+    try {
+      await setDefaultProfile(targetProfile.profileId);
+    } catch (error) {
+      setFormError(error.message || '기본 프로필을 변경하지 못했습니다.');
+    }
   };
 
   const handleAddProfile = () => {
@@ -510,11 +514,15 @@ export function ProfileShell() {
     const confirmed = window.confirm('선택한 프로필을 삭제할까요? 삭제한 프로필은 되돌릴 수 없습니다.');
 
     if (confirmed) {
-      clearProfileDraftCache(getProfileDraftStorageKey(selectedProfile.profileId));
-      refreshCachedDraftCards();
-      await deleteProfile(selectedProfile.profileId);
-      loadedDraftKeyRef.current = '';
-      lastAutosavedSnapshotRef.current = '';
+      try {
+        await deleteProfile(selectedProfile.profileId);
+        clearProfileDraftCache(getProfileDraftStorageKey(selectedProfile.profileId));
+        refreshCachedDraftCards();
+        loadedDraftKeyRef.current = '';
+        lastAutosavedSnapshotRef.current = '';
+      } catch (error) {
+        setFormError(error.message || '프로필을 삭제하지 못했습니다.');
+      }
     }
   };
 

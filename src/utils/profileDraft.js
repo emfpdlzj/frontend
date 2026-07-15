@@ -82,7 +82,6 @@ const SAFE_PROFILE_DRAFT_FIELDS = [
   'commuteRange',
   'preferredWorkEnvironments',
   'avoidedWorkEnvironments',
-  'requiredSupports',
   'sensitiveInfoConsentYn',
   'educationEntries',
   'careerEntries',
@@ -1046,7 +1045,22 @@ export function readProfileDraftCache(storageKey) {
       return null;
     }
 
-    return parsed;
+    const safeDraft = toSafeProfileDraft(parsed.draft);
+    const sanitizedCache = {
+      ...parsed,
+      version: 2,
+      draft: safeDraft
+    };
+
+    if (parsed.version !== 2 || JSON.stringify(parsed.draft) !== JSON.stringify(safeDraft)) {
+      try {
+        window.sessionStorage.setItem(storageKey, JSON.stringify(sanitizedCache));
+      } catch {
+        // 저장소 갱신에 실패해도 메모리에는 정제된 임시저장본만 반환합니다.
+      }
+    }
+
+    return sanitizedCache;
   } catch {
     return null;
   }
@@ -1093,8 +1107,9 @@ export function writeProfileDraftCache(storageKey, value) {
     window.sessionStorage.setItem(
       storageKey,
       JSON.stringify({
-        version: 1,
-        ...value
+        ...value,
+        version: 2,
+        draft: toSafeProfileDraft(value?.draft)
       })
     );
     return true;

@@ -15,6 +15,7 @@ export const toInitialForm = (seed) => ({
   graduationStatus: '',
   career: '',
   jobs: [],
+  skills: '',
   employmentTypes: ['FULL_TIME'],
   disabilityType: '',
   disabilitySeverity: '',
@@ -67,8 +68,8 @@ export const getStepValidationMessage = (step, form) => {
   }
 
   if (step === 2) {
-    if (!form.education || !form.graduationStatus || !hasText(form.career) || !form.jobs.length) {
-      return '최종 학력, 졸업 상태, 주요 경력, 지원 직무를 입력해 주세요.';
+    if (!form.education || !form.graduationStatus || !hasText(form.career) || !form.jobs.length || !hasText(form.skills)) {
+      return '최종 학력, 졸업 상태, 주요 경력, 지원 직무, 보유 기술/역량을 입력해 주세요.';
     }
 
     return '';
@@ -115,6 +116,7 @@ const onboardingInputFields = [
   { key: 'graduationStatus', value: (form) => form.graduationStatus },
   { key: 'career', value: (form) => form.career },
   { key: 'jobs', value: (form) => form.jobs },
+  { key: 'skills', value: (form) => form.skills },
   { key: 'employmentTypes', value: (form) => form.employmentTypes },
   { key: 'disabilityType', value: (form) => form.disabilityType },
   { key: 'disabilitySeverity', value: (form) => form.disabilitySeverity },
@@ -186,6 +188,10 @@ export const toSignupProfile = (form) => {
   const trimmedCareer = form.career.trim();
   const trimmedIntroduction = form.introduction.trim();
   const selectedJobs = form.jobs;
+  const skills = form.skills
+    .split(',')
+    .map((skill) => skill.trim())
+    .filter(Boolean);
 
   return withoutEmptyOptionalFields({
     fullName: trimmedName,
@@ -198,7 +204,7 @@ export const toSignupProfile = (form) => {
     graduationStatus: form.graduationStatus,
     majorCareer: trimmedCareer,
     targetJob: selectedJobs.join(', '),
-    skills: selectedJobs,
+    skills,
     disabilityType: form.sensitiveInfoConsentYn ? form.disabilityType : undefined,
     disabilitySeverity: form.sensitiveInfoConsentYn ? form.disabilitySeverity : undefined,
     disabilityRegisteredYn: form.sensitiveInfoConsentYn

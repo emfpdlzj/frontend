@@ -40,16 +40,18 @@ export function useProfiles() {
   const { callWithAuth, isAuthenticated } = useAuth();
   const [state, setState] = useState(initialState);
   const selectedProfileIdRef = useRef(readSelectedProfilePreference());
-  const isInitialLoadRef = useRef(true);
   const mutationInFlightRef = useRef(null);
-
-  useEffect(() => {
-    selectedProfileIdRef.current = state.selectedProfileId;
-  }, [state.selectedProfileId]);
+  const profileLoadSequenceRef = useRef(0);
+  const detailLoadSequenceRef = useRef(0);
 
   const loadProfiles = useCallback(
     async (signal, preferredProfileId = selectedProfileIdRef.current) => {
+      const loadSequence = profileLoadSequenceRef.current + 1;
+      profileLoadSequenceRef.current = loadSequence;
+
       if (!isAuthenticated) {
+        selectedProfileIdRef.current = '';
+        detailLoadSequenceRef.current += 1;
         setState({
           ...initialState,
           status: 'disabled',
@@ -67,15 +69,19 @@ export function useProfiles() {
 
       try {
         const profiles = sortProfiles(await callWithAuth((accessToken) => profileApi.getProfiles(accessToken, signal)));
+
+        if (loadSequence !== profileLoadSequenceRef.current) {
+          return;
+        }
+
         const fallbackProfileId = getProfileId(profiles.find((profile) => profile?.isDefault) || profiles[0]);
-        const candidateProfileId = isInitialLoadRef.current ? fallbackProfileId : String(preferredProfileId || '');
+        const candidateProfileId = String(preferredProfileId || '');
         const nextSelectedProfileId =
           profiles.some((profile) => getProfileId(profile) === candidateProfileId)
             ? candidateProfileId
             : fallbackProfileId;
         writeSelectedProfilePreference(nextSelectedProfileId);
         selectedProfileIdRef.current = nextSelectedProfileId;
-        isInitialLoadRef.current = false;
 
         setState((prev) => ({
           ...prev,
@@ -92,7 +98,7 @@ export function useProfiles() {
           error: ''
         }));
       } catch (error) {
-        if (error.name === 'AbortError') {
+        if (error.name === 'AbortError' || loadSequence !== profileLoadSequenceRef.current) {
           return;
         }
 
@@ -144,6 +150,8 @@ export function useProfiles() {
     }
 
     const controller = new AbortController();
+    const detailLoadSequence = detailLoadSequenceRef.current + 1;
+    detailLoadSequenceRef.current = detailLoadSequence;
 
     const loadDetail = async () => {
       setState((prev) => ({
@@ -157,6 +165,10 @@ export function useProfiles() {
           profileApi.getProfile(accessToken, state.selectedProfileId, controller.signal)
         );
 
+        if (detailLoadSequence !== detailLoadSequenceRef.current) {
+          return;
+        }
+
         setState((prev) => ({
           ...prev,
           detailStatus: selectedProfile ? 'success' : 'empty',
@@ -164,7 +176,7 @@ export function useProfiles() {
           detailError: ''
         }));
       } catch (error) {
-        if (error.name === 'AbortError') {
+        if (error.name === 'AbortError' || detailLoadSequence !== detailLoadSequenceRef.current) {
           return;
         }
 
@@ -196,7 +208,7 @@ export function useProfiles() {
   }, []);
 
   const runMutation = useCallback(
-    async (operation, successMessage) => {
+    async (operation, successMessage, resolvePreferredProfileId) => {
       if (mutationInFlightRef.current) {
         return mutationInFlightRef.current;
       }
@@ -210,7 +222,14 @@ export function useProfiles() {
 
         try {
           const result = await callWithAuth((accessToken) => operation(accessToken));
-          await loadProfiles(undefined, selectedProfileIdRef.current);
+          const preferredProfileId = String(resolvePreferredProfileId?.(result) || selectedProfileIdRef.current || '');
+
+          if (preferredProfileId) {
+            selectedProfileIdRef.current = preferredProfileId;
+            writeSelectedProfilePreference(preferredProfileId);
+          }
+
+          await loadProfiles(undefined, preferredProfileId);
           setState((prev) => ({
             ...prev,
             mutationStatus: 'success',
@@ -251,19 +270,9 @@ export function useProfiles() {
     async (payload) => {
       const result = await runMutation(
         (accessToken) => profileApi.createProfile(accessToken, payload),
-        '프로필을 추가했습니다.'
+        '프로필을 추가했습니다.',
+        getProfileId
       );
-      const createdProfileId = getProfileId(result);
-
-      if (createdProfileId) {
-        selectedProfileIdRef.current = createdProfileId;
-        writeSelectedProfilePreference(createdProfileId);
-        setState((prev) => ({
-          ...prev,
-          selectedProfileId: createdProfileId
-        }));
-      }
-
       return result;
     },
     [runMutation]

@@ -65,6 +65,25 @@ function AuthRoute({ children, requiredRole }) {
   return children;
 }
 
+function SignupRoute({ children }) {
+  const { isAuthenticated, isInitializing, pendingSignup } = useAuth();
+  const { localizePath } = useLocale();
+
+  if (isInitializing) {
+    return (
+      <PageShell title="세션 확인" description="회원가입 세션을 확인하고 있습니다.">
+        <LoadingView label="회원가입 세션 검증 중..." />
+      </PageShell>
+    );
+  }
+
+  if (!isAuthenticated && !pendingSignup?.signupToken) {
+    return <Navigate to={localizePath(ROUTE_PATHS.root)} replace />;
+  }
+
+  return children;
+}
+
 function LocaleRoute({ children }) {
   const { locale } = useParams();
   const location = useLocation();
@@ -150,7 +169,7 @@ export function AppRouter() {
         />
         <Route
           path={LOCALIZED_ROUTE_PATHS.signup}
-          element={<LocaleRoute><SignupPage /></LocaleRoute>}
+          element={<LocaleRoute><SignupRoute><SignupPage /></SignupRoute></LocaleRoute>}
         />
         <Route path={LOCALIZED_ROUTE_PATHS.profile} element={<LocaleRoute><AuthRoute><ProfilePage /></AuthRoute></LocaleRoute>} />
         <Route

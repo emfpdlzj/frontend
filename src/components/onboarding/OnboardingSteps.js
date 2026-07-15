@@ -172,6 +172,15 @@ export function StepContent({
           values={form.jobs}
           onToggle={(value) => toggleArrayValue('jobs', value)}
         />
+        <TextField
+          label="보유 기술/역량"
+          required
+          placeholder="예) 엑셀, 문서작성, 고객응대"
+          value={form.skills}
+          onChange={(value) => updateField('skills', value)}
+          hint="여러 개는 쉼표(,)로 구분해 입력해 주세요."
+          className="onboarding-field--full"
+        />
       </div>
     );
   }

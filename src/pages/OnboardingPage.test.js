@@ -88,12 +88,13 @@ test('blocks each signup step until required fields are completed', async () => 
 
   expect(screen.getByRole('heading', { name: '직무·경력' })).toBeInTheDocument();
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
-  expect(screen.getByRole('alert')).toHaveTextContent('최종 학력, 졸업 상태, 주요 경력, 지원 직무를 입력해 주세요.');
+  expect(screen.getByRole('alert')).toHaveTextContent('최종 학력, 졸업 상태, 주요 경력, 지원 직무, 보유 기술/역량을 입력해 주세요.');
 
   userEvent.click(screen.getByRole('button', { name: '대졸' }));
   userEvent.click(screen.getByRole('button', { name: '졸업' }));
   userEvent.type(screen.getByLabelText('주요 경력 한 줄 *'), '사무 지원 2년');
   userEvent.click(screen.getByRole('button', { name: '서비스 기획' }));
+  userEvent.type(screen.getByPlaceholderText('예) 엑셀, 문서작성, 고객응대'), '엑셀, 문서작성');
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
   expect(screen.getByRole('heading', { name: '근무 조건' })).toBeInTheDocument();
@@ -124,11 +125,11 @@ test('blocks each signup step until required fields are completed', async () => 
 
   await waitFor(() => expect(completeSignup).toHaveBeenCalledTimes(1));
   await waitFor(() => expect(screen.getByRole('heading', { name: '기본 정보 입력 완료!' })).toBeInTheDocument());
-  expect(screen.getByText('15개')).toBeInTheDocument();
+  expect(screen.getByText('16개')).toBeInTheDocument();
   expect(screen.getByText('25개')).toBeInTheDocument();
   expect(screen.getByText('7개 묶음 선택 정보')).toBeInTheDocument();
   expect(screen.getByText('약 5분')).toBeInTheDocument();
-  expect(screen.getByText('40개')).toBeInTheDocument();
+  expect(screen.getByText('41개')).toBeInTheDocument();
   expect(screen.queryByText('2.4배')).not.toBeInTheDocument();
   expect(completeSignup).toHaveBeenCalledWith({
     signupToken: 'signup-token',
@@ -143,7 +144,7 @@ test('blocks each signup step until required fields are completed', async () => 
       graduationStatus: 'GRADUATED',
       majorCareer: '사무 지원 2년',
       targetJob: '서비스 기획',
-      skills: ['서비스 기획'],
+      skills: ['엑셀', '문서작성'],
       disabilityType: 'PHYSICAL',
       disabilitySeverity: 'SEVERE',
       disabilityRegisteredYn: true,
@@ -184,6 +185,7 @@ test('allows signup without optional sensitive information consent', async () =>
   userEvent.click(screen.getByRole('button', { name: '졸업' }));
   userEvent.type(screen.getByLabelText('주요 경력 한 줄 *'), '사무 지원 2년');
   userEvent.click(screen.getByRole('button', { name: '서비스 기획' }));
+  userEvent.type(screen.getByPlaceholderText('예) 엑셀, 문서작성, 고객응대'), '엑셀');
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
@@ -216,6 +218,7 @@ test('normalizes keyboard birth date input before signup submit', async () => {
   userEvent.click(screen.getByRole('button', { name: '졸업' }));
   userEvent.type(screen.getByLabelText('주요 경력 한 줄 *'), '사무 지원 2년');
   userEvent.click(screen.getByRole('button', { name: '서비스 기획' }));
+  userEvent.type(screen.getByPlaceholderText('예) 엑셀, 문서작성, 고객응대'), '엑셀');
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
@@ -268,6 +271,7 @@ test('allows non-disability choices without hiding required accessibility fields
   userEvent.click(screen.getByRole('button', { name: '졸업' }));
   userEvent.type(screen.getByLabelText('주요 경력 한 줄 *'), '사무 지원 2년');
   userEvent.click(screen.getByRole('button', { name: '서비스 기획' }));
+  userEvent.type(screen.getByPlaceholderText('예) 엑셀, 문서작성, 고객응대'), '엑셀');
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
@@ -324,6 +328,7 @@ test('keeps required single-choice signup fields selected when clicked again', a
   userEvent.click(screen.getByRole('button', { name: '졸업' }));
   userEvent.type(screen.getByLabelText('주요 경력 한 줄 *'), '사무 지원 2년');
   userEvent.click(screen.getByRole('button', { name: '서비스 기획' }));
+  userEvent.type(screen.getByPlaceholderText('예) 엑셀, 문서작성, 고객응대'), '엑셀');
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));
 
   userEvent.click(screen.getByRole('button', { name: '다음 단계' }));

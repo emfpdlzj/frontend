@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import { LoadingView } from '../components/common/LoadingView';
 import { StatusMessage } from '../components/common/StatusMessage';
 import { CompletionPanel, OptionStatePanel, StepContent, StepRail } from '../components/onboarding/OnboardingSteps';
@@ -15,6 +16,7 @@ export function OnboardingPage() {
     goNext,
     goPrevious,
     isComplete,
+    shouldRedirectAuthenticated,
     localizePath,
     navigate,
     progressWidth,
@@ -26,6 +28,10 @@ export function OnboardingPage() {
     toggleArrayValue,
     updateField
   } = useOnboardingController();
+
+  if (shouldRedirectAuthenticated) {
+    return <Navigate to={localizePath(ROUTE_PATHS.root)} replace />;
+  }
 
 return (
     <main className="onboarding-page">

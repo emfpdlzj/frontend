@@ -17,8 +17,9 @@ export function useOnboardingController() {
 
   const navigate = useNavigate();
   const { localizePath } = useLocale();
-  const { pendingSignup, completeSignup } = useAuth();
+  const { pendingSignup, completeSignup, isAuthenticated } = useAuth();
   const signupOptions = useSignupOptions();
+  const wasAuthenticatedAtMountRef = useRef(isAuthenticated);
   const [currentStep, setCurrentStep] = useState(1);
   const [isComplete, setIsComplete] = useState(false);
   const [form, setForm] = useState(() => toInitialForm(pendingSignup));
@@ -147,6 +148,7 @@ export function useOnboardingController() {
     goNext,
     goPrevious,
     isComplete,
+    shouldRedirectAuthenticated: wasAuthenticatedAtMountRef.current,
     localizePath,
     navigate,
     progressWidth,
