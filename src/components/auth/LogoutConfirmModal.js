@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export function LogoutConfirmModal({ onClose, onConfirm, pending = false }) {
+export function LogoutConfirmModal({ onClose, onConfirm, pending = false, error = '' }) {
   const closeButtonRef = useRef(null);
 
   useEffect(() => {
@@ -64,6 +64,7 @@ export function LogoutConfirmModal({ onClose, onConfirm, pending = false }) {
               {pending ? '로그아웃 중' : '로그아웃'}
             </button>
           </div>
+          {error ? <p role="alert" className="form-error">{error}</p> : null}
         </div>
       </section>
     </div>

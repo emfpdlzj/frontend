@@ -32,6 +32,7 @@ export const STORAGE_KEYS = {
   tokenType: 'bridgework.tokenType',
   accessTokenExpiresAt: 'bridgework.accessTokenExpiresAt',
   refreshTokenExpiresAt: 'bridgework.refreshTokenExpiresAt',
+  authSessionHint: 'bridgework.authSessionHint',
   signupSession: 'bridgework.signupSession',
   signupOptionsCache: 'bridgework.signupOptionsCache',
   jobFilterOptionsCache: 'bridgework.jobFilterOptionsCache',

@@ -39,21 +39,19 @@ export const authApi = {
     });
   },
 
-  refreshToken(refreshToken, signal, options = {}) {
+  refreshToken(signal, options = {}) {
     return httpRequest('/auth/token/refresh', {
       method: 'POST',
       token: null,
-      body: { refreshToken },
       signal,
       expectedErrorStatuses: options.expectedErrorStatuses
     });
   },
 
-  logout(accessToken, refreshToken, signal) {
+  logout(signal) {
     return httpRequest('/auth/logout', {
       method: 'POST',
-      token: accessToken,
-      body: refreshToken ? { refreshToken } : undefined,
+      token: null,
       signal
     });
   },

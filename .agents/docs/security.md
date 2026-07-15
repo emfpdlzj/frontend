@@ -3,9 +3,9 @@
 ## 토큰 저장 정책
 
 - 액세스 토큰은 메모리에만 보관한다.
-- 리프레시 토큰은 현재 Spring Backend 응답 구조에 맞춰 `sessionStorage`에만 임시 보관한다.
+- 리프레시 토큰은 Spring Backend가 발급하는 `HttpOnly`, `Secure`, `SameSite=Lax` 쿠키에만 보관한다.
 - `localStorage`에는 인증 토큰을 저장하지 않는다. 기존 토큰 키가 발견되면 즉시 삭제한다.
-- 최종 목표는 Spring Backend가 `HttpOnly`, `Secure`, `SameSite=Lax` 또는 `Strict` 쿠키로 리프레시 토큰을 내려주는 구조이다.
+- 브라우저 JavaScript에서 리프레시 토큰 원문을 읽거나 요청 본문에 담지 않는다.
 
 ## 환경변수 정책
 

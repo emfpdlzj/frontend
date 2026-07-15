@@ -63,8 +63,27 @@ const normalizeTokenPair = (tokenPair) => {
 };
 
 const isAnonymousBootstrapFailure = (error) => error?.status === 400 || error?.status === 401;
+const isDefinitiveSessionFailure = (error) => error?.status === 400 || error?.status === 401;
 const createSessionExpiredError = (payload) =>
   new ApiError('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.', 401, 'SESSION_EXPIRED', payload);
+const requestTokenRefresh = async (signal, options) => {
+  const execute = async () => {
+    try {
+      return await authApi.refreshToken(signal, options);
+    } catch (error) {
+      if (error?.errorCode !== 'REFRESH_TOKEN_ROTATION_IN_PROGRESS') {
+        throw error;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+      return authApi.refreshToken(signal, options);
+    }
+  };
+
+  if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+    return navigator.locks.request('bridgework-token-refresh', execute);
+  }
+  return execute();
+};
 
 export function AuthProvider({ children }) {
   const [tokens, setTokens] = useState(() => authStorage.readTokens());
@@ -129,17 +148,10 @@ export function AuthProvider({ children }) {
       return refreshingRef.current;
     }
 
-    const refreshToken = tokensRef.current?.refreshToken;
-
-    if (!refreshToken) {
-      throw new ApiError('토큰 갱신 정보가 없습니다. 다시 로그인해 주세요.', 401, 'MISSING_REFRESH_TOKEN');
-    }
-
     const refreshSessionVersion = sessionVersionRef.current;
 
     let refreshRequest;
-    refreshRequest = authApi
-      .refreshToken(refreshToken)
+    refreshRequest = requestTokenRefresh()
       .then((tokenPair) => {
         if (sessionVersionRef.current !== refreshSessionVersion) {
           throw new ApiError('이미 종료된 세션의 토큰 갱신 결과입니다.', 401, 'STALE_SESSION_RESULT');
@@ -157,7 +169,9 @@ export function AuthProvider({ children }) {
           status: error?.status,
           errorCode: error?.errorCode
         });
-        clearSession();
+        if (isDefinitiveSessionFailure(error)) {
+          clearSession();
+        }
         throw error;
       })
       .finally(() => {
@@ -272,22 +286,16 @@ export function AuthProvider({ children }) {
   );
 
   const logout = useCallback(async () => {
-    const accessToken = tokensRef.current?.accessToken;
-    const refreshToken = tokensRef.current?.refreshToken;
-
     try {
-      if (accessToken) {
-        await authApi.logout(accessToken, refreshToken);
-      }
+      await authApi.logout();
     } catch (error) {
-      // 로그아웃 요청이 실패해도 로컬 세션은 즉시 폐기한다.
-      logger.warn('Logout request failed. Proceeding with local session cleanup.', {
+      logger.warn('Logout request failed. Keeping the session so the user can retry.', {
         status: error?.status,
         errorCode: error?.errorCode
       });
-    } finally {
-      clearSession();
+      throw error;
     }
+    clearSession();
   }, [clearSession]);
 
   useEffect(() => {
@@ -297,8 +305,8 @@ export function AuthProvider({ children }) {
       const hadAccessToken = Boolean(tokensRef.current?.accessToken);
 
       try {
-        if (!hadAccessToken && tokensRef.current?.refreshToken) {
-          const tokenPair = await authApi.refreshToken(tokensRef.current.refreshToken, controller.signal, {
+        if (!hadAccessToken && authStorage.hasSessionHint()) {
+          const tokenPair = await requestTokenRefresh(controller.signal, {
             expectedErrorStatuses: [400, 401]
           });
           saveTokens(tokenPair);
@@ -337,6 +345,34 @@ export function AuthProvider({ children }) {
       controller.abort();
     };
   }, [callWithAuth, clearSession]);
+
+  useEffect(() => {
+    const expiresAt = Date.parse(tokens?.accessTokenExpiresAt || '');
+    if (!Number.isFinite(expiresAt) || !tokens?.accessToken) {
+      return undefined;
+    }
+
+    const refreshDelay = Math.max(0, expiresAt - Date.now() - 60_000);
+    let disposed = false;
+    let timeoutId;
+    const attemptRefresh = () => {
+      refreshTokens().catch((error) => {
+        if (!isDefinitiveSessionFailure(error) && !disposed) {
+          logger.warn('Proactive token refresh was deferred.', {
+            status: error?.status,
+            errorCode: error?.errorCode
+          });
+          timeoutId = window.setTimeout(attemptRefresh, 30_000);
+        }
+      });
+    };
+    timeoutId = window.setTimeout(attemptRefresh, refreshDelay);
+
+    return () => {
+      disposed = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [refreshTokens, tokens?.accessToken, tokens?.accessTokenExpiresAt]);
 
   const value = useMemo(
     () => ({

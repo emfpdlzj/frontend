@@ -50,26 +50,24 @@ test('completeSignup does not send the social account email field', async () => 
 test('refreshToken forwards expected error statuses for anonymous bootstrap', async () => {
   const signal = new AbortController().signal;
 
-  await authApi.refreshToken('refresh-token', signal, { expectedErrorStatuses: [400, 401] });
+  await authApi.refreshToken(signal, { expectedErrorStatuses: [400, 401] });
 
   expect(httpRequest).toHaveBeenCalledWith('/auth/token/refresh', {
     method: 'POST',
     token: null,
-    body: { refreshToken: 'refresh-token' },
     signal,
     expectedErrorStatuses: [400, 401]
   });
 });
 
-test('logout sends refreshToken when available', async () => {
+test('logout relies on the HttpOnly refresh cookie', async () => {
   const signal = new AbortController().signal;
 
-  await authApi.logout('access-token', 'refresh-token', signal);
+  await authApi.logout(signal);
 
   expect(httpRequest).toHaveBeenCalledWith('/auth/logout', {
     method: 'POST',
-    token: 'access-token',
-    body: { refreshToken: 'refresh-token' },
+    token: null,
     signal
   });
 });

@@ -50,7 +50,7 @@ const removeKeysByPrefix = (storageName, prefixes) => {
   }
 };
 
-const readTokenSnapshot = (storage) => {
+const readLegacyTokenSnapshot = (storage) => {
   const accessToken = storage.get(STORAGE_KEYS.accessToken);
   const refreshToken = storage.get(STORAGE_KEYS.refreshToken);
   const tokenType = storage.get(STORAGE_KEYS.tokenType) || 'Bearer';
@@ -74,43 +74,25 @@ export const authStorage = {
       return memoryTokenSnapshot;
     }
 
-    const legacyPersistentTokens = readTokenSnapshot(persistentStorage);
-    if (legacyPersistentTokens) {
-      this.clearTokenStorage();
-      return {
-        accessToken: null,
-        refreshToken: legacyPersistentTokens.refreshToken,
-        tokenType: legacyPersistentTokens.tokenType,
-        accessTokenExpiresAt: null,
-        refreshTokenExpiresAt: legacyPersistentTokens.refreshTokenExpiresAt
-      };
+    const legacyTokens = readLegacyTokenSnapshot(persistentStorage)
+      || readLegacyTokenSnapshot(sessionFallbackStorage);
+    if (legacyTokens) {
+      this.clearLegacyTokenStorage();
     }
 
-    const sessionTokens = readTokenSnapshot(sessionFallbackStorage);
-    if (sessionTokens) {
-      memoryTokenSnapshot = sessionTokens;
-      return sessionTokens;
-    }
-
-    return memoryTokenSnapshot;
+    return null;
   },
 
   writeTokens(tokenPair) {
     memoryTokenSnapshot = {
       accessToken: tokenPair.accessToken,
-      refreshToken: tokenPair.refreshToken || null,
+      refreshToken: null,
       tokenType: tokenPair.tokenType || 'Bearer',
       accessTokenExpiresAt: tokenPair.accessTokenExpiresAt || null,
       refreshTokenExpiresAt: tokenPair.refreshTokenExpiresAt || null
     };
-    this.clearTokenStorage();
-    if (TOKEN_STORAGE_POLICY.refreshToken === 'sessionStorage' && memoryTokenSnapshot.refreshToken) {
-      sessionFallbackStorage.set(STORAGE_KEYS.refreshToken, memoryTokenSnapshot.refreshToken);
-      sessionFallbackStorage.set(STORAGE_KEYS.tokenType, memoryTokenSnapshot.tokenType);
-    }
-    if (TOKEN_STORAGE_POLICY.refreshToken === 'sessionStorage' && memoryTokenSnapshot.refreshTokenExpiresAt) {
-      sessionFallbackStorage.set(STORAGE_KEYS.refreshTokenExpiresAt, memoryTokenSnapshot.refreshTokenExpiresAt);
-    }
+    this.clearLegacyTokenStorage();
+    persistentStorage.set(STORAGE_KEYS.authSessionHint, 'active');
   },
 
   clearTokens() {
@@ -118,14 +100,24 @@ export const authStorage = {
     this.clearTokenStorage();
   },
 
+  hasSessionHint() {
+    return persistentStorage.get(STORAGE_KEYS.authSessionHint) === 'active';
+  },
+
   clearTokenStorage() {
+    this.clearLegacyTokenStorage();
+    persistentStorage.remove(STORAGE_KEYS.authSessionHint);
+    persistentStorage.remove(STORAGE_KEYS.authProvider);
+    sessionFallbackStorage.remove(STORAGE_KEYS.authProvider);
+  },
+
+  clearLegacyTokenStorage() {
     [persistentStorage, sessionFallbackStorage].forEach((storage) => {
       storage.remove(STORAGE_KEYS.accessToken);
       storage.remove(STORAGE_KEYS.refreshToken);
       storage.remove(STORAGE_KEYS.tokenType);
       storage.remove(STORAGE_KEYS.accessTokenExpiresAt);
       storage.remove(STORAGE_KEYS.refreshTokenExpiresAt);
-      storage.remove(STORAGE_KEYS.authProvider);
     });
   },
 

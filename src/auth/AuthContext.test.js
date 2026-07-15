@@ -88,7 +88,7 @@ test('does not persist login tokens when fetching the current user fails', async
   expect(screen.getByTestId('auth-state')).toHaveTextContent('anonymous');
 });
 
-test('cancels pending withdrawal during social login and keeps reissued refresh token for tab restore', async () => {
+test('cancels pending withdrawal without exposing the reissued refresh token to browser storage', async () => {
   authApi.socialLogin.mockResolvedValue({
     result: {
       signupRequired: false,
@@ -115,10 +115,11 @@ test('cancels pending withdrawal during social login and keeps reissued refresh 
   expect(window.localStorage.getItem(STORAGE_KEYS.accessToken)).toBeNull();
   expect(window.localStorage.getItem(STORAGE_KEYS.refreshToken)).toBeNull();
   expect(window.sessionStorage.getItem(STORAGE_KEYS.accessToken)).toBeNull();
-  expect(window.sessionStorage.getItem(STORAGE_KEYS.refreshToken)).toBe('reactivated-refresh-token');
+  expect(window.sessionStorage.getItem(STORAGE_KEYS.refreshToken)).toBeNull();
+  expect(window.localStorage.getItem(STORAGE_KEYS.authSessionHint)).toBe('active');
   expect(authStorage.readTokens()).toMatchObject({
     accessToken: 'reactivated-access-token',
-    refreshToken: 'reactivated-refresh-token'
+    refreshToken: null
   });
   await waitFor(() => expect(screen.getByTestId('auth-state')).toHaveTextContent('authenticated'));
 });
@@ -132,11 +133,60 @@ test('clears stale access token when cookie refresh fails', async () => {
     await expect(getAuth().refreshTokens()).rejects.toMatchObject({ errorCode: 'UNAUTHORIZED' });
   });
 
-  expect(authApi.refreshToken).toHaveBeenCalledWith('stale-refresh-token');
+  expect(authApi.refreshToken).toHaveBeenCalledWith(undefined, undefined);
   expect(window.localStorage.getItem(STORAGE_KEYS.accessToken)).toBeNull();
   expect(window.localStorage.getItem(STORAGE_KEYS.refreshToken)).toBeNull();
   expect(window.sessionStorage.getItem(STORAGE_KEYS.accessToken)).toBeNull();
   expect(window.sessionStorage.getItem(STORAGE_KEYS.refreshToken)).toBeNull();
+});
+
+test('keeps the local session when refresh temporarily fails', async () => {
+  authApi.socialLogin.mockResolvedValue({
+    data: {
+      accessToken: 'access-token',
+      accessTokenExpiresAt: '2099-01-01T00:00:00Z'
+    }
+  });
+
+  const getAuth = await renderAuth();
+  await act(async () => {
+    await getAuth().loginWithSocialCode({ provider: 'KAKAO', code: 'code' });
+  });
+
+  authApi.refreshToken.mockRejectedValue(new ApiError('서버가 일시적으로 응답하지 않습니다.', 503, 'HTTP_ERROR'));
+  await act(async () => {
+    await expect(getAuth().refreshTokens()).rejects.toMatchObject({ status: 503 });
+  });
+
+  expect(authStorage.readTokens()).toMatchObject({ accessToken: 'access-token' });
+  expect(window.localStorage.getItem(STORAGE_KEYS.authSessionHint)).toBe('active');
+  expect(screen.getByTestId('auth-state')).toHaveTextContent('authenticated');
+});
+
+test('retries once when another tab is rotating the refresh cookie', async () => {
+  authApi.socialLogin.mockResolvedValue({
+    data: {
+      accessToken: 'access-token',
+      accessTokenExpiresAt: '2099-01-01T00:00:00Z'
+    }
+  });
+  const getAuth = await renderAuth();
+  await act(async () => {
+    await getAuth().loginWithSocialCode({ provider: 'KAKAO', code: 'code' });
+  });
+  authApi.refreshToken
+    .mockRejectedValueOnce(new ApiError('다른 탭에서 갱신 중입니다.', 409, 'REFRESH_TOKEN_ROTATION_IN_PROGRESS'))
+    .mockResolvedValueOnce({
+      accessToken: 'rotated-access-token',
+      accessTokenExpiresAt: '2099-01-01T00:15:00Z'
+    });
+
+  await act(async () => {
+    await expect(getAuth().refreshTokens()).resolves.toMatchObject({ accessToken: 'rotated-access-token' });
+  });
+
+  expect(authApi.refreshToken).toHaveBeenCalledTimes(2);
+  expect(authStorage.readTokens()).toMatchObject({ accessToken: 'rotated-access-token' });
 });
 
 test('clears session and reports session expiration when authorized request refresh fails', async () => {
@@ -183,8 +233,8 @@ test('treats missing refresh session during bootstrap as anonymous state', async
   expect(screen.getByTestId('auth-state')).toHaveTextContent('anonymous');
 });
 
-test('refreshes from session refresh token during bootstrap', async () => {
-  window.sessionStorage.setItem(STORAGE_KEYS.refreshToken, 'stored-refresh-token');
+test('refreshes from HttpOnly cookie session hint during bootstrap', async () => {
+  window.localStorage.setItem(STORAGE_KEYS.authSessionHint, 'active');
   authApi.refreshToken.mockResolvedValueOnce({
     accessToken: 'bootstrapped-access-token',
     refreshToken: 'bootstrapped-refresh-token'
@@ -194,11 +244,11 @@ test('refreshes from session refresh token during bootstrap', async () => {
 
   await waitFor(() => expect(getAuth().isInitializing).toBe(false));
 
-  expect(authApi.refreshToken).toHaveBeenCalledWith('stored-refresh-token', expect.any(AbortSignal), {
+  expect(authApi.refreshToken).toHaveBeenCalledWith(expect.any(AbortSignal), {
     expectedErrorStatuses: [400, 401]
   });
   expect(authApi.getMe).toHaveBeenCalledWith('bootstrapped-access-token', expect.any(AbortSignal));
-  expect(window.sessionStorage.getItem(STORAGE_KEYS.refreshToken)).toBe('bootstrapped-refresh-token');
+  expect(window.sessionStorage.getItem(STORAGE_KEYS.refreshToken)).toBeNull();
   expect(screen.getByTestId('auth-state')).toHaveTextContent('authenticated');
 });
 
@@ -233,11 +283,33 @@ test('ignores refresh result that finishes after logout', async () => {
     await expect(refreshPromise).rejects.toMatchObject({ errorCode: 'STALE_SESSION_RESULT' });
   });
 
-  expect(authApi.refreshToken).toHaveBeenCalledWith('old-refresh-token');
-  expect(authApi.logout).toHaveBeenCalledWith('old-access-token', 'old-refresh-token');
+  expect(authApi.refreshToken).toHaveBeenCalledWith(undefined, undefined);
+  expect(authApi.logout).toHaveBeenCalledWith();
   expect(window.localStorage.getItem(STORAGE_KEYS.accessToken)).toBeNull();
   expect(window.localStorage.getItem(STORAGE_KEYS.refreshToken)).toBeNull();
   expect(window.sessionStorage.getItem(STORAGE_KEYS.accessToken)).toBeNull();
   expect(window.sessionStorage.getItem(STORAGE_KEYS.refreshToken)).toBeNull();
   await waitFor(() => expect(screen.getByTestId('auth-state')).toHaveTextContent('anonymous'));
+});
+
+test('keeps the session when server logout fails so the user can retry', async () => {
+  authApi.socialLogin.mockResolvedValue({
+    data: {
+      accessToken: 'access-token',
+      accessTokenExpiresAt: '2099-01-01T00:00:00Z'
+    }
+  });
+  const getAuth = await renderAuth();
+  await act(async () => {
+    await getAuth().loginWithSocialCode({ provider: 'KAKAO', code: 'code' });
+  });
+  authApi.logout.mockRejectedValue(new ApiError('로그아웃 서버에 연결할 수 없습니다.', 503, 'HTTP_ERROR'));
+
+  await act(async () => {
+    await expect(getAuth().logout()).rejects.toMatchObject({ status: 503 });
+  });
+
+  expect(authStorage.readTokens()).toMatchObject({ accessToken: 'access-token' });
+  expect(window.localStorage.getItem(STORAGE_KEYS.authSessionHint)).toBe('active');
+  expect(screen.getByTestId('auth-state')).toHaveTextContent('authenticated');
 });

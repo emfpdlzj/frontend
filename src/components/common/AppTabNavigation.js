@@ -40,6 +40,7 @@ function SessionActionTab({ onRequireLogin }) {
   const { localizePath, t } = useLocale();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
   // 액세스 토큰 재발급 전 구간에도 세션이 살아 있으면 로그아웃 액션을 유지한다.
   const hasSessionToken = Boolean(tokens?.accessToken || tokens?.refreshToken);
   const isSignedIn = isAuthenticated || Boolean(currentUser) || hasSessionToken;
@@ -52,6 +53,7 @@ function SessionActionTab({ onRequireLogin }) {
       return;
     }
 
+    setLogoutError('');
     setIsLogoutModalOpen(true);
   };
 
@@ -62,11 +64,14 @@ function SessionActionTab({ onRequireLogin }) {
 
     try {
       setIsLoggingOut(true);
+      setLogoutError('');
       await logout();
       navigate(localizePath(ROUTE_PATHS.root), { replace: true });
+      setIsLogoutModalOpen(false);
+    } catch (error) {
+      setLogoutError(error?.message || '서버에서 로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.');
     } finally {
       setIsLoggingOut(false);
-      setIsLogoutModalOpen(false);
     }
   };
 
@@ -85,9 +90,13 @@ function SessionActionTab({ onRequireLogin }) {
       </button>
       {isLogoutModalOpen ? (
         <LogoutConfirmModal
-          onClose={() => setIsLogoutModalOpen(false)}
+          onClose={() => {
+            setLogoutError('');
+            setIsLogoutModalOpen(false);
+          }}
           onConfirm={handleLogoutConfirm}
           pending={isLoggingOut}
+          error={logoutError}
         />
       ) : null}
     </>

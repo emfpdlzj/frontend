@@ -1,10 +1,9 @@
 export const TOKEN_STORAGE_POLICY = Object.freeze({
   accessToken: 'memory',
-  refreshToken: 'sessionStorage',
-  targetRefreshTokenStorage: 'httpOnlySecureSameSiteCookie',
+  refreshToken: 'httpOnlySecureSameSiteCookie',
   localStorageAllowed: false,
   rationale:
-    'Access tokens stay in memory only. Refresh tokens use sessionStorage only as a frontend fallback until the Spring Backend issues HttpOnly Secure SameSite cookies.'
+    'Access tokens stay in memory only. Refresh tokens are managed exclusively by the Spring Backend in HttpOnly Secure SameSite cookies.'
 });
 
 export const ADMIN_ROLE_VALUES = Object.freeze(['ADMIN', 'ROLE_ADMIN']);
