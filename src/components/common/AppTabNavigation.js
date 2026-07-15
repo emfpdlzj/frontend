@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import homeIcon from '../../assets/tab/home_icon.png';
 import mapIcon from '../../assets/tab/map_icon.png';
 import docsIcon from '../../assets/tab/docs_icon.png';
@@ -27,6 +27,8 @@ const adminTabs = [
   { id: 'home', labelKey: 'nav.home', icon: homeIcon, to: ROUTE_PATHS.root },
   { id: 'adminNotices', label: '공지 관리', icon: docsIcon, to: ROUTE_PATHS.adminNotices }
 ];
+
+const mobilePrimaryTabIds = new Set(['home', 'map', 'quickJobs', 'jobs']);
 
 function TabIcon({ item }) {
   return <img src={item.icon} alt="" aria-hidden="true" />;
@@ -92,7 +94,7 @@ function SessionActionTab({ onRequireLogin }) {
   );
 }
 
-function TabLink({ item, onRequireLogin }) {
+function TabLink({ item, onRequireLogin, onNavigate, mobileOverflow = false }) {
   const { isAuthenticated, currentUser, tokens, isInitializing } = useAuth();
   const { localizePath, t } = useLocale();
   const hasSessionToken = Boolean(tokens?.accessToken || tokens?.refreshToken);
@@ -112,10 +114,13 @@ function TabLink({ item, onRequireLogin }) {
     return (
       <button
         type="button"
-        className="app-tab-nav__link"
+        className={`app-tab-nav__link${mobileOverflow ? ' app-tab-nav__link--mobile-overflow' : ''}`}
         aria-label={`${label} ${t('nav.loginRequired')}`}
         title={label}
-        onClick={onRequireLogin}
+        onClick={() => {
+          onNavigate?.();
+          onRequireLogin();
+        }}
       >
         <TabIcon item={item} />
         <span className="app-tab-nav__label">{label}</span>
@@ -127,9 +132,12 @@ function TabLink({ item, onRequireLogin }) {
     <NavLink
       to={localizePath(item.to)}
       end={item.to === ROUTE_PATHS.root}
-      className={({ isActive }) => `app-tab-nav__link${isActive ? ' is-active' : ''}`}
+      className={({ isActive }) =>
+        `app-tab-nav__link${mobileOverflow ? ' app-tab-nav__link--mobile-overflow' : ''}${isActive ? ' is-active' : ''}`
+      }
       aria-label={label}
       title={label}
+      onClick={onNavigate}
     >
       <TabIcon item={item} />
       <span className="app-tab-nav__label">{label}</span>
@@ -140,9 +148,32 @@ function TabLink({ item, onRequireLogin }) {
 export function AppTabNavigation() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
   const { currentUser } = useAuth();
   const { t } = useLocale();
+  const moreLabel = t('nav.more');
   const visibleTabs = hasRequiredRole(currentUser, 'admin') ? adminTabs : primaryTabs;
+  const mobileOverflowTabs = visibleTabs.filter((item) => !mobilePrimaryTabIds.has(item.id));
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isMobileMenuOpen]);
 
   return (
     <>
@@ -161,13 +192,65 @@ export function AppTabNavigation() {
       >
         <div className="app-tab-nav__group">
           {visibleTabs.map((item) => (
-            <TabLink key={item.id} item={item} onRequireLogin={() => setIsLoginModalOpen(true)} />
+            <TabLink
+              key={item.id}
+              item={item}
+              mobileOverflow={!mobilePrimaryTabIds.has(item.id)}
+              onRequireLogin={() => setIsLoginModalOpen(true)}
+            />
           ))}
+          <button
+            type="button"
+            className={`app-tab-nav__link app-tab-nav__more-toggle${isMobileMenuOpen ? ' is-active' : ''}`}
+            aria-label={moreLabel}
+            aria-haspopup="dialog"
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-more-menu"
+            onClick={() => setIsMobileMenuOpen((current) => !current)}
+          >
+            <span className="app-tab-nav__more-icon" aria-hidden="true">•••</span>
+            <span className="app-tab-nav__label">{moreLabel}</span>
+          </button>
         </div>
         <div className="app-tab-nav__group app-tab-nav__group--bottom">
           <SessionActionTab onRequireLogin={() => setIsLoginModalOpen(true)} />
         </div>
       </nav>
+      {isMobileMenuOpen ? (
+        <div className="app-mobile-menu-backdrop" onMouseDown={() => setIsMobileMenuOpen(false)}>
+          <section
+            id="mobile-more-menu"
+            className="app-mobile-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-more-menu-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="app-mobile-menu__header">
+              <h2 id="mobile-more-menu-title">{moreLabel}</h2>
+              <button type="button" onClick={() => setIsMobileMenuOpen(false)} aria-label={t('nav.closeMore')}>
+                ×
+              </button>
+            </div>
+            <div className="app-mobile-menu__links">
+              {mobileOverflowTabs.map((item) => (
+                <TabLink
+                  key={item.id}
+                  item={item}
+                  onNavigate={() => setIsMobileMenuOpen(false)}
+                  onRequireLogin={() => setIsLoginModalOpen(true)}
+                />
+              ))}
+              <SessionActionTab
+                onRequireLogin={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsLoginModalOpen(true);
+                }}
+              />
+            </div>
+          </section>
+        </div>
+      ) : null}
       {isLoginModalOpen ? <LoginModal onClose={() => setIsLoginModalOpen(false)} /> : null}
     </>
   );

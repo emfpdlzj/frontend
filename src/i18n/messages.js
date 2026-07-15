@@ -30,6 +30,8 @@ export const MESSAGES = Object.freeze({
       business: '프로필 관리',
       profile: '사용자 메뉴',
       settings: '설정',
+      more: '더보기',
+      closeMore: '더보기 메뉴 닫기',
       loginRequired: '로그인 필요'
     },
     footer: {
@@ -82,6 +84,8 @@ export const MESSAGES = Object.freeze({
       business: '个人资料管理',
       profile: '用户菜单',
       settings: '设置',
+      more: '更多',
+      closeMore: '关闭更多菜单',
       loginRequired: '需要登录'
     },
     footer: {
@@ -134,6 +138,8 @@ export const MESSAGES = Object.freeze({
       business: 'Profile Management',
       profile: 'User menu',
       settings: 'Settings',
+      more: 'More',
+      closeMore: 'Close more menu',
       loginRequired: 'Login required'
     },
     footer: {
@@ -186,6 +192,8 @@ export const MESSAGES = Object.freeze({
       business: 'プロフィール管理',
       profile: 'ユーザーメニュー',
       settings: '設定',
+      more: 'その他',
+      closeMore: 'その他メニューを閉じる',
       loginRequired: 'ログインが必要'
     },
     footer: {

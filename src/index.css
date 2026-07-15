@@ -19132,3 +19132,580 @@ html[data-bw-screen-reader-mode='on'] .settings-page--refined .settings-section_
     grid-template-columns: 340px minmax(0, 1fr) clamp(328px, 22.5vw, 376px);
   }
 }
+
+/* Responsive application shell. Desktop keeps the existing compact zoomed layout. */
+.app-tab-nav__more-toggle,
+.app-mobile-menu-backdrop {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  :root {
+    --ui-viewport-scale: 1;
+    --ui-viewport-width: 100vw;
+    --ui-viewport-height: 100vh;
+    --ui-dynamic-viewport-height: 100dvh;
+    --ui-density-scale: 0.9;
+    --ui-shell-scale: 1;
+    --ui-text-scale: 1;
+    --app-header-height: 64px;
+    --app-tab-nav-width: 0px;
+    --app-tab-nav-expanded-width: 100%;
+    --app-mobile-nav-height: 68px;
+  }
+
+  html {
+    zoom: 1;
+    width: 100%;
+    max-width: 100%;
+    scroll-padding-top: calc(var(--app-header-height) + 16px);
+    scroll-padding-bottom: calc(var(--app-mobile-nav-height) + 16px);
+  }
+
+  body {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  :where(img, svg, video, canvas) {
+    max-width: 100%;
+  }
+
+  :where(p, li, dd, dt, h1, h2, h3, h4, a, button, label, span, strong) {
+    overflow-wrap: anywhere;
+  }
+
+  .app-frame {
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-bottom: calc(var(--app-mobile-nav-height) + env(safe-area-inset-bottom));
+    background: #ffffff;
+  }
+
+  .app-frame__body {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .app-frame__content {
+    width: 100%;
+    max-width: 100%;
+    padding-left: 0;
+  }
+
+  .app-frame__main,
+  .app-frame--map,
+  .app-frame--map .app-frame__body,
+  .app-frame--map .app-frame__content,
+  .app-frame__main--map {
+    max-width: 100%;
+  }
+
+  .app-frame__notice {
+    top: calc(var(--app-header-height) + 8px);
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+
+  .app-header {
+    width: 100%;
+    height: var(--app-header-height);
+    gap: 12px;
+    padding: 0 16px;
+  }
+
+  .app-header__brand {
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+
+  .app-header__logo {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+  }
+
+  .app-header__logo-text {
+    width: 112px;
+    height: auto;
+  }
+
+  .app-header__map-search {
+    min-width: 0;
+    width: auto;
+    flex: 1 1 auto;
+  }
+
+  .app-header__map-search input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .app-header__actions {
+    min-width: 0;
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+
+  .app-header__accessibility-note {
+    display: none;
+  }
+
+  .app-header__translate-button {
+    min-width: 52px;
+    min-height: 44px;
+    padding: 0 10px;
+  }
+
+  .app-header__translate-button > span {
+    display: none;
+  }
+
+  .app-header__language-menu {
+    right: 0;
+    width: min(210px, calc(100vw - 32px));
+  }
+
+  .app-tab-nav,
+  .app-tab-nav.is-expanded {
+    inset: auto 0 0;
+    z-index: 1200;
+    width: 100%;
+    height: calc(var(--app-mobile-nav-height) + env(safe-area-inset-bottom));
+    min-height: var(--app-mobile-nav-height);
+    display: flex;
+    align-items: flex-start;
+    padding: 6px 8px env(safe-area-inset-bottom);
+    overflow: visible;
+    background: #0b2f5b;
+    box-shadow: 0 -8px 24px rgba(10, 34, 69, 0.14);
+  }
+
+  .app-tab-nav__group {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: space-around;
+    gap: 2px;
+  }
+
+  .app-tab-nav__group--bottom {
+    display: none;
+  }
+
+  .app-tab-nav__link,
+  .app-tab-nav.is-expanded .app-tab-nav__link {
+    min-width: 0;
+    width: auto;
+    height: 56px;
+    flex: 1 1 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 26px 16px;
+    place-items: center;
+    place-content: center;
+    gap: 2px;
+    padding: 5px 2px;
+    border-radius: 8px;
+    line-height: 1;
+  }
+
+  .app-tab-nav__link--mobile-overflow,
+  .app-tab-nav.is-expanded .app-tab-nav__link--mobile-overflow {
+    display: none;
+  }
+
+  .app-tab-nav__more-toggle {
+    display: grid;
+  }
+
+  .app-tab-nav__link img,
+  .app-tab-nav.is-expanded .app-tab-nav__link img {
+    width: 23px;
+    height: 23px;
+    transform: none;
+  }
+
+  .app-tab-nav__label,
+  .app-tab-nav.is-expanded .app-tab-nav__label {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    opacity: 1;
+    overflow: hidden;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.15;
+    text-align: center;
+    text-overflow: ellipsis;
+  }
+
+  .app-tab-nav__more-icon {
+    height: 23px;
+    color: #ffffff;
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 16px;
+    letter-spacing: 1px;
+  }
+
+  .app-mobile-menu-backdrop {
+    position: fixed;
+    inset: 0 0 calc(var(--app-mobile-nav-height) + env(safe-area-inset-bottom));
+    z-index: 1190;
+    display: flex;
+    align-items: flex-end;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.48);
+  }
+
+  .app-mobile-menu {
+    width: 100%;
+    max-height: min(520px, calc(100dvh - var(--app-header-height) - var(--app-mobile-nav-height) - 32px));
+    overflow-y: auto;
+    border-radius: 18px;
+    padding: 18px;
+    background: #ffffff;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
+  }
+
+  .app-mobile-menu__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+
+  .app-mobile-menu__header h2 {
+    margin: 0;
+    color: #10213d;
+    font-size: 21px;
+  }
+
+  .app-mobile-menu__header button {
+    width: 44px;
+    height: 44px;
+    border: 1px solid #dbe5f3;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #10213d;
+    font: inherit;
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  .app-mobile-menu__links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .app-mobile-menu__links .app-tab-nav__link,
+  .app-mobile-menu__links .app-tab-nav__link--mobile-overflow {
+    width: 100%;
+    min-height: 54px;
+    height: auto;
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-rows: 1fr;
+    justify-content: start;
+    gap: 10px;
+    padding: 10px 14px;
+    border: 1px solid #dbe5f3;
+    background: #f8fbff;
+    color: #10213d;
+  }
+
+  .app-mobile-menu__links .app-tab-nav__link:hover,
+  .app-mobile-menu__links .app-tab-nav__link:focus-visible,
+  .app-mobile-menu__links .app-tab-nav__link.is-active {
+    background: #eaf2ff;
+  }
+
+  .app-mobile-menu__links .app-tab-nav__label,
+  .app-mobile-menu__links .app-tab-nav.is-expanded .app-tab-nav__label {
+    width: auto;
+    color: #10213d;
+    font-size: 15px;
+    text-align: left;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .app-mobile-menu__links .app-tab-nav__link img {
+    width: 24px;
+    height: 24px;
+    filter: brightness(0) saturate(100%) invert(17%) sepia(21%) saturate(2438%) hue-rotate(176deg) brightness(91%);
+  }
+
+  .login-modal-backdrop,
+  .settings-dialog-backdrop {
+    align-items: center;
+    padding: 16px;
+  }
+
+  .login-modal,
+  .settings-dialog,
+  .login-modal.posting-detail-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+  }
+
+  .page-shell,
+  .onboarding-main {
+    width: calc(100% - 32px);
+    max-width: 100%;
+    margin-inline: auto;
+  }
+
+  .main-page__inner,
+  .main-page--quick .main-page__inner {
+    width: calc(100% - 32px);
+    max-width: 100%;
+    margin-inline: auto;
+    padding-inline: 0;
+  }
+
+  .settings-page,
+  .settings-page--refined,
+  .jobs-page,
+  .profile-page,
+  .policy-detail-page {
+    max-width: 100%;
+  }
+
+  .profile-layout,
+  .settings-page__layout,
+  .settings-page__layout--refined,
+  .policy-detail-page__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-sidebar,
+  .settings-page__menu,
+  .settings-page__menu--refined,
+  .policy-detail-page__side {
+    position: static;
+    width: 100%;
+    max-height: none;
+  }
+
+  .settings-page__menu,
+  .settings-page__menu--refined {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-notice-layout {
+    grid-template-columns: 1fr;
+  }
+
+  /* The map's later desktop selector has higher specificity than its legacy
+     responsive rule, so repeat the one-column contract at shell priority. */
+  .accessibility-map .accessibility-map__layout {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .accessibility-map .accessibility-map__filter-panel,
+  .accessibility-map .accessibility-map__map-panel,
+  .accessibility-map .accessibility-map__detail-panel {
+    grid-column: 1;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+  }
+
+  .accessibility-map .accessibility-map__filter-panel {
+    min-height: 0;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid #c8d0da;
+  }
+
+  .accessibility-map .accessibility-map__map-panel {
+    min-height: 520px;
+    border-right: 0;
+    border-bottom: 1px solid #c8d0da;
+  }
+
+  .accessibility-map .accessibility-map__detail-panel {
+    min-height: 0;
+  }
+}
+
+/* iPad Pro portrait is 1024 CSS px, which is the desktop boundary for the
+   global shell. The map still needs the tablet one-column workspace there. */
+@media (min-width: 1024px) and (max-width: 1180px) {
+  .accessibility-map .accessibility-map__layout {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .accessibility-map .accessibility-map__filter-panel,
+  .accessibility-map .accessibility-map__map-panel,
+  .accessibility-map .accessibility-map__detail-panel {
+    grid-column: 1;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+  }
+
+  .accessibility-map .accessibility-map__filter-panel {
+    min-height: 0;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid #c8d0da;
+  }
+
+  .accessibility-map .accessibility-map__map-panel {
+    min-height: 520px;
+    border-right: 0;
+    border-bottom: 1px solid #c8d0da;
+  }
+
+  .accessibility-map .accessibility-map__detail-panel {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --ui-density-scale: 1;
+  }
+
+  .app-header {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+
+  .app-header__logo-text {
+    display: none;
+  }
+
+  .app-header__map-search {
+    height: 44px;
+    padding-left: 10px;
+  }
+
+  .app-header__map-search input {
+    font-size: 14px;
+  }
+
+  .app-header__translate-button {
+    min-width: 46px;
+    width: 46px;
+    padding: 0 6px;
+  }
+
+  .accessibility-map__question-tooltip {
+    position: fixed;
+    top: calc(var(--app-header-height) + 16px);
+    right: 16px;
+    left: 16px;
+    width: auto;
+    max-height: calc(100dvh - var(--app-header-height) - var(--app-mobile-nav-height) - 48px);
+    overflow-y: auto;
+  }
+
+  .accessibility-map__question-tooltip::before {
+    display: none;
+  }
+
+  .accessibility-map .accessibility-map__filter-panel {
+    padding: 12px 16px 16px;
+  }
+
+  .accessibility-map .accessibility-map__map-panel {
+    min-height: 460px;
+  }
+
+  .accessibility-map__profile-select {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+
+  .accessibility-map__top-right-overlays {
+    top: 66px;
+    right: 12px;
+    max-width: 148px;
+  }
+
+  .accessibility-map__score-map-legend {
+    min-width: 0;
+    padding: 10px;
+  }
+
+  .accessibility-map__map-actions {
+    right: 12px;
+    bottom: 54px;
+  }
+
+  .accessibility-map__map-pill {
+    bottom: 12px;
+    max-width: calc(100% - 32px);
+    white-space: normal;
+    text-align: center;
+  }
+
+  .app-mobile-menu__links {
+    grid-template-columns: 1fr;
+  }
+
+  .login-modal__body,
+  .settings-dialog {
+    padding: 24px 18px;
+  }
+
+  .logout-confirm-modal__actions,
+  .settings-dialog__actions,
+  .onboarding-actions,
+  .onboarding-complete__actions {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .settings-dialog__actions > *,
+  .onboarding-actions > *,
+  .onboarding-complete__actions > * {
+    width: 100%;
+  }
+
+  .settings-page,
+  .settings-page--refined {
+    padding: 20px 16px 40px;
+  }
+
+  .jobs-page,
+  .profile-page,
+  .policy-detail-page {
+    padding-inline: 16px;
+  }
+
+  .settings-page__menu,
+  .settings-page__menu--refined {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-rail ol {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-job-picker__columns {
+    grid-template-columns: 1fr;
+  }
+}
