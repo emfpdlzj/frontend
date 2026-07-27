@@ -4,14 +4,19 @@
 
 BridgeWork 전체 서비스에서 이 레포는 사용자가 직접 접하는 웹 애플리케이션 역할을 담당합니다. 프론트엔드는 인증, 프로필, 공고, 추천 요청을 Spring Backend로만 전달하며, FastAPI AI/GIS Server는 직접 호출하지 않습니다.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nodongservice/.github/main/images_new/ppt_cover.png" alt="BridgeWork 접근성 기반 맞춤 일자리 서비스 화면" width="100%" />
+</p>
+
 ## 전체 구조
 
 ```text
-React Frontend
-  -> Nginx / Vercel Routing
+React Frontend on Vercel
+  -> HTTPS API / Nginx
   -> Spring Backend
-  -> FastAPI AI/GIS Server
-  -> PostgreSQL/PostGIS + Redis + OpenAI API
+       ├─ PostgreSQL/PostGIS + Redis
+       └─ FastAPI AI/GIS Server
+            └─ OpenAI API
 ```
 
 아래 표의 레포명을 클릭하면 각 GitHub 레포지토리로 이동합니다.
@@ -23,16 +28,30 @@ React Frontend
 | [aiserver](https://github.com/nodongservice/aiserver) | FastAPI AI/GIS 분석 서버, 스코어링, OCR/LLM 프로필 초안, 추천 설명 생성 |
 | [backend-infra](https://github.com/nodongservice/backend-infra) | Nginx, Blue/Green 전환 스크립트, Prometheus/Grafana/Loki/Alloy 모니터링 |
 
+## 팀
+
+| 이름 | 담당 |
+| --- | --- |
+| 장혜진 | 기획 |
+| 김수인 | 디자인 |
+| 최성현 | 백엔드 및 인프라 |
+| 박민정 | 프론트 및 AI 개발 |
+
 ## 핵심 기능
 
 ### 1. 홈과 공지사항
 
-홈 화면은 현재 인기 공고와 공개 공지사항 요약을 제공합니다. 공지사항 목록과 상세 화면은 로그인하지 않은 사용자도 읽을 수 있고, 관리자 화면에서는 공지 생성/수정/삭제와 공개 여부, 상단 고정을 관리합니다.
+홈 화면은 현재 인기 공고, 공개 공지사항 요약, 취업에 도움이 되는 공공기관 링크를 제공합니다. 공지사항 목록과 상세 화면은 로그인하지 않은 사용자도 읽을 수 있고, 관리자 화면에서는 공지 생성/수정/삭제와 공개 여부, 상단 고정을 관리합니다.
 
 - 현재 인기 공고 TOP 20 유지
 - 공개 공지사항 목록/상세 조회
+- 고용노동부, 한국장애인고용공단, 고용정보원 등 취업 지원기관 바로가기
 - 관리자 공지사항 CRUD
 - 관리자 계정은 일반 사용자 기능 대신 관리자 공지 관리 화면으로 이동
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nodongservice/.github/main/images_new/ipad_pro_screen.png" alt="BridgeWork 태블릿 홈 화면" width="62%" />
+</p>
 
 ### 2. 퀵 맞춤 일자리 추천
 
@@ -51,6 +70,14 @@ React Frontend
 - 직무 적합도, 추천 이유, 주의사항, 추천 프로그램 표시
 - 공고 스크랩 처리
 - 로그인 전 사용자를 위한 안내 모달 제공
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nodongservice/.github/main/images_new/service_detail_quick1.png" alt="BridgeWork 퀵 맞춤 추천 필터와 결과 목록" width="100%" />
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nodongservice/.github/main/images_new/service_detail_quick2.png" alt="BridgeWork 공고 상세와 추천 설명 및 교육 추천" width="100%" />
+</p>
 
 ### 3. 지역 접근성 지도
 
@@ -84,6 +111,14 @@ flowchart LR
 - AI OFF: 서버 페이지네이션 + 프론트 무한스크롤
 - 캐시된 지도 추천 결과는 첫 조회에서 즉시 반영
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nodongservice/.github/main/images_new/service_detail_map.png" alt="BridgeWork 접근성 지도 기반 공고 추천 화면" width="100%" />
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nodongservice/.github/main/images_new/service_detail_map4.png" alt="BridgeWork 접근성 점수 근거와 추천 교육 및 사용자 피드백" width="100%" />
+</p>
+
 ### 4. 온보딩과 프로필 관리
 
 사용자가 추천에 필요한 정보를 단계적으로 입력하고, 이후 프로필 화면에서 여러 프로필을 관리할 수 있습니다. 프로필은 최대 3개까지 등록할 수 있으며 기본 프로필을 지정할 수 있습니다.
@@ -96,6 +131,11 @@ flowchart LR
 - 작성 중인 프로필 임시저장
 - PDF 포트폴리오 업로드를 통한 프로필 초안 반영
 - PDF 파일 확장자, MIME type, 크기 검증
+- 저장된 프로필을 A4 PDF 이력서로 내보내기
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nodongservice/.github/main/images_new/service_detail_portfolio.png" alt="BridgeWork PDF OCR 및 LLM 프로필 자동 생성 화면" width="100%" />
+</p>
 
 ### 5. 소셜 로그인과 인증 상태 관리
 
@@ -133,6 +173,20 @@ flowchart LR
 - 공개 정책 문서 route 색인 허용
 - 추천/프로필/지도/설정 등 개인화 화면 색인 차단
 
+### 8. 반응형 사용자 경험
+
+데스크톱에서는 목록·지도·상세 패널을 동시에 제공하고, 좁은 화면에서는 기능 순서를 유지하면서 단일 열·하단 내비게이션 중심으로 재배치합니다.
+
+- 데스크톱: 좌측 필터, 중앙 지도, 우측 상세 패널
+- 태블릿: 지도 중심 배치와 축소 가능한 보조 패널
+- 모바일: 하단 내비게이션, 단일 열 목록, 별도 필터·상세 흐름
+- 모바일에서도 지도 범례와 텍스트 대체 안내 제공
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nodongservice/.github/main/images_new/iphone_xr_screen_1.png" alt="BridgeWork 모바일 홈 화면" width="34%" />
+  <img src="https://raw.githubusercontent.com/nodongservice/.github/main/images_new/iphone_xr_screen_2.png" alt="BridgeWork 모바일 접근성 지도 화면" width="34%" />
+</p>
+
 ## 프론트엔드 설계 원칙
 
 - **Spring Backend 단일 진입점**: 프론트엔드는 FastAPI를 직접 호출하지 않고 Spring Backend만 호출합니다.
@@ -156,6 +210,7 @@ flowchart LR
 | 회원가입 온보딩 | `/:locale/signup` | 최초 로그인 추가정보 입력 | 공개 |
 | 스크랩 공고 | `/:locale/jobs` | 저장한 공고 목록/상세/삭제 | 필요 |
 | 프로필 관리 | `/:locale/profile`, `/:locale/my/profile` | 프로필 추가/수정/삭제, PDF 초안 반영 | 필요 |
+| 프로필 PDF | `/:locale/profile/export/:profileId` | 저장된 프로필의 A4 PDF 내보내기 | 필요 |
 | 지역 접근성 지도 | `/:locale/accessibility-map` | 지도 기반 추천, 접근성 점수, 근거 확인 | 필요 |
 | 설정 | `/:locale/settings` | 계정, 접근성 선호, 문의, 탈퇴 | 필요 |
 | 정책 상세 | `/:locale/settings/policies/:policyId` | 약관/정책 상세 문서 | 공개 |
@@ -173,7 +228,7 @@ locale 없는 기존 경로는 기본 locale 경로로 리다이렉트됩니다.
 | --- | --- |
 | `authApi.js` | OAuth callback, 토큰 재발급, 로그아웃 |
 | `profileApi.js` | 프로필 목록/상세/생성/수정/삭제, 기본 프로필 설정, PDF 프로필 초안 요청 |
-| `postingApi.js` | 공고 상세, 스크랩 생성/삭제 |
+| `postingApi.js` | 공고 상세, 인기 공고, 스크랩 생성/삭제, 추천 설명 피드백 |
 | `recommendApi.js` | 퀵 추천, 지도 추천, 추천 task polling, 추천 설명 요청 |
 | `mapApi.js` | 접근성 지도 보조 데이터 조회 |
 | `optionsApi.js` | 온보딩/공고 필터 선택지 조회 |
